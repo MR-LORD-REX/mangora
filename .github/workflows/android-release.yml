@@ -1,0 +1,159 @@
+name: Android Release
+
+# A tag like v0.0.1 must match app.json -> expo.version, otherwise the build
+# stops in the `prepare` job. Manual runs are also allowed for testing.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Check version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Match the tag against app.json
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./app.json').expo.version")"
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not read expo.version from app.json"
+            exit 1
+          fi
+          echo "App version in app.json: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            if [ "$GITHUB_REF_NAME" != "v$VERSION" ]; then
+              echo "::error::Tag $GITHUB_REF_NAME does not match app.json version v$VERSION"
+              exit 1
+            fi
+            echo "Tag $GITHUB_REF_NAME matches app.json version."
+          else
+            echo "Manual run: skipping the tag check (building v$VERSION)."
+          fi
+
+  build:
+    name: Build ${{ matrix.abi }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # react-native-executorch (ExecuTorch) ships its OpenCV / ExecuTorch
+      # prebuilts for arm64-v8a and x86_64 ONLY. A build that asks for
+      # armeabi-v7a (32-bit ARM) resolves to an empty ABI filter, AGP then
+      # falls back to building EVERY ABI, and the armv7 CMake target dies on
+      # third-party/android/libs/opencv/armeabi-v7a/libopencv_core.a (missing).
+      # Do not re-add armeabi-v7a unless ExecuTorch gains 32-bit ARM support.
+      matrix:
+        include:
+          - abi: arm64-v8a
+    env:
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx6g"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The native build (Skia codegen, onnxruntime, ExecuTorch, Hermes, NDK)
+      # is disk-hungry; the stock runner runs out mid-bundle with
+      # ENOSPC: no space left on device. Reclaim the preinstalled toolchains
+      # we do not use. android:false keeps the SDK/NDK that AGP relies on.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v2.0.0
+        with:
+          android: false
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Build ${{ matrix.abi }} release APK
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:assembleRelease -PreactNativeArchitectures=${{ matrix.abi }} --no-daemon
+
+      - name: Rename APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          SRC="android/app/build/outputs/apk/release/app-release.apk"
+          DEST="dist/mangora-${{ matrix.abi }}-${{ needs.prepare.outputs.version }}.apk"
+          cp "$SRC" "$DEST"
+          ls -la dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mangora-${{ matrix.abi }}
+          path: dist/*.apk
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download APKs
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List APKs
+        run: ls -la dist
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.prepare.outputs.version }}
+          name: Mangora v${{ needs.prepare.outputs.version }}
+          files: dist/*.apk
+          generate_release_notes: true

@@ -1,0 +1,68 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# iOS native project (generated; Android is committed so the custom native
+# module + config-plugin output build identically in CI)
+/ios/
+.kotlin/
+*.orig.*
+
+# Secrets / signing material
+*.jks
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# Debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+
+# Local env files
+.env
+.env*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs / scratch
+*.log
+app-example
+
+# Android build outputs (the android project itself is committed)
+android/.gradle/
+android/build/
+android/app/build/
+android/.cxx/
+android/local.properties
+android/app/release/
+android/app/debug/
+*.apk
+*.aab
+*.hprof
+*.iml
+.idea/
+
+# Python side project (local only)
+__pycache__/
+*.py[cod]
+
+# Local-only docs / agent + editor config
+APP.md
+AGENTS.md
+TR_API/
+.claude/

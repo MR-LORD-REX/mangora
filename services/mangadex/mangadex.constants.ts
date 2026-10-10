@@ -1,0 +1,271 @@
+export const API_BASE = "https://api.mangadex.org";
+
+export const UPLOADS_BASE = "https://uploads.mangadex.org";
+export const SITE_BASE = "https://mangadex.org";
+
+
+export interface LanguageInfo {
+  code: string;
+  name: string;
+  native: string;
+  flag: string;
+  base: string;
+  romanized?: boolean;
+}
+
+const L = (
+  code: string,
+  name: string,
+  native: string,
+  flag: string,
+  extra: Partial<LanguageInfo> = {}
+): LanguageInfo => ({ code, name, native, flag, base: code.split("-")[0], ...extra });
+
+export const LANGUAGES: Record<string, LanguageInfo> = {
+  af: L("af", "Afrikaans", "Afrikaans", "🇿🇦"),
+  ar: L("ar", "Arabic", "العربية", "🇸🇦"),
+  az: L("az", "Azerbaijani", "Azərbaycan", "🇦🇿"),
+  ba: L("ba", "Bashkir", "Башҡортса", "🌐"),
+  be: L("be", "Belarusian", "Беларуская", "🇧🇾"),
+  bg: L("bg", "Bulgarian", "Български", "🇧🇬"),
+  bn: L("bn", "Bengali", "বাংলা", "🇧🇩"),
+  ca: L("ca", "Catalan", "Català", "🌐"),
+  cs: L("cs", "Czech", "Čeština", "🇨🇿"),
+  cv: L("cv", "Chuvash", "Чӑвашла", "🌐"),
+  da: L("da", "Danish", "Dansk", "🇩🇰"),
+  de: L("de", "German", "Deutsch", "🇩🇪"),
+  el: L("el", "Greek", "Ελληνικά", "🇬🇷"),
+  en: L("en", "English", "English", "🇬🇧"),
+  eo: L("eo", "Esperanto", "Esperanto", "🌐"),
+  es: L("es", "Spanish", "Español", "🇪🇸"),
+  "es-la": L("es-la", "Spanish (Latin America)", "Español (Latinoamérica)", "🌎", { base: "es" }),
+  et: L("et", "Estonian", "Eesti", "🇪🇪"),
+  eu: L("eu", "Basque", "Euskara", "🌐"),
+  fa: L("fa", "Persian", "فارسی", "🇮🇷"),
+  fi: L("fi", "Finnish", "Suomi", "🇫🇮"),
+  fil: L("fil", "Filipino", "Filipino", "🇵🇭"),
+  fr: L("fr", "French", "Français", "🇫🇷"),
+  ga: L("ga", "Irish", "Gaeilge", "🇮🇪"),
+  he: L("he", "Hebrew", "עברית", "🇮🇱"),
+  hi: L("hi", "Hindi", "हिन्दी", "🇮🇳"),
+  hr: L("hr", "Croatian", "Hrvatski", "🇭🇷"),
+  hu: L("hu", "Hungarian", "Magyar", "🇭🇺"),
+  hy: L("hy", "Armenian", "Հայերեն", "🇦🇲"),
+  id: L("id", "Indonesian", "Bahasa Indonesia", "🇮🇩"),
+  it: L("it", "Italian", "Italiano", "🇮🇹"),
+  ja: L("ja", "Japanese", "日本語", "🇯🇵"),
+  "ja-ro": L("ja-ro", "Japanese (Romanized)", "Nihongo (rōmaji)", "🇯🇵", { base: "ja", romanized: true }),
+  jv: L("jv", "Javanese", "Basa Jawa", "🇮🇩"),
+  ka: L("ka", "Georgian", "ქართული", "🇬🇪"),
+  kk: L("kk", "Kazakh", "Қазақша", "🇰🇿"),
+  km: L("km", "Khmer", "ភាសាខ្មែរ", "🇰🇭"),
+  kn: L("kn", "Kannada", "ಕನ್ನಡ", "🇮🇳"),
+  ko: L("ko", "Korean", "한국어", "🇰🇷"),
+  "ko-ro": L("ko-ro", "Korean (Romanized)", "Hangugeo (romaja)", "🇰🇷", { base: "ko", romanized: true }),
+  ky: L("ky", "Kyrgyz", "Кыргызча", "🇰🇬"),
+  la: L("la", "Latin", "Latina", "🌐"),
+  lt: L("lt", "Lithuanian", "Lietuvių", "🇱🇹"),
+  mn: L("mn", "Mongolian", "Монгол", "🇲🇳"),
+  ms: L("ms", "Malay", "Bahasa Melayu", "🇲🇾"),
+  my: L("my", "Burmese", "မြန်မာ", "🇲🇲"),
+  ne: L("ne", "Nepali", "नेपाली", "🇳🇵"),
+  nl: L("nl", "Dutch", "Nederlands", "🇳🇱"),
+  no: L("no", "Norwegian", "Norsk", "🇳🇴"),
+  pl: L("pl", "Polish", "Polski", "🇵🇱"),
+  pt: L("pt", "Portuguese", "Português", "🇵🇹"),
+  "pt-br": L("pt-br", "Portuguese (Brazil)", "Português (Brasil)", "🇧🇷", { base: "pt" }),
+  ro: L("ro", "Romanian", "Română", "🇷🇴"),
+  ru: L("ru", "Russian", "Русский", "🇷🇺"),
+  sh: L("sh", "Serbo-Croatian", "Srpskohrvatski", "🌐"),
+  si: L("si", "Sinhala", "සිංහල", "🇱🇰"),
+  sk: L("sk", "Slovak", "Slovenčina", "🇸🇰"),
+  sl: L("sl", "Slovenian", "Slovenščina", "🇸🇮"),
+  sq: L("sq", "Albanian", "Shqip", "🇦🇱"),
+  sr: L("sr", "Serbian", "Српски", "🇷🇸"),
+  sv: L("sv", "Swedish", "Svenska", "🇸🇪"),
+  ta: L("ta", "Tamil", "தமிழ்", "🇮🇳"),
+  te: L("te", "Telugu", "తెలుగు", "🇮🇳"),
+  th: L("th", "Thai", "ไทย", "🇹🇭"),
+  tl: L("tl", "Tagalog", "Tagalog", "🇵🇭"),
+  tr: L("tr", "Turkish", "Türkçe", "🇹🇷"),
+  tt: L("tt", "Tatar", "Татарча", "🌐"),
+  uk: L("uk", "Ukrainian", "Українська", "🇺🇦"),
+  ur: L("ur", "Urdu", "اردو", "🇵🇰"),
+  uz: L("uz", "Uzbek", "Oʻzbek", "🇺🇿"),
+  vi: L("vi", "Vietnamese", "Tiếng Việt", "🇻🇳"),
+  zh: L("zh", "Chinese (Simplified)", "简体中文", "🇨🇳"),
+  "zh-hk": L("zh-hk", "Chinese (Traditional)", "繁體中文", "🇭🇰", { base: "zh" }),
+  "zh-ro": L("zh-ro", "Chinese (Romanized)", "Zhōngwén (pīnyīn)", "🇨🇳", { base: "zh", romanized: true }),
+};
+
+export function resolveLanguage(code: string | null | undefined): LanguageInfo {
+  if (!code) return L("unknown", "Unknown", "Unknown", "🏳️");
+  const key = code.toLowerCase();
+  const hit = LANGUAGES[key];
+  if (hit) return hit;
+  const base = LANGUAGES[key.split("-")[0]];
+  if (base) return { ...base, code: key, name: `${base.name} (${key})` };
+  return L(key, key.toUpperCase(), key.toUpperCase(), "🏳️");
+}
+
+/** Shorthand for the common case: code in, English name out. */
+export const languageName = (code: string | null | undefined): string => resolveLanguage(code).name;
+
+export const CONTENT_RATINGS = ["safe", "suggestive", "erotica", "pornographic"] as const;
+export const PUBLICATION_STATUSES = ["ongoing", "completed", "hiatus", "cancelled"] as const;
+export const DEMOGRAPHICS = ["shounen", "shoujo", "josei", "seinen", "none"] as const;
+export const MANGA_STATES = ["draft", "submitted", "published", "rejected"] as const;
+export const READING_STATUSES = [
+  "reading",
+  "on_hold",
+  "plan_to_read",
+  "dropped",
+  "re_reading",
+  "completed",
+] as const;
+
+/** Default set most readers want: everything except pornographic. */
+export const DEFAULT_CONTENT_RATINGS = ["safe", "suggestive", "erotica"] as const;
+
+export const COVER_SIZES = { original: "", medium: ".512.jpg", small: ".256.jpg" } as const;
+
+/** Measured against the live API — exceeding any of these returns 400, not a clamp. */
+export const LIMITS = {
+  manga: 100,
+  chapter: 100,
+  cover: 100,
+  feed: 500,
+  statisticsBatch: 100,
+  idsBatch: 100,
+  /** offset + limit must be <= this on every paginated endpoint. */
+  resultWindow: 10000,
+} as const;
+
+/** Requests per minute, for endpoints that advertise their own bucket. */
+export const RATE_LIMITS = { global: 5, atHomePerMinute: 40, randomPerMinute: 60 } as const;
+
+/** The account that owns the official "Seasonal: …" lists. */
+export const MANGADEX_STAFF_USER = "d2ae45e0-b5e2-4e7f-a688-17925c2d7d6b";
+
+export const TAG_IDS: Record<string, string> = {
+  "4-Koma": "b11fda93-8f1d-4bef-b2ed-8803d3733170",
+  Action: "391b0423-d847-456f-aff0-8b0cfc03066b",
+  Adaptation: "f4122d1c-3b44-44d0-9936-ff7502c39ad3",
+  Adventure: "87cc87cd-a395-47af-b27a-93258283bbc6",
+  Aliens: "e64f6742-c834-471d-8d72-dd51fc02b835",
+  Animals: "3de8c75d-8ee3-48ff-98ee-e20a65c86451",
+  Anthology: "51d83883-4103-437c-b4b1-731cb73d786c",
+  "Award Winning": "0a39b5a1-b235-4886-a747-1d05d216532d",
+  "Boys' Love": "5920b825-4181-4a17-beeb-9918b0ff7a30",
+  Comedy: "4d32cc48-9f00-4cca-9b5a-a839f0764984",
+  Cooking: "ea2bc92d-1c26-4930-9b7c-d5c0dc1b6869",
+  Crime: "5ca48985-9a9d-4bd8-be29-80dc0303db72",
+  Crossdressing: "9ab53f92-3eed-4e9b-903a-917c86035ee3",
+  Delinquents: "da2d50ca-3018-4cc0-ac7a-6b7d472a29ea",
+  Demons: "39730448-9a5f-48a2-85b0-a70db87b1233",
+  Doujinshi: "b13b2a48-c720-44a9-9c77-39c9979373fb",
+  Drama: "b9af3a63-f058-46de-a9a0-e0c13906197a",
+  "Fan Colored": "7b2ce280-79ef-4c09-9b58-12b7c23a9b78",
+  Fantasy: "cdc58593-87dd-415e-bbc0-2ec27bf404cc",
+  "Full Color": "f5ba408b-0e7a-484d-8d49-4e9125ac96de",
+  Genderswap: "2bd2e8d0-f146-434a-9b51-fc9ff2c5fe6a",
+  Ghosts: "3bb26d85-09d5-4d2e-880c-c34b974339e9",
+  "Girls' Love": "a3c67850-4684-404e-9b7f-c69850ee5da6",
+  Gore: "b29d6a3d-1569-4e7a-8caf-7557bc92cd5d",
+  Gyaru: "fad12b5e-68ba-460e-b933-9ae8318f5b65",
+  Harem: "aafb99c1-7f60-43fa-b75f-fc9502ce29c7",
+  Historical: "33771934-028e-4cb3-8744-691e866a923e",
+  Horror: "cdad7e68-1419-41dd-bdce-27753074a640",
+  Incest: "5bd0e105-4481-44ca-b6e7-7544da56b1a3",
+  Isekai: "ace04997-f6bd-436e-b261-779182193d3d",
+  Loli: "2d1f5d56-a1e5-4d0d-a961-2193588b08ec",
+  "Long Strip": "3e2b8dae-350e-4ab8-a8ce-016e844b9f0d",
+  Mafia: "85daba54-a71c-4554-8a28-9901a8b0afad",
+  Magic: "a1f53773-c69a-4ce5-8cab-fffcd90b1565",
+  "Magical Girls": "81c836c9-914a-4eca-981a-560dad663e73",
+  Mahjong: "cb562697-929f-4d28-9d66-6d3995bf2592",
+  "Martial Arts": "799c202e-7daa-44eb-9cf7-8a3c0441531e",
+  Mecha: "50880a9d-5440-4732-9afb-8f457127e836",
+  Medical: "c8cbe35b-1b2b-4a3f-9c37-db84c4514856",
+  Military: "ac72833b-c4e9-4878-b9db-6c8a4a99444a",
+  "Monster Girls": "dd1f77c5-dea9-4e2b-97ae-224af09caf99",
+  Monsters: "36fd93ea-e8b8-445e-b836-358f02b3d33d",
+  Music: "f42fbf9e-188a-447b-9fdc-f19dc1e4d685",
+  Mystery: "ee968100-4191-4968-93d3-f82d72be7e46",
+  Ninja: "489dd859-9b61-4c37-af75-5b18e88daafc",
+  "Office Workers": "92d6d951-ca5e-429c-ac78-451071cbf064",
+  "Official Colored": "320831a8-4026-470b-94f6-8353740e6f04",
+  Oneshot: "0234a31e-a729-4e28-9d6a-3f87c4966b9e",
+  Philosophical: "b1e97889-25b4-4258-b28b-cd7f4d28ea9b",
+  Police: "df33b754-73a3-4c54-80e6-1a74a8058539",
+  "Post-Apocalyptic": "9467335a-1b83-4497-9231-765337a00b96",
+  Psychological: "3b60b75c-a2d7-4860-ab56-05f391bb889c",
+  Reincarnation: "0bc90acb-ccc1-44ca-a34a-b9f3a73259d0",
+  "Reverse Harem": "65761a2a-415e-47f3-bef2-a9dababba7a6",
+  Romance: "423e2eae-a7a2-4a8b-ac03-a8351462d71d",
+  Samurai: "81183756-1453-4c81-aa9e-f6e1b63be016",
+  "School Life": "caaa44eb-cd40-4177-b930-79d3ef2afe87",
+  "Sci-Fi": "256c8bd9-4904-4360-bf4f-508a76d67183",
+  "Self-Published": "891cf039-b895-47f0-9229-bef4c96eccd4",
+  "Sexual Violence": "97893a4c-12af-4dac-b6be-0dffb353568e",
+  Shota: "ddefd648-5140-4e5f-ba18-4eca4071d19b",
+  "Slice of Life": "e5301a23-ebd9-49dd-a0cb-2add944c7fe9",
+  Sports: "69964a64-2f90-4d33-beeb-f3ed2875eb4c",
+  Superhero: "7064a261-a137-4d3a-8848-2d385de3a99c",
+  Supernatural: "eabc5b4c-6aff-42f3-b657-3e90cbd00b75",
+  Survival: "5fff9cde-849c-4d78-aab0-0d52b2ee1d25",
+  Thriller: "07251805-a27e-4d59-b488-f0bfbec15168",
+  "Time Travel": "292e862b-2d17-4062-90a2-0356caa4ae27",
+  "Traditional Games": "31932a7e-5b8e-49a6-9f12-2afa39dc544c",
+  Tragedy: "f8f62932-27da-4fe4-8ee1-6779a8c5edba",
+  Vampires: "d7d1730f-6eb0-4ba6-9437-602cac38664c",
+  Videogames: "9438db5a-7e2a-4ac0-b39e-e0d95a34b8a8",
+  Villainess: "d14322ac-4d6f-4e9b-afd9-629d5f4d8a41",
+  "Virtual Reality": "8c86611e-fab7-4986-9dec-d1a2f44acdd5",
+  "Web Comic": "e197df38-d0e7-43b5-9b09-2842d0c326dd",
+  Wuxia: "acc803a4-c95a-4c22-86fc-eb6b582d82a2",
+  Zombies: "631ef465-9aba-4afb-b0fc-ea10efe274a8",
+};
+
+/** MangaDex spells this tag "Video Games"; keep both spellings resolvable. */
+TAG_IDS["Video Games"] = TAG_IDS.Videogames;
+
+export const TAG_GROUPS: Record<"format" | "genre" | "theme" | "content", string[]> = {
+  format: [
+    "4-Koma", "Adaptation", "Anthology", "Award Winning", "Doujinshi", "Fan Colored",
+    "Full Color", "Long Strip", "Official Colored", "Oneshot", "Self-Published", "Web Comic",
+  ],
+  genre: [
+    "Action", "Adventure", "Boys' Love", "Comedy", "Crime", "Drama", "Fantasy", "Girls' Love",
+    "Historical", "Horror", "Isekai", "Magical Girls", "Mecha", "Medical", "Mystery",
+    "Philosophical", "Psychological", "Romance", "Sci-Fi", "Slice of Life", "Sports",
+    "Superhero", "Thriller", "Tragedy", "Wuxia",
+  ],
+  theme: [
+    "Aliens", "Animals", "Cooking", "Crossdressing", "Delinquents", "Demons", "Genderswap",
+    "Ghosts", "Gyaru", "Harem", "Incest", "Loli", "Mafia", "Magic", "Mahjong", "Martial Arts",
+    "Military", "Monster Girls", "Monsters", "Music", "Ninja", "Office Workers", "Police",
+    "Post-Apocalyptic", "Reincarnation", "Reverse Harem", "Samurai", "School Life", "Shota",
+    "Supernatural", "Survival", "Time Travel", "Traditional Games", "Vampires", "Video Games",
+    "Villainess", "Virtual Reality", "Zombies",
+  ],
+  content: ["Gore", "Sexual Violence"],
+};
+
+/** `links` keys on a manga, mapped to a label and a URL builder. */
+export const LINK_TEMPLATES: Record<string, { name: string; url: ((v: string) => string) | null }> = {
+  al: { name: "AniList", url: (v) => `https://anilist.co/manga/${v}` },
+  ap: { name: "Anime-Planet", url: (v) => `https://www.anime-planet.com/manga/${v}` },
+  bw: { name: "BookWalker", url: (v) => `https://bookwalker.jp/${v}` },
+  mu: { name: "MangaUpdates", url: (v) => `https://www.mangaupdates.com/series/${v}` },
+  nu: { name: "NovelUpdates", url: (v) => `https://www.novelupdates.com/series/${v}` },
+  kt: { name: "Kitsu", url: (v) => `https://kitsu.app/manga/${v}` },
+  mal: { name: "MyAnimeList", url: (v) => `https://myanimelist.net/manga/${v}` },
+  bl: { name: "Bilibili Comics", url: null },
+  amz: { name: "Amazon", url: (v) => v },
+  ebj: { name: "eBookJapan", url: (v) => v },
+  cdj: { name: "CDJapan", url: (v) => v },
+  raw: { name: "Official raw", url: (v) => v },
+  engtl: { name: "Official English", url: (v) => v },
+};
+

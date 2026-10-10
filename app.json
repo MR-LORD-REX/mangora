@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Mangora",
+    "slug": "mangora",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "scheme": "mangora",
+    "icon": "./assets/icons/appLogo.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.mangora.app"
+    },
+    "web": {
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#000000",
+          "image": "./assets/icons/appLogo.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#000000",
+            "image": "./assets/icons/appLogo.png"
+          }
+        }
+      ],
+      "expo-asset",
+      "onnxruntime-react-native",
+      "./plugins/withOnnxruntimePackage",
+      "./plugins/withDownloadService",
+      "./plugins/withSubsamplingScaleImageView",
+      "expo-sqlite",
+      "expo-notifications"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

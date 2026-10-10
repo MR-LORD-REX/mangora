@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1788536734407,
+      "tag": "0000_cheerful_lenny_balinger",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788536986670,
+      "tag": "0001_cloudy_boomerang",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788704917598,
+      "tag": "0002_chapter_scanlation_groups",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788719057972,
+      "tag": "0003_sad_komodo",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788801204374,
+      "tag": "0004_left_morlun",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789291591838,
+      "tag": "0005_download_library",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+# Normalize text to LF in the repository; keep platform-specific endings.
+* text=auto
+
+# Shell scripts must stay LF or they fail on the Linux CI runner.
+*.sh text eol=lf
+gradlew text eol=lf
+
+# Windows batch keeps CRLF.
+*.bat text eol=crlf
+
+# Native / binary artifacts are never touched.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ttf binary
+*.otf binary
+*.jar binary
+*.keystore binary
+*.onnx binary
+*.apk binary
+*.aab binary

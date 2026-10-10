@@ -1,0 +1,1 @@
+ALTER TABLE `reading_history` ADD `reader_params_json` text NOT NULL;
