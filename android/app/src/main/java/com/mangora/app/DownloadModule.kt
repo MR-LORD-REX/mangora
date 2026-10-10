@@ -1,11 +1,14 @@
 package com.mangora.app
 
 import android.content.Context
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.provider.DocumentsContract
+import android.provider.Settings
+import androidx.core.content.FileProvider
 import androidx.documentfile.provider.DocumentFile
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
@@ -18,6 +21,7 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.security.MessageDigest
 import java.util.concurrent.Executors
 import java.util.zip.Deflater
 import java.util.zip.ZipEntry
@@ -349,6 +353,97 @@ class DownloadModule(private val reactContext: ReactApplicationContext) :
   @ReactMethod
   fun stopDownloadService() {
     DownloadService.stop(context())
+  }
+
+  // -------------------------------------------------------------------------
+  // In-app updater (plan S14.4). The APK itself is fetched in JavaScript; the
+  // module only owns the parts that need a real Android context: the install
+  // permission gate and handing the file to the system package installer.
+  // -------------------------------------------------------------------------
+
+  /** True when the app is allowed to install packages (always true below API 26). */
+  @ReactMethod
+  fun canRequestPackageInstalls(promise: Promise) {
+    try {
+      val allowed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        context().packageManager.canRequestPackageInstalls()
+      } else {
+        true
+      }
+      promise.resolve(allowed)
+    } catch (error: Exception) {
+      promise.reject(
+        "mangora_downloader",
+        error.message ?: "Could not read the install permission",
+        error
+      )
+    }
+  }
+
+  /** Opens the "install unknown apps" screen scoped to this package. */
+  @ReactMethod
+  fun openInstallPermissionSettings(promise: Promise) {
+    try {
+      val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        Intent(
+          Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+          Uri.parse("package:${context().packageName}")
+        )
+      } else {
+        Intent(Settings.ACTION_SECURITY_SETTINGS)
+      }
+      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      context().startActivity(intent)
+      promise.resolve(true)
+    } catch (error: Exception) {
+      promise.reject(
+        "mangora_downloader",
+        error.message ?: "Could not open the install settings",
+        error
+      )
+    }
+  }
+
+  /**
+   * Hands a downloaded APK to the system installer through a FileProvider uri
+   * (ACTION_VIEW + the package-archive mime type + a read grant). Android then
+   * runs the normal "update this app" flow, which installs over the previous
+   * version without an uninstall.
+   */
+  @ReactMethod
+  fun installApk(path: String, promise: Promise) {
+    runAsync(promise) {
+      val apk = localFile(path)
+      if (!apk.exists()) throw IllegalStateException("APK not found: $path")
+      val authority = "${context().packageName}.mangora.updates"
+      val uri = FileProvider.getUriForFile(context(), authority, apk)
+      val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, "application/vnd.android.package-archive")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      context().startActivity(intent)
+      true
+    }
+  }
+
+  /** Streaming SHA-256 of a file, hex encoded. Used to verify an update APK. */
+  @ReactMethod
+  fun sha256OfFile(path: String, promise: Promise) {
+    runAsync(promise) {
+      val file = localFile(path)
+      if (!file.exists()) throw IllegalStateException("File not found: $path")
+      val digest = MessageDigest.getInstance("SHA-256")
+      FileInputStream(file).use { input ->
+        val buffer = ByteArray(64 * 1024)
+        while (true) {
+          val read = input.read(buffer)
+          if (read <= 0) break
+          digest.update(buffer, 0, read)
+        }
+      }
+      digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+    }
   }
 
   companion object {

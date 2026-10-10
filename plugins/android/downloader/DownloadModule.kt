@@ -1,11 +1,14 @@
 package com.mangora.app
 
 import android.content.Context
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.provider.DocumentsContract
+import android.provider.Settings
+import androidx.core.content.FileProvider
 import androidx.documentfile.provider.DocumentFile
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
@@ -13,13 +16,16 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableArray
+import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.security.MessageDigest
 import java.util.concurrent.Executors
 import java.util.zip.Deflater
 import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
 /**
@@ -184,6 +190,55 @@ class DownloadModule(private val reactContext: ReactApplicationContext) :
     }
   }
 
+  /** Extracts numbered page images from a downloaded CBZ into the app cache. */
+  @ReactMethod
+  fun extractSafArchivePages(uri: String, destDirPath: String, promise: Promise) {
+    runAsync(promise) {
+      val destination = localFile(destDirPath)
+      if (!destination.exists() && !destination.mkdirs()) {
+        throw IllegalStateException("Could not create the downloaded pages cache")
+      }
+      val pageName = Regex("""^\d{4,}\.(jpe?g|png|webp|gif|avif|bmp)$""", RegexOption.IGNORE_CASE)
+
+      val pages = Arguments.createArray()
+      var clearedExistingPages = false
+      context().contentResolver.openInputStream(Uri.parse(uri)).use { input ->
+        if (input == null) throw IllegalStateException("Downloaded archive is unavailable")
+        ZipInputStream(BufferedInputStream(input)).use { zip ->
+          while (true) {
+            val entry = zip.nextEntry ?: break
+            val name = entry.name
+            if (
+              !entry.isDirectory &&
+              !name.contains("/") &&
+              !name.contains("\\") &&
+              pageName.matches(name)
+            ) {
+              if (!clearedExistingPages) {
+                destination.listFiles()
+                  ?.filter { it.isFile && pageName.matches(it.name) }
+                  ?.forEach { it.delete() }
+                clearedExistingPages = true
+              }
+              val outputFile = File(destination, name)
+              FileOutputStream(outputFile).use { output ->
+                val buffer = ByteArray(8192)
+                while (true) {
+                  val count = zip.read(buffer)
+                  if (count < 0) break
+                  output.write(buffer, 0, count)
+                }
+              }
+              pages.pushString(Uri.fromFile(outputFile).toString())
+            }
+            zip.closeEntry()
+          }
+        }
+      }
+      pages
+    }
+  }
+
   /**
    * Deletes `<parentUri>/<segments...>` when that chain already exists, without
    * creating anything. Resolves true when a directory was removed.
@@ -298,6 +353,97 @@ class DownloadModule(private val reactContext: ReactApplicationContext) :
   @ReactMethod
   fun stopDownloadService() {
     DownloadService.stop(context())
+  }
+
+  // -------------------------------------------------------------------------
+  // In-app updater (plan S14.4). The APK itself is fetched in JavaScript; the
+  // module only owns the parts that need a real Android context: the install
+  // permission gate and handing the file to the system package installer.
+  // -------------------------------------------------------------------------
+
+  /** True when the app is allowed to install packages (always true below API 26). */
+  @ReactMethod
+  fun canRequestPackageInstalls(promise: Promise) {
+    try {
+      val allowed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        context().packageManager.canRequestPackageInstalls()
+      } else {
+        true
+      }
+      promise.resolve(allowed)
+    } catch (error: Exception) {
+      promise.reject(
+        "mangora_downloader",
+        error.message ?: "Could not read the install permission",
+        error
+      )
+    }
+  }
+
+  /** Opens the "install unknown apps" screen scoped to this package. */
+  @ReactMethod
+  fun openInstallPermissionSettings(promise: Promise) {
+    try {
+      val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        Intent(
+          Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+          Uri.parse("package:${context().packageName}")
+        )
+      } else {
+        Intent(Settings.ACTION_SECURITY_SETTINGS)
+      }
+      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      context().startActivity(intent)
+      promise.resolve(true)
+    } catch (error: Exception) {
+      promise.reject(
+        "mangora_downloader",
+        error.message ?: "Could not open the install settings",
+        error
+      )
+    }
+  }
+
+  /**
+   * Hands a downloaded APK to the system installer through a FileProvider uri
+   * (ACTION_VIEW + the package-archive mime type + a read grant). Android then
+   * runs the normal "update this app" flow, which installs over the previous
+   * version without an uninstall.
+   */
+  @ReactMethod
+  fun installApk(path: String, promise: Promise) {
+    runAsync(promise) {
+      val apk = localFile(path)
+      if (!apk.exists()) throw IllegalStateException("APK not found: $path")
+      val authority = "${context().packageName}.mangora.updates"
+      val uri = FileProvider.getUriForFile(context(), authority, apk)
+      val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, "application/vnd.android.package-archive")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      context().startActivity(intent)
+      true
+    }
+  }
+
+  /** Streaming SHA-256 of a file, hex encoded. Used to verify an update APK. */
+  @ReactMethod
+  fun sha256OfFile(path: String, promise: Promise) {
+    runAsync(promise) {
+      val file = localFile(path)
+      if (!file.exists()) throw IllegalStateException("File not found: $path")
+      val digest = MessageDigest.getInstance("SHA-256")
+      FileInputStream(file).use { input ->
+        val buffer = ByteArray(64 * 1024)
+        while (true) {
+          val read = input.read(buffer)
+          if (read <= 0) break
+          digest.update(buffer, 0, read)
+        }
+      }
+      digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+    }
   }
 
   companion object {

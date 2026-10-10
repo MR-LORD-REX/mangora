@@ -12,6 +12,7 @@ import {
   Rocket,
   RotateCcw,
   Search,
+  Share2,
   X,
 } from "lucide-react-native";
 import React, {
@@ -79,6 +80,11 @@ import {
   type ChapterReadWriteInput,
 } from "@/services/library/readerTracking";
 import { imageSourceForUrl } from "@/utils/reader/imageHeaders";
+import { useAppSettings } from "@/components/settings/useAppSettings";
+import {
+  canShareProvider,
+  shareMangaLink,
+} from "@/services/deeplink";
 
 if (
   Platform.OS === "android" &&
@@ -124,6 +130,7 @@ export default function ChapterMangaViewer({
 }: ChapterMangaViewerProps) {
   const accent = source.accent;
   const identity = useMemo(() => source.decodeIdentity(param), [param, source]);
+  const { settings } = useAppSettings();
 
   const [data, setData] = useState<ChapterViewerData | null>(null);
   const [language, setLanguage] = useState<string>("all");
@@ -147,6 +154,7 @@ export default function ChapterMangaViewer({
   const [menuRow, setMenuRow] = useState<ViewerChapterRow | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [updatingRead, setUpdatingRead] = useState(false);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
 
   const listRef = useRef<FlatList<ViewerChapterRow>>(null);
   const searchInputRef = useRef<TextInput>(null);
@@ -624,6 +632,24 @@ export default function ChapterMangaViewer({
 
   const cover = meta.coverUrl || thumbnailUrl;
   const description = meta.description?.trim();
+  const onShare = async () => {
+    const result = await shareMangaLink({
+      provider: source.provider,
+      param,
+      title: meta.title,
+    });
+    if (result === "copied") {
+      setShareNotice("Link copied to clipboard");
+    } else if (result === "shared") {
+      setShareNotice(null);
+    }
+  };
+
+  const shareAllowed = canShareProvider(
+    source.provider,
+    settings?.ageRestrictedSources ?? false,
+  );
+
   const listHeader = (
     <View>
       <View
@@ -702,7 +728,22 @@ export default function ChapterMangaViewer({
                 accent={accent}
               />
               <Text style={styles.favLabel}>Library</Text>
+              {shareAllowed ? (
+                <Pressable
+                  onPress={() => void onShare()}
+                  accessibilityLabel="Share"
+                  style={({ pressed }) => [
+                    styles.shareBtn,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Share2 color={accent} size={18} />
+                </Pressable>
+              ) : null}
             </View>
+            {shareNotice ? (
+              <Text style={styles.shareNotice}>{shareNotice}</Text>
+            ) : null}
           </View>
         </View>
 
@@ -1417,6 +1458,17 @@ const styles = StyleSheet.create({
   chipText: { color: colors.textMuted, fontSize: 11.5 },
   favRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 },
   favLabel: { color: colors.textFaint, fontSize: 13, fontWeight: "600" },
+  shareBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceHigh,
+  },
+  shareNotice: { color: colors.success, fontSize: 12, marginTop: 6 },
   actionRow: {
     flexDirection: "row",
     gap: 10,

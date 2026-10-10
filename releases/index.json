@@ -1,0 +1,13 @@
+{
+  "latest": "0.0.1",
+  "versions": [
+    {
+      "version": "0.0.1",
+      "date": "2026-10-10",
+      "title": "First public beta",
+      "file": "v0.0.1.md",
+      "type": "stable"
+    }
+  ],
+  "general": { "file": "general.md", "updated": "2026-10-10" }
+}

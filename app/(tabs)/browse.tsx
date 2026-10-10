@@ -12,17 +12,13 @@ import {
   type ImageSourcePropType,
 } from "react-native";
 
+import { MATURE_PROVIDERS } from "@/constants/providers";
 import { colors, providerAccent, radius, shadows } from "@/constants/theme";
 import {
   getSettings,
   subscribeSettings,
   updateSettings,
 } from "@/services/settings/settingsStore";
-
-const MATURE_PROVIDERS: Record<string, boolean> = {
-  nh: true,
-  manhwa18: true,
-};
 
 const PROVIDER_ICONS: Record<string, ImageSourcePropType> = {
   mangadex: require("@/assets/icons/providers/mangadex.png"),

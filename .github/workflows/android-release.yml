@@ -113,11 +113,34 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-
 
+      - name: Decode release keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.MANGORA_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -n "${KEYSTORE_B64:-}" ]; then
+            printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/mangora-release.keystore"
+            echo "MANGORA_KEYSTORE_PATH=$RUNNER_TEMP/mangora-release.keystore" >> "$GITHUB_ENV"
+            echo "Release keystore decoded."
+          else
+            echo "::warning::MANGORA_KEYSTORE_BASE64 is not set - falling back to the debug signing key."
+          fi
+
       - name: Build ${{ matrix.abi }} release APK
         working-directory: android
+        env:
+          MANGORA_KEYSTORE_PASSWORD: ${{ secrets.MANGORA_KEYSTORE_PASSWORD }}
+          MANGORA_KEY_ALIAS: ${{ secrets.MANGORA_KEY_ALIAS }}
+          MANGORA_KEY_PASSWORD: ${{ secrets.MANGORA_KEY_PASSWORD }}
         run: |
           chmod +x ./gradlew
           ./gradlew :app:assembleRelease -PreactNativeArchitectures=${{ matrix.abi }} --no-daemon
+
+      - name: Report APK signing certificate
+        shell: bash
+        continue-on-error: true
+        run: |
+          keytool -printcert -jarfile android/app/build/outputs/apk/release/app-release.apk 2>&1 | grep -E 'Owner|Issuer|SHA1|SHA-256' || true
 
       - name: Rename APK
         shell: bash

@@ -123,15 +123,29 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Real release key, supplied by CI (see .github/workflows/android-release.yml).
+        // Only declared when MANGORA_KEYSTORE_PATH is present, so local builds that
+        // have no key simply never reference it.
+        if (System.getenv("MANGORA_KEYSTORE_PATH")) {
+            release {
+                storeFile file(System.getenv("MANGORA_KEYSTORE_PATH"))
+                storePassword System.getenv("MANGORA_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("MANGORA_KEY_ALIAS")
+                keyPassword System.getenv("MANGORA_KEY_PASSWORD")
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // CI supplies MANGORA_KEYSTORE_PATH and signs with the real release key.
+            // Locally, with no key configured, this falls back to the debug keystore
+            // so an ad-hoc assembleRelease still produces an installable APK.
+            signingConfig System.getenv("MANGORA_KEYSTORE_PATH")
+                ? signingConfigs.release
+                : signingConfigs.debug
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds

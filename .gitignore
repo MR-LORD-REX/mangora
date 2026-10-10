@@ -58,6 +58,7 @@ android/app/debug/
 *.iml
 .idea/
 
+
 # Python side project (local only)
 __pycache__/
 *.py[cod]
@@ -67,3 +68,4 @@ APP.md
 AGENTS.md
 TR_API/
 .claude/
+plan.md

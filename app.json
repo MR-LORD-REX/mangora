@@ -14,7 +14,26 @@
     "android": {
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.mangora.app"
+      "package": "com.mangora.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "mangora-web.web.app",
+              "pathPrefix": "/manga"
+            },
+            {
+              "scheme": "https",
+              "host": "mangora-web.web.app",
+              "pathPrefix": "/oneshot"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "output": "static"
@@ -38,6 +57,8 @@
       "onnxruntime-react-native",
       "./plugins/withOnnxruntimePackage",
       "./plugins/withDownloadService",
+      "./plugins/withAppLinks",
+      "./plugins/withUpdater",
       "./plugins/withSubsamplingScaleImageView",
       "expo-sqlite",
       "expo-notifications"

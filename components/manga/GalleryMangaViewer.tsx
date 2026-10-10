@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from "expo-router";
-import { Check, Clock, Copy, Heart, Play } from "lucide-react-native";
+import { ArrowLeft, Check, Clock, Copy, Heart, Play, Share2 } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,7 +12,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { setStringAsync } from "expo-clipboard";
-import { ArrowLeft } from "lucide-react-native";
 
 import AddToLibraryButton from "@/components/library/AddToLibraryButton";
 import { GalleryDownloadButton } from "@/components/downloader/DownloadButtons";
@@ -24,6 +23,11 @@ import { colors, radius } from "@/constants/theme";
 import type { ProviderId } from "@/services/db/repositories/catalogRepository";
 import { getTrackedChapterProgress } from "@/services/library/librarySync";
 import { imageSourceForUrl } from "@/utils/reader/imageHeaders";
+import { useAppSettings } from "@/components/settings/useAppSettings";
+import {
+  canShareProvider,
+  shareMangaLink,
+} from "@/services/deeplink";
 
 export interface GalleryMangaViewerProps {
   param: string;
@@ -41,6 +45,7 @@ export default function GalleryMangaViewer({
 }: GalleryMangaViewerProps) {
   const accent = source.accent;
   const identity = useMemo(() => source.decodeIdentity(param), [param, source]);
+  const { settings } = useAppSettings();
 
   const [meta, setMeta] = useState<ChapterMeta | null>(null);
   const [galleryCode, setGalleryCode] = useState<string | null>(null);
@@ -51,6 +56,7 @@ export default function GalleryMangaViewer({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -135,6 +141,26 @@ export default function GalleryMangaViewer({
 
   const onTagPress = (tag: SharedTag) => {
     source.openTag?.(tag);
+  };
+
+  const shareAllowed = canShareProvider(
+    source.provider,
+    settings?.ageRestrictedSources ?? false,
+  );
+
+  const onShare = async () => {
+    if (!meta) return;
+    const result = await shareMangaLink({
+      provider: source.provider,
+      param,
+      title: meta.title,
+      gallery: true,
+    });
+    if (result === "copied") {
+      setShareNotice("Link copied to clipboard");
+    } else if (result === "shared") {
+      setShareNotice(null);
+    }
   };
 
   const progressForGallery = progress[galleryCode ?? identity];
@@ -275,7 +301,22 @@ export default function GalleryMangaViewer({
               candidate={downloadCandidate}
               context={downloadContext}
             />
+            {shareAllowed ? (
+              <Pressable
+                onPress={() => void onShare()}
+                accessibilityLabel="Share"
+                style={({ pressed }) => [
+                  styles.shareBtn,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Share2 color={accent} size={18} />
+              </Pressable>
+            ) : null}
           </View>
+          {shareNotice ? (
+            <Text style={styles.shareNotice}>{shareNotice}</Text>
+          ) : null}
           <Pressable
             onPress={() => void source.read(identity, meta)}
             style={({ pressed }) => [
@@ -398,6 +439,17 @@ const styles = StyleSheet.create({
   },
   readBtnText: { color: colors.onAccent, fontSize: 17, fontWeight: "800" },
   pressed: { opacity: 0.7 },
+  shareBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceHigh,
+  },
+  shareNotice: { color: colors.success, fontSize: 12, marginTop: 8, textAlign: "center" },
   descBox: { paddingHorizontal: 20, marginBottom: 16 },
   sectionTitle: { color: colors.text, fontSize: 15, fontWeight: "800", marginBottom: 8 },
   descText: { color: colors.textMuted, fontSize: 13.5, lineHeight: 21 },

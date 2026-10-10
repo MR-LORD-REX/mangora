@@ -105,6 +105,13 @@ export interface AppSettings {
   readerDefaultZoomScale: number;
   /** Hide providers marked mature from source discovery. */
   safeMode: boolean;
+  /**
+   * Whether share / deep links may target providers marked mature. Off by
+   * default so an unopened link never lands on an adult source (plan S9/S14.4).
+   */
+  ageRestrictedSources: boolean;
+  /** Updater: include GitHub prereleases when checking for updates. */
+  updateIncludePrereleases: boolean;
   readerDoubleTapToZoom: boolean;
   readerDisableZoomOut: boolean;
   readerSplitWidePages: boolean;
@@ -168,6 +175,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   readerFitMode: "fit",
   readerDefaultZoomScale: 1,
   safeMode: true,
+  ageRestrictedSources: false,
+  updateIncludePrereleases: false,
   readerDoubleTapToZoom: true,
   readerDisableZoomOut: true,
   readerSplitWidePages: false,
@@ -300,6 +309,8 @@ function sanitize(raw: unknown): AppSettings {
     readerFitMode: value.readerFitMode === "original" ? "original" : "fit",
     readerDefaultZoomScale: num(value.readerDefaultZoomScale, 1, 0.5, 1.5),
     safeMode: bool(value.safeMode, true),
+    ageRestrictedSources: bool(value.ageRestrictedSources, false),
+    updateIncludePrereleases: bool(value.updateIncludePrereleases, false),
     readerDoubleTapToZoom: bool(value.readerDoubleTapToZoom, true),
     readerDisableZoomOut: bool(value.readerDisableZoomOut, true),
     readerSplitWidePages: bool(value.readerSplitWidePages, false),

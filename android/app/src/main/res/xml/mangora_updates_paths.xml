@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider roots for the in-app updater (plan S14.4). The APK is
+     downloaded into <cache>/updates/ by expo-file-system. -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+  <cache-path name="updates" path="updates/" />
+  <files-path name="updates_files" path="updates/" />
+</paths>
