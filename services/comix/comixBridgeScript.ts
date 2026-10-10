@@ -1,10 +1,253 @@
 /**
  * comixBridgeScript.ts
  *
- * JS injected into the hidden Comix WebView. It waits for the site's own
- * env-*.js module (which mints the `_` request signature and decrypts
- * response envelopes internally), then answers `window.__comixBridgeRequest`
- * calls from React Native. The site module handles every crypto detail, so
- * this code never touches keys/S-boxes.
+ * JS injected into the hidden Comix WebView (via
+ * injectedJavaScriptBeforeContentLoaded, so it re-installs on every page
+ * load).
+ *
+ * WHY THIS SHAPE
+ * --------------
+ * Comix rebuilt its frontend and dropped the old `env-*.js` chunk the previous
+ * bridge imported. There is no longer any exported API object to call, and the
+ * site's `/api/v1` responses are encrypted with a per-session `_=` signature
+ * minted by an obfuscated bundle. Reimplementing that crypto is a per-build
+ * roulette and would break on every deploy.
+ *
+ * So this bridge never talks to `/api/v1` itself. Instead it reads the data the
+ * site ALREADY fetched and decrypted: React Query's in-memory cache. The site
+ * renders every screen (search, chapter lists, chapter readers) from that cache,
+ * so once a screen has loaded, the exact structured payload is sitting there.
+ *
+ * Flow from React Native:
+ *   1. navigate the hidden WebView to the page that renders the data,
+ *   2. `wait` for the cache entry to reach success (polling here),
+ *   3. read a structured clone of it.
+ *
+ * The QueryClient is located by walking React's fiber tree from #app-root and
+ * looking for a value exposing `getQueryCache()`.
  */
-export const COMIX_BRIDGE_SCRIPT = "\n(function () {\n  try {\n    if (window.__comixBridgeInstalled) return;\n    window.__comixBridgeInstalled = true;\n\n    var MAX_ATTEMPTS = 20;\n    var bridge = {\n      seq: 0,\n      attempts: 0,\n      ready: false,\n      mod: null,\n      api: null,\n      modPromise: null,\n      bootTimer: null\n    };\n\n    function post(msg) {\n      try {\n        if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {\n          window.ReactNativeWebView.postMessage(JSON.stringify(msg));\n        }\n      } catch (err) {}\n    }\n\n    function findEnvUrl() {\n      try {\n        var entries = window.performance && window.performance.getEntriesByType\n          ? window.performance.getEntriesByType('resource')\n          : [];\n        for (var i = 0; i < entries.length; i++) {\n          var name = entries[i] && entries[i].name;\n          if (name && /\\/env-[\\w-]+\\.js/.test(name)) return name;\n        }\n      } catch (err) {}\n      try {\n        var scripts = document.getElementsByTagName('script');\n        for (var j = 0; j < scripts.length; j++) {\n          var src = scripts[j].src || '';\n          if (/\\/env-[\\w-]+\\.js/.test(src)) return src;\n        }\n      } catch (err) {}\n      return null;\n    }\n\n    function pickApi(mod) {\n      if (!mod) return null;\n      if (mod.c && typeof mod.c.list === 'function' && typeof mod.c.get === 'function') return mod.c;\n      var def = mod.default;\n      if (def && def.c && typeof def.c.list === 'function' && typeof def.c.get === 'function') return def.c;\n      return null;\n    }\n\n    function loadModule() {\n      if (bridge.modPromise) return bridge.modPromise;\n      bridge.modPromise = new Promise(function (resolve, reject) {\n        var url = findEnvUrl();\n        if (!url) {\n          reject(new Error('env chunk not found yet'));\n          return;\n        }\n        import(url).then(function (mod) {\n          var api = pickApi(mod);\n          if (!api) {\n            reject(new Error('env module has no api export'));\n            return;\n          }\n          bridge.mod = mod;\n          bridge.api = api;\n          resolve(mod);\n        }, reject);\n      });\n      bridge.modPromise.catch(function () {\n        bridge.modPromise = null;\n      });\n      return bridge.modPromise;\n    }\n\n    function attemptInit() {\n      if (bridge.ready) return;\n      if (bridge.attempts >= MAX_ATTEMPTS) return;\n      bridge.attempts += 1;\n      loadModule().then(function () {\n        bridge.ready = true;\n        if (bridge.bootTimer) { clearTimeout(bridge.bootTimer); bridge.bootTimer = null; }\n        post({ type: 'ready', attempts: bridge.attempts });\n      }, function (err) {\n        if (bridge.bootTimer) { clearTimeout(bridge.bootTimer); bridge.bootTimer = null; }\n        if (bridge.attempts >= MAX_ATTEMPTS) {\n          post({ type: 'fatal', error: String((err && err.message) || err) });\n        } else {\n          bridge.bootTimer = setTimeout(attemptInit, Math.min(9000, 700 * bridge.attempts));\n        }\n      });\n    }\n\n    function runOp(payload) {\n      var mod = bridge.mod;\n      var api = bridge.api;\n      if (!mod || !api || !bridge.ready) {\n        return Promise.reject(new Error('Comix bridge is not ready'));\n      }\n      var op = payload.op;\n      if (op === 'list') {\n        return Promise.resolve(api.list(payload.params || {}));\n      }\n      if (op === 'get') {\n        return Promise.resolve(api.get(String(payload.hid)));\n      }\n      if (op === 'chapters') {\n        return Promise.resolve(api.chapters(String(payload.hid), payload.params || {}));\n      }\n      if (op === 'pages') {\n        return mod.x.get('/chapters/' + String(payload.chapterId)).then(function (res) { return res.data; });\n      }\n      if (op === 'raw') {\n        var config = payload.params ? { params: payload.params } : undefined;\n        return mod.x.get(String(payload.path), config).then(function (res) { return res.data; });\n      }\n      return Promise.reject(new Error('Unknown Comix bridge op: ' + op));\n    }\n\n    function handle(payloadText) {\n      var payload;\n      try {\n        payload = (typeof payloadText === 'string') ? JSON.parse(payloadText) : payloadText;\n      } catch (err) {\n        post({ type: 'result', id: null, ok: false, error: 'Bad bridge payload' });\n        return;\n      }\n      var id = payload.id;\n      runOp(payload).then(function (data) {\n        post({ type: 'result', id: id, ok: true, data: data });\n      }, function (err) {\n        var status = 0;\n        try { status = (err && err.response && err.response.status) || 0; } catch (e) {}\n        var message = String((err && err.message) || err);\n        if (err && err.response && err.response.data && err.response.data.message) {\n          message = String(err.response.data.message);\n        }\n        post({ type: 'result', id: id, ok: false, error: message, status: status });\n      });\n    }\n\n    window.__comixBridgeRequest = handle;\n\n    function boot() { attemptInit(); }\n\n    if (document.readyState === 'complete' || document.readyState === 'interactive') {\n      setTimeout(boot, 400);\n    } else {\n      document.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 300); });\n      window.addEventListener('load', function () { setTimeout(boot, 200); });\n    }\n    setTimeout(boot, 2500);\n    setInterval(function () {\n      if (!bridge.ready && bridge.attempts < MAX_ATTEMPTS) attemptInit();\n    }, 6000);\n  } catch (err) {}\n})();\n";
+
+export const COMIX_BRIDGE_SCRIPT = `
+(function () {
+  try {
+    if (window.__comixBridgeInstalled) return;
+    window.__comixBridgeInstalled = true;
+
+    var client = null;
+
+    function post(msg) {
+      try {
+        if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+          window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+        }
+      } catch (err) {}
+    }
+
+    function rootFiber() {
+      var node = document.getElementById('app-root');
+      if (!node) return null;
+      var ks = Object.keys(node);
+      var key = null;
+      for (var i = 0; i < ks.length; i++) {
+        if (ks[i].indexOf('__reactContainer') === 0 || ks[i].indexOf('__reactFiber') === 0) { key = ks[i]; break; }
+      }
+      if (!key) return null;
+      var f = node[key];
+      if (f && f.current) f = f.current;
+      return f;
+    }
+
+    function findClient() {
+      if (client) return client;
+      var start = rootFiber();
+      if (!start) return null;
+      var seen = new Set();
+      var stack = [start];
+      var guard = 0;
+      while (stack.length && guard < 80000) {
+        var f = stack.pop();
+        if (!f || seen.has(f)) continue;
+        seen.add(f); guard++;
+        var mp = f.memoizedProps;
+        if (mp && typeof mp === 'object') {
+          var keys = Object.keys(mp);
+          for (var i = 0; i < keys.length; i++) {
+            var v = mp[keys[i]];
+            if (v && typeof v === 'object' && typeof v.getQueryCache === 'function' && typeof v.getQueryData === 'function') {
+              client = v;
+              return client;
+            }
+          }
+        }
+        if (f.child) stack.push(f.child);
+        if (f.sibling) stack.push(f.sibling);
+      }
+      return null;
+    }
+
+    function eq(a, b) {
+      if (a === b) return true;
+      try { return JSON.stringify(a) === JSON.stringify(b); } catch (e) { return false; }
+    }
+
+    function matches(entry, spec) {
+      var K = entry && entry.queryKey;
+      if (!K || !Array.isArray(K) || !K.length) return false;
+      if (spec.key) {
+        if (K.length < spec.key.length) return false;
+        for (var i = 0; i < spec.key.length; i++) { if (!eq(K[i], spec.key[i])) return false; }
+      }
+      if (spec.objKeys) {
+        var idx = spec.key ? spec.key.length : 0;
+        var o = K[idx];
+        if (!o || typeof o !== 'object') return false;
+        var ks = Object.keys(spec.objKeys);
+        for (var j = 0; j < ks.length; j++) { if (!eq(o[ks[j]], spec.objKeys[ks[j]])) return false; }
+      }
+      return true;
+    }
+
+    function findEntries(spec, wantSuccess) {
+      var c = findClient();
+      if (!c) return [];
+      var all = c.getQueryCache().getAll();
+      var out = [];
+      for (var i = 0; i < all.length; i++) {
+        var e = all[i];
+        if (!matches(e, spec)) continue;
+        if (wantSuccess && (!e.state || e.state.status !== 'success' || e.state.data == null)) continue;
+        out.push(e);
+      }
+      return out;
+    }
+
+    function pageOf(entry) {
+      try {
+        var K = entry.queryKey;
+        var p = K[K.length - 1];
+        return (p && typeof p === 'object' && typeof p.page === 'number') ? p.page : null;
+      } catch (e) { return null; }
+    }
+
+    function readSpec(spec) {
+      var entries = findEntries(spec, true);
+      if (!entries.length) return null;
+      var best = entries[0];
+      for (var i = 1; i < entries.length; i++) {
+        var a = pageOf(entries[i]);
+        var b = pageOf(best);
+        if (a != null && (b == null || a > b)) best = entries[i];
+      }
+      return best.state.data;
+    }
+
+    function clone(value) {
+      if (value == null) return null;
+      try { return JSON.parse(JSON.stringify(value)); } catch (e) { return null; }
+    }
+
+    function chaptersAll(hid, maxPages, timeoutMs) {
+      return new Promise(function (resolve) {
+        var start = Date.now();
+        var items = [];
+        var seen = {};
+        var lastMeta = null;
+        var stalls = 0;
+        var rounds = 0;
+
+        function harvest() {
+          var entries = findEntries({ key: ['manga', 'chapters', hid] }, false);
+          for (var i = 0; i < entries.length; i++) {
+            var e = entries[i];
+            if (!e.state || e.state.status !== 'success') continue;
+            var d = e.state.data;
+            if (!d || !d.items) continue;
+            for (var j = 0; j < d.items.length; j++) {
+              var it = d.items[j];
+              if (!seen[it.id]) { seen[it.id] = 1; items.push(it); }
+            }
+            var pg = pageOf(e);
+            if (d.meta && (lastMeta == null || (pg != null && pg >= (lastMeta.page || 0)))) lastMeta = d.meta;
+          }
+        }
+
+        function nextBtn() {
+          var p = document.querySelector('nav.npager');
+          return p ? p.querySelector('button.npager__nav[aria-label="Next page"]') : null;
+        }
+
+        function done(reason) { resolve({ items: items, meta: lastMeta, reason: reason }); }
+
+        function tick() {
+          if (Date.now() - start > timeoutMs) return done('timeout');
+          harvest();
+          if (lastMeta && lastMeta.page && lastMeta.lastPage && lastMeta.page >= lastMeta.lastPage) return done('lastpage');
+          var b = nextBtn();
+          if (!b) return done('end');
+          if (b.disabled || b.getAttribute('aria-disabled') === 'true' || /(^|\\s)disabled/.test(b.className || '')) return done('end');
+          if (rounds >= maxPages) return done('maxpages');
+          rounds++;
+          var before = items.length;
+          try { b.click(); } catch (e) { return done('clickfail'); }
+          setTimeout(function () {
+            harvest();
+            if (items.length === before) { stalls++; } else { stalls = 0; }
+            if (stalls >= 4) return done('stall');
+            tick();
+          }, 900);
+        }
+
+        var waited = 0;
+        (function waitFirst() {
+          harvest();
+          var ok = findEntries({ key: ['manga', 'chapters', hid] }, true).length > 0;
+          if (ok) return tick();
+          waited += 400;
+          if (waited > 15000) return done('nodata');
+          setTimeout(waitFirst, 400);
+        })();
+      });
+    }
+
+    function handle(payload) {
+      var id = payload && payload.id;
+      var op = payload && payload.op;
+
+      if (op === 'read') {
+        var d = clone(readSpec(payload.spec || {}));
+        post({ type: 'result', id: id, ok: d != null, data: d, error: d != null ? null : 'query not cached' });
+        return;
+      }
+
+      if (op === 'wait') {
+        var started = Date.now();
+        var timeoutMs = payload.timeoutMs || 15000;
+        (function poll() {
+          var value = clone(readSpec(payload.spec || {}));
+          if (value != null) { post({ type: 'result', id: id, ok: true, data: value }); return; }
+          if (Date.now() - started > timeoutMs) { post({ type: 'result', id: id, ok: false, error: 'query not cached' }); return; }
+          setTimeout(poll, 350);
+        })();
+        return;
+      }
+
+      if (op === 'chaptersAll') {
+        chaptersAll(String(payload.hid), payload.maxPages || 40, payload.timeoutMs || 60000).then(function (res) {
+          post({ type: 'result', id: id, ok: true, data: { items: res.items, meta: res.meta, reason: res.reason } });
+        }, function (err) {
+          post({ type: 'result', id: id, ok: false, error: String((err && err.message) || err) });
+        });
+        return;
+      }
+
+      post({ type: 'result', id: id, ok: false, error: 'Unknown Comix bridge op: ' + op });
+    }
+
+    window.__comixBridgeRequest = handle;
+
+    function announce() { post({ type: 'installed', queryClient: !!findClient() }); }
+    if (document.readyState === 'complete' || document.readyState === 'interactive') setTimeout(announce, 500);
+    else window.addEventListener('load', function () { setTimeout(announce, 500); });
+  } catch (err) {}
+})();
+`;

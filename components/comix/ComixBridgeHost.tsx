@@ -3,6 +3,7 @@ import { StyleSheet, View } from "react-native";
 import {
   WebView,
   type WebViewMessageEvent,
+  type WebViewNavigation,
 } from "react-native-webview";
 
 import {
@@ -14,21 +15,22 @@ import { COMIX_HTML_BRIDGE_SCRIPT } from "@/services/comix/comixBridgeHtmlScript
 import {
   handleComixBridgeMessage,
   handleComixPageLoaded,
+  handleComixNavigation,
   setComixBridgeInvoker,
 } from "@/services/comix/comixBridge";
 
 /**
- * Both halves of the injected bootstrap: the signed API bridge plus the
- * same-origin HTML fetcher used for server-rendered pages behind Cloudflare.
+ * Both halves of the injected bootstrap: the React-Query cache bridge plus the
+ * same-origin HTML fetcher used for server-rendered pages.
  */
 const COMIX_BOOTSTRAP_SCRIPT = `${COMIX_BRIDGE_SCRIPT}\n${COMIX_HTML_BRIDGE_SCRIPT}`;
 
 /**
- * Hidden, persistent WebView that keeps a warm Comix session. It loads the
- * real site once at app start so Cloudflare is cleared and cookies are
- * stored; inside the page our injected script imports the site's own env
- * module, which signs/decrypts API traffic. Native Comix screens call the
- * bridge through services/comix/comixBridge.ts.
+ * Hidden, persistent WebView that keeps a warm Comix session. It loads the real
+ * site once at app start so Cloudflare is cleared and cookies are stored; later
+ * it is navigated on demand to whatever page holds the data a native screen
+ * needs (search results, chapter lists, chapter readers), which the injected
+ * script then reads out of the site's own React Query cache.
  *
  * The host stays mounted for the whole session (root layout) - unmounting it
  * would drop the warm session and force a new Cloudflare challenge.
@@ -43,6 +45,11 @@ export default function ComixBridgeHost() {
       },
       reload() {
         webViewRef.current?.reload();
+      },
+      navigate(url: string) {
+        webViewRef.current?.injectJavaScript(
+          "window.location.href=" + JSON.stringify(url) + "; true;",
+        );
       },
     });
     return () => setComixBridgeInvoker(null);
@@ -63,9 +70,13 @@ export default function ComixBridgeHost() {
   };
 
   const onLoadEnd = () => {
-    // Lets the HTML bridge proceed without waiting for the signed API module.
+    // Lets the HTML bridge proceed without waiting for any API module.
     handleComixPageLoaded();
     kick();
+  };
+
+  const onNavigationStateChange = (nav: WebViewNavigation) => {
+    handleComixNavigation(nav.url);
   };
 
   return (
@@ -86,6 +97,7 @@ export default function ComixBridgeHost() {
         injectedJavaScriptBeforeContentLoaded={COMIX_BOOTSTRAP_SCRIPT}
         onMessage={onMessage}
         onLoadEnd={onLoadEnd}
+        onNavigationStateChange={onNavigationStateChange}
         onError={() => {
           // The site may still recover on a later load; the bridge client
           // surfaces a readable error if the timeout is reached.

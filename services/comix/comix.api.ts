@@ -1,12 +1,19 @@
 /**
  * comix.api.ts
  *
- * Typed facade over the hidden WebView bridge. Every call is executed by the
- * site's own env module inside the WebView, so signing/decryption are always
- * fresh and correct; this file only normalizes params/results for the app.
+ * Typed facade over the hidden WebView bridge. Every call is answered by the
+ * real comix.to app running inside the WebView: the bridge navigates to the
+ * page that renders the data, and the site's own React Query cache (already
+ * fetched + decrypted by the site) is read back. This file only normalizes
+ * params/results for the app.
  */
 
-import { comixBridgeRequest } from "./comixBridge";
+import { BASE_URL } from "./comix.constants";
+import {
+  comixBridgeChaptersAll,
+  comixBridgeOpenAndQuery,
+  type ComixQuerySpec,
+} from "./comixBridge";
 import type {
   ComixApiChapter,
   ComixApiChapterListResult,
@@ -17,7 +24,13 @@ import type {
   ComixListParams,
 } from "./comix.api.types";
 
-const DEFAULT_PAGE_SIZE = 28;
+/** Absolute comix.to URL from a relative path or an already-absolute URL. */
+function absoluteComixUrl(pathOrUrl: string): string {
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  const base = BASE_URL.replace(/\/+$/, "");
+  const clean = pathOrUrl.replace(/^\/+/, "");
+  return clean ? `${base}/${clean}` : base;
+}
 
 /** Extracts the short hid from a manga page url ("/title/l7re-..." -> "l7re"). */
 export function comixHidFromUrl(mangaUrl: string): string {
@@ -64,85 +77,100 @@ function asChapterListResult(data: unknown): ComixApiChapterListResult {
   return value;
 }
 
+/** URL of the /browse screen that makes the site fetch a matching list query. */
+function browseUrlFor(params: ComixListParams, keyword: string, page: number): string {
+  const search = new URLSearchParams();
+  if (keyword) search.set("keyword", keyword);
+  if (page > 1) search.set("page", String(page));
+  if (params.genres_in?.length) search.set("genres_in", params.genres_in.join(","));
+  if (params.types?.length) search.set("types", params.types.join(","));
+  if (params.statuses?.length) search.set("statuses", params.statuses.join(","));
+  const qs = search.toString();
+  return `${BASE_URL.replace(/\/+$/, "")}/browse${qs ? `?${qs}` : ""}`;
+}
+
+/** Cache key matcher for the site's list queries (search + filtered browse). */
+function listSpec(params: ComixListParams, keyword: string, page: number): ComixQuerySpec {
+  const objKeys: Record<string, string | number | unknown[]> = { page };
+  if (keyword) objKeys.keyword = keyword;
+  if (params.genres_in?.length) objKeys.genres_in = params.genres_in;
+  if (params.types?.length) objKeys.types = params.types;
+  if (params.statuses?.length) objKeys.statuses = params.statuses;
+  return { key: ["manga", "list"], objKeys };
+}
+
 /**
- * GET /api/v1/manga - powers search, browse and feed-style lists.
- * `content_rating` filters which ratings are returned.
+ * GET the site's manga list - powers search and filtered browse. The site fills
+ * in its own defaults (content rating, ordering), so we only match on the
+ * filters we actually asked for.
  */
 export async function comixListManga(
   params: ComixListParams = {},
 ): Promise<ComixApiListResult> {
-  const data = await comixBridgeRequest("list", {
-    params: {
-      page: params.page ?? 1,
-      limit: params.limit ?? DEFAULT_PAGE_SIZE,
-      ...(params.keyword ? { keyword: params.keyword } : {}),
-      ...(params.order ? { order: params.order } : {}),
-      ...(params.genres_in?.length
-        ? { genres_in: params.genres_in }
-        : {}),
-      ...(params.types?.length ? { types: params.types } : {}),
-      ...(params.statuses?.length ? { statuses: params.statuses } : {}),
-      ...(params.content_rating?.length
-        ? { content_rating: params.content_rating }
-        : { content_rating: ["safe", "suggestive"] }),
-    },
+  const keyword = params.keyword?.trim() ?? "";
+  const page = params.page ?? 1;
+  const url = browseUrlFor(params, keyword, page);
+  const data = await comixBridgeOpenAndQuery({
+    url,
+    spec: listSpec(params, keyword, page),
+    timeoutMs: 20_000,
   });
   return asListResult(data);
 }
 
-/** Full manga details from GET /api/v1/manga/{hid}. Accepts url or hid. */
+/** Full manga details from the title page. Accepts a url or a hid. */
 export async function comixMangaDetail(
   mangaUrlOrHid: string,
 ): Promise<ComixApiManga> {
   const hid = comixHidFromUrl(mangaUrlOrHid);
-  const data = await comixBridgeRequest("get", { hid });
+  const url = absoluteComixUrl(
+    mangaUrlOrHid.startsWith("/") ? mangaUrlOrHid : `/title/${mangaUrlOrHid}`,
+  );
+  const data = await comixBridgeOpenAndQuery({
+    url,
+    spec: { key: ["manga", "detail", hid] },
+    timeoutMs: 15_000,
+  });
   if (!data || typeof data !== "object") {
     throw new Error("Unexpected Comix manga payload.");
   }
   return data as ComixApiManga;
 }
 
-/** Chapter list from GET /api/v1/manga/{hid}/chapters. */
+/** First page of a manga's chapter list. */
 export async function comixChapters(
   mangaUrlOrHid: string,
-  params: ComixChapterListParams = {},
+  _params: ComixChapterListParams = {},
 ): Promise<ComixApiChapterListResult> {
   const hid = comixHidFromUrl(mangaUrlOrHid);
-  const data = await comixBridgeRequest("chapters", {
-    hid,
-    params: {
-      page: params.page ?? 1,
-      limit: params.limit ?? 50,
-      order: params.order ?? { number: "desc" },
-    },
+  const url = absoluteComixUrl(
+    mangaUrlOrHid.startsWith("/") ? mangaUrlOrHid : `/title/${mangaUrlOrHid}`,
+  );
+  const data = await comixBridgeOpenAndQuery({
+    url,
+    spec: { key: ["manga", "chapters", hid] },
+    timeoutMs: 20_000,
   });
   return asChapterListResult(data);
 }
 
 /**
- * Loads every chapter of a manga through the signed API, walking pagination
- * in pages of up to 100. Used by the library sync adapter.
+ * Every chapter of a manga. The title page paginates its list, so the bridge
+ * walks the pager inside the WebView and merges every page.
  */
 export async function comixAllChapters(
   mangaUrlOrHid: string,
-  maxPages = 25,
+  maxPages = 40,
 ): Promise<ComixApiChapter[]> {
-  const collected: ComixApiChapter[] = [];
-  let page = 1;
-  for (;;) {
-    const result = await comixChapters(mangaUrlOrHid, {
-      page,
-      limit: 100,
-      order: { number: "desc" },
-    });
-    collected.push(...result.items);
-    if (!result.meta.hasNext || page >= maxPages) break;
-    page += 1;
-  }
-  return collected;
+  const hid = comixHidFromUrl(mangaUrlOrHid);
+  const url = absoluteComixUrl(
+    mangaUrlOrHid.startsWith("/") ? mangaUrlOrHid : `/title/${mangaUrlOrHid}`,
+  );
+  const result = await comixBridgeChaptersAll({ url, hid, maxPages });
+  return result.items as ComixApiChapter[];
 }
 
-/** Decrypted page list + prev/next navigation from GET /api/v1/chapters/{id}. */
+/** Page list + prev/next navigation for one chapter. */
 export async function comixChapterPages(
   chapterUrlOrId: string | number,
 ): Promise<ComixChapterPagesData> {
@@ -153,11 +181,29 @@ export async function comixChapterPages(
   if (chapterId === null) {
     throw new Error("Could not parse Comix chapter id from: " + chapterUrlOrId);
   }
-  const data = await comixBridgeRequest("pages", { chapterId });
+  const url = absoluteComixUrl(
+    typeof chapterUrlOrId === "string" ? chapterUrlOrId : "",
+  );
+  const data = await comixBridgeOpenAndQuery({
+    url,
+    spec: { key: ["chapters", "detail", chapterId] },
+    timeoutMs: 25_000,
+  });
   if (!data || typeof data !== "object") {
     throw new Error("Unexpected Comix chapter payload.");
   }
-  return data as ComixChapterPagesData;
+  const payload = data as ComixChapterPagesData & {
+    pages?: unknown;
+  };
+  // Older site builds returned `pages: { baseUrl, items }`; the current build
+  // returns a flat array of absolute-URL images.
+  if (Array.isArray(payload.pages)) {
+    return {
+      ...payload,
+      pages: { baseUrl: "", items: payload.pages as never },
+    };
+  }
+  return payload;
 }
 
 /**

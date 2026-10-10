@@ -1,10 +1,10 @@
 import { openMangaInfo } from "@/components/manga/openMangaInfo";
-import { activateKeepAwake, deactivateKeepAwake } from "expo-keep-awake";
-import { router, useLocalSearchParams } from "expo-router";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { StatusBar } from "expo-status-bar";
 import { ArrowLeft, Menu } from "lucide-react-native";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -890,13 +890,16 @@ export default function GenericReader() {
     };
   }, [chrome.orientation]);
 
-  useEffect(() => {
-    if (chrome.keepScreenOn) {
-      activateKeepAwake("trapp-reader");
-    } else {
-      deactivateKeepAwake("trapp-reader");
-    }
-  }, [chrome.keepScreenOn]);
+  useFocusEffect(
+    useCallback(() => {
+      if (chrome.keepScreenOn) {
+        activateKeepAwakeAsync("trapp-reader").catch(() => {});
+      }
+      return () => {
+        deactivateKeepAwake("trapp-reader").catch(() => {});
+      };
+    }, [chrome.keepScreenOn]),
+  );
 
   const openReadingModeSheet = () => {
     setPendingReadingMode(chrome.readingMode);

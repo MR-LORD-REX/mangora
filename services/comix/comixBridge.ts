@@ -1,40 +1,48 @@
 /**
  * comixBridge.ts
  *
- * Native-side client for the hidden Comix WebView bridge (see
- * ComixBridgeHost.tsx). The WebView runs comix.to's own env module, which
- * signs every request and decrypts response envelopes internally; this module
- * forwards typed operations over `window.__comixBridgeRequest` and resolves
- * promises when the WebView posts results back.
+ * Native-side client for the hidden Comix WebView (see ComixBridgeHost.tsx).
+ *
+ * The WebView runs the real comix.to site. Instead of reimplementing the
+ * site's encrypted `/api/v1` protocol (which its obfuscated bundle rebuilds on
+ * every deploy), this client navigates the hidden WebView to whichever page
+ * renders the data a native screen needs, then reads that data straight out of
+ * the site's own React Query cache - by then the site has already fetched and
+ * decrypted it. See comixBridgeScript.ts for the page-side details.
  *
  * Screens never touch the WebView directly - they import helpers from
  * comix.api.ts, which route through here.
  */
 
-export type ComixBridgeOp =
-  | "list"
-  | "get"
-  | "chapters"
-  | "pages"
-  | "raw";
-
-export interface ComixBridgeRequest {
-  id: number;
-  op: ComixBridgeOp;
-  /** list/chapters params object. */
-  params?: Record<string, unknown>;
-  /** manga hid for get/chapters. */
-  hid?: string;
-  /** numeric chapter id for pages. */
-  chapterId?: number;
-  /** relative /api/v1 path for raw. */
-  path?: string;
-}
+import { BASE_URL } from "./comix.constants";
 
 export interface ComixBridgeInvoker {
   inject(payloadText: string): void;
   reload(): void;
+  navigate(url: string): void;
+  /**
+   * Reads a cache entry matching `spec`. `spec.key` is compared element-wise
+   * against the React Query key; `spec.objKeys` matches fields of the key
+   * segment right after `spec.key`.
+   */
 }
+
+export interface ComixQuerySpec {
+  key?: unknown[];
+  objKeys?: Record<string, unknown>;
+}
+
+const REQUEST_TIMEOUT_MS = 90_000;
+const NAV_LOAD_TIMEOUT_MS = 30_000;
+const MAX_RELOAD_RETRIES = 1;
+
+let invoker: ComixBridgeInvoker | null = null;
+let nextId = 1;
+let state: "idle" | "booting" | "ready" | "failed" = "idle";
+let fatalError: string | null = null;
+let reloadCount = 0;
+let pageUrl = BASE_URL;
+let pageLoadedOnce = false;
 
 type PendingRequest = {
   resolve: (value: unknown) => void;
@@ -42,38 +50,35 @@ type PendingRequest = {
   timer: ReturnType<typeof setTimeout>;
 };
 
-const REQUEST_TIMEOUT_MS = 40_000;
-const READY_TIMEOUT_MS = 45_000;
-const MAX_RELOAD_RETRIES = 2;
-
-let invoker: ComixBridgeInvoker | null = null;
-let nextId = 1;
-let state: "idle" | "booting" | "ready" | "failed" = "idle";
-let readyWaiters: {
-  resolve: () => void;
-  reject: (reason: Error) => void;
-  timer?: ReturnType<typeof setTimeout>;
-}[] = [];
-let fatalError: string | null = null;
-let reloadCount = 0;
 const pending = new Map<number, PendingRequest>();
 type BridgeStateListener = (state: string) => void;
 const stateListeners = new Set<BridgeStateListener>();
+
+let invokerWaiters: (() => void)[] = [];
+let pageLoadWaiters: (() => void)[] = [];
 
 function setState(next: string): void {
   state = next as typeof state;
   stateListeners.forEach((listener) => listener(state));
 }
 
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 /** Registered by the hidden host when it mounts. */
 export function setComixBridgeInvoker(next: ComixBridgeInvoker | null): void {
   invoker = next;
-  if (!next) {
+  if (next) {
+    setState("booting");
+    const waiters = invokerWaiters;
+    invokerWaiters = [];
+    waiters.forEach((resolve) => resolve());
+  } else {
     for (const [, entry] of pending) {
       clearTimeout(entry.timer);
       entry.reject(new Error("Comix bridge host unmounted."));
     }
     pending.clear();
+    setState("idle");
   }
 }
 
@@ -89,6 +94,20 @@ export function bridgeFatalError(): string | null {
   return fatalError;
 }
 
+/** Called by the host with the WebView's current URL on every navigation. */
+export function handleComixNavigation(url: string): void {
+  if (url) pageUrl = url;
+}
+
+/** Called by the host on every WebView load end (challenge pages included). */
+export function handleComixPageLoaded(): void {
+  pageLoadedOnce = true;
+  if (state !== "ready") setState("ready");
+  const waiters = pageLoadWaiters;
+  pageLoadWaiters = [];
+  waiters.forEach((resolve) => resolve());
+}
+
 /** Called by the host on every bridge message from the WebView. */
 export function handleComixBridgeMessage(raw: string): void {
   let message: {
@@ -97,10 +116,9 @@ export function handleComixBridgeMessage(raw: string): void {
     ok?: boolean;
     data?: unknown;
     error?: string;
-    attempts?: number;
+    challenge?: boolean;
     url?: string;
     title?: string;
-    challenge?: boolean;
   };
   try {
     message = JSON.parse(raw) as typeof message;
@@ -121,23 +139,7 @@ export function handleComixBridgeMessage(raw: string): void {
     return;
   }
 
-  if (message.type === "ready") {
-    setState("ready");
-    fatalError = null;
-    const waiters = readyWaiters;
-    readyWaiters = [];
-    waiters.forEach((waiter) => waiter.resolve());
-    return;
-  }
-
-  if (message.type === "fatal") {
-    setState("failed");
-    fatalError = message.error ?? "Comix bridge failed to start.";
-    const waiters = readyWaiters;
-    readyWaiters = [];
-    waiters.forEach((waiter) =>
-      waiter.reject(new Error(fatalError as string)),
-    );
+  if (message.type === "installed") {
     return;
   }
 
@@ -149,9 +151,7 @@ export function handleComixBridgeMessage(raw: string): void {
     if (message.ok) {
       entry.resolve(message.data);
     } else {
-      const error = new Error(message.error || "Comix API request failed.");
-      (error as Error & { status?: number }).status = 0;
-      entry.reject(error);
+      entry.reject(new Error(message.error || "Comix bridge request failed."));
     }
   }
 }
@@ -162,147 +162,164 @@ export function subscribeComixBridge(listener: BridgeStateListener): () => void 
   return () => stateListeners.delete(listener);
 }
 
+function ensureInvoker(): Promise<void> {
+  if (invoker) return Promise.resolve();
+  return new Promise<void>((resolve) => invokerWaiters.push(resolve));
+}
+
 /** Waits until the hidden WebView bridge reports ready. */
-export function ensureComixBridgeReady(): Promise<void> {
-  if (state === "ready" && invoker) return Promise.resolve();
-  if (state === "failed") {
-    // Give the host a chance to recover by reloading the page.
-    invoker?.reload();
-    setState("idle");
-    fatalError = null;
-  }
+export async function ensureComixBridgeReady(): Promise<void> {
+  await ensureInvoker();
+  if (pageLoadedOnce) return;
+  await new Promise<void>((resolve) => pageLoadWaiters.push(resolve));
+}
+
+function awaitPageLoad(timeoutMs: number): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    const waiter = { resolve, reject };
-    readyWaiters.push(waiter);
-    // Kick the page bootstrap in case it never ran (e.g. first load).
-    try {
-      invoker?.inject("true;");
-    } catch {
-      // WebView may still be loading; the injected script boots on its own.
-    }
     const timer = setTimeout(() => {
-      const index = readyWaiters.indexOf(waiter);
-      if (index >= 0) readyWaiters.splice(index, 1);
-      reject(
-        new Error(
-          fatalError ??
-            "Comix could not be reached. Check your connection and try again.",
-        ),
-      );
-    }, READY_TIMEOUT_MS);
-    // Keep a ref for cleanup if we become ready in the same tick.
-    (waiter as { timer?: ReturnType<typeof setTimeout> }).timer = timer;
-    const originalResolve = waiter.resolve;
-    waiter.resolve = () => {
+      const index = pageLoadWaiters.indexOf(waiter);
+      if (index >= 0) pageLoadWaiters.splice(index, 1);
+      reject(new Error("Comix page did not finish loading."));
+    }, timeoutMs);
+    const waiter = () => {
       clearTimeout(timer);
-      originalResolve();
+      resolve();
     };
-    const originalReject = waiter.reject;
-    waiter.reject = (reason: Error) => {
-      clearTimeout(timer);
-      originalReject(reason);
-    };
+    pageLoadWaiters.push(waiter);
   });
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+interface NavState {
+  url: string;
+  promise: Promise<void>;
+}
+let navState: NavState | null = null;
+
+/** Navigates the hidden WebView to `url` and waits for the load to settle. */
+function ensurePage(url: string): Promise<void> {
+  if (pageUrl === url) return Promise.resolve();
+  if (navState && navState.url === url) return navState.promise;
+  const previous = navState ? navState.promise.catch(() => undefined) : Promise.resolve();
+  const promise = previous.then(() => navigateAndWait(url));
+  navState = { url, promise };
+  return promise;
 }
 
-/** Sends one op to the WebView and resolves with the decrypted payload. */
-export async function comixBridgeRequest(
-  op: ComixBridgeOp,
-  extra: Omit<ComixBridgeRequest, "id" | "op"> = {},
-  retry = true,
-): Promise<unknown> {
-  if (!invoker) {
-    throw new Error("Comix bridge is not mounted yet.");
+async function navigateAndWait(url: string): Promise<void> {
+  await ensureInvoker();
+  const load = awaitPageLoad(NAV_LOAD_TIMEOUT_MS);
+  try {
+    invoker?.navigate(url);
+  } catch (error) {
+    pageLoadWaiters = [];
+    throw error instanceof Error ? error : new Error(String(error));
   }
-  await ensureComixBridgeReady();
+  await load;
+  pageUrl = url;
+  // Let the SPA fire its data fetches after the document itself has loaded.
+  await sleep(900);
+}
 
+/** Injects one bridge op and resolves with the WebView's reply. */
+async function send(op: string, extra: Record<string, unknown> = {}): Promise<unknown> {
+  await ensureInvoker();
   const id = nextId;
   nextId += 1;
-  const payload: ComixBridgeRequest = { id, op, ...extra };
+  const payload = { id, op, ...extra };
 
   return new Promise<unknown>((resolve, reject) => {
     const timer = setTimeout(() => {
       pending.delete(id);
-      reject(new Error("Comix request timed out."));
+      reject(new Error("Comix bridge request timed out."));
     }, REQUEST_TIMEOUT_MS);
     pending.set(id, { resolve, reject, timer });
-
-    let injected = false;
     try {
       invoker?.inject(
         "window.__comixBridgeRequest && window.__comixBridgeRequest(" +
           JSON.stringify(payload) +
           "); true;",
       );
-      injected = true;
     } catch (error) {
       clearTimeout(timer);
       pending.delete(id);
-      reject(
-        error instanceof Error ? error : new Error(String(error)),
-      );
+      reject(error instanceof Error ? error : new Error(String(error)));
     }
-    if (!injected) {
-      clearTimeout(timer);
-      pending.delete(id);
-    }
-  }).catch(async (error: Error) => {
-    const status = (error as Error & { status?: number }).status;
-    const message = error.message || "";
-    const retryable =
-      status === 403 ||
-      status === 401 ||
-      /missing token|waf|challenge|timed out|not ready/i.test(message);
-    if (retry && retryable && reloadCount < MAX_RELOAD_RETRIES) {
+  });
+}
+
+/**
+ * Navigates to `url` (if needed) and returns the React Query cache entry
+ * matching `spec`, polling until it appears or the timeout elapses.
+ */
+export async function comixBridgeOpenAndQuery(options: {
+  url: string;
+  spec: ComixQuerySpec;
+  timeoutMs?: number;
+}): Promise<unknown> {
+  await ensurePage(options.url);
+  const timeoutMs = options.timeoutMs ?? 15_000;
+  try {
+    const result = await send("wait", { spec: options.spec, timeoutMs });
+    reloadCount = 0;
+    return result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (reloadCount < MAX_RELOAD_RETRIES && /not cached|timed out/i.test(message)) {
       reloadCount += 1;
-      setState("idle");
-      fatalError = null;
+      // Force a fresh navigation: a bare reload would drop back to the home
+      // page, so clear the cached URL first.
+      navState = null;
+      pageUrl = "";
       try {
         invoker?.reload();
       } catch {
         // ignore
       }
-      await sleep(900);
-      return comixBridgeRequest(op, extra, false);
+      await ensurePage(options.url);
+      const retried = await send("wait", { spec: options.spec, timeoutMs });
+      reloadCount = 0;
+      return retried;
     }
     reloadCount = 0;
-    throw error;
-  });
+    throw new Error(
+      "Comix could not be reached. Check your connection and try again.",
+    );
+  }
 }
+
+/**
+ * Navigates to a manga title page and walks its paginated chapter list,
+ * returning every chapter row (freshest first).
+ */
+export async function comixBridgeChaptersAll(options: {
+  url: string;
+  hid: string;
+  maxPages?: number;
+  timeoutMs?: number;
+}): Promise<{ items: unknown[]; meta: unknown; reason: string }> {
+  await ensurePage(options.url);
+  const data = (await send("chaptersAll", {
+    hid: options.hid,
+    maxPages: options.maxPages ?? 40,
+    timeoutMs: options.timeoutMs ?? 60_000,
+  })) as { items?: unknown[]; meta?: unknown; reason?: string };
+  return {
+    items: Array.isArray(data?.items) ? (data.items as unknown[]) : [],
+    meta: data?.meta ?? null,
+    reason: data?.reason ?? "unknown",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Same-origin HTML fetch (server-rendered pages)
+// ---------------------------------------------------------------------------
 
 const PAGE_WAIT_TIMEOUT_MS = 25_000;
 const MAX_HTML_CHALLENGE_RETRIES = 6;
 
-let pageLoaded = false;
-let pageWaiters: (() => void)[] = [];
-
-/** Called by the host on every WebView load end (challenge pages included). */
-export function handleComixPageLoaded(): void {
-  pageLoaded = true;
-  const waiters = pageWaiters;
-  pageWaiters = [];
-  waiters.forEach((resolve) => resolve());
-}
-
-function waitForPageLoaded(timeoutMs: number): Promise<void> {
-  if (pageLoaded) return Promise.resolve();
-  return new Promise<void>((resolve, reject) => {
-    let timer: ReturnType<typeof setTimeout>;
-    const waiter = () => {
-      clearTimeout(timer);
-      resolve();
-    };
-    timer = setTimeout(() => {
-      const index = pageWaiters.indexOf(waiter);
-      if (index >= 0) pageWaiters.splice(index, 1);
-      reject(new Error("Comix page did not finish loading."));
-    }, timeoutMs);
-    pageWaiters.push(waiter);
-  });
+function waitForAnyPageLoaded(timeoutMs: number): Promise<void> {
+  if (pageLoadedOnce) return Promise.resolve();
+  return awaitPageLoad(timeoutMs);
 }
 
 function looksLikeCloudflareChallenge(html: string): boolean {
@@ -354,14 +371,13 @@ function requestComixHtml(url: string): Promise<string> {
 
 /**
  * Fetches a page's raw HTML from inside the WebView, reusing the cleared
- * Cloudflare session (cookies + same-origin). It waits only for the page to
- * finish loading, never for the signed API module, so the server-rendered
- * screens work even when the `env-*.js` bridge is slow or missing. While
+ * Cloudflare session (cookies + same-origin). It works from any comix.to page,
+ * so the server-rendered home feed / title pages parse without navigating. While
  * Cloudflare is still serving its managed challenge it retries for a while as
  * the challenge solves itself, then reports a clear message.
  */
 export async function comixBridgeFetchHtml(url: string): Promise<string> {
-  await waitForPageLoaded(PAGE_WAIT_TIMEOUT_MS);
+  await waitForAnyPageLoaded(PAGE_WAIT_TIMEOUT_MS);
   for (let attempt = 0; ; attempt += 1) {
     const html = await requestComixHtml(url);
     if (!looksLikeCloudflareChallenge(html)) return html;

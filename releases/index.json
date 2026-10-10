@@ -1,6 +1,13 @@
 {
-  "latest": "0.0.1",
+  "latest": "0.0.2",
   "versions": [
+    {
+      "version": "0.0.2",
+      "date": "2026-10-10",
+      "title": "Sharing, in-app updates, Comix restored",
+      "file": "v0.0.2.md",
+      "type": "stable"
+    },
     {
       "version": "0.0.1",
       "date": "2026-10-10",

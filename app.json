@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mangora",
     "slug": "mangora",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "orientation": "portrait",
     "scheme": "mangora",
     "icon": "./assets/icons/appLogo.png",
