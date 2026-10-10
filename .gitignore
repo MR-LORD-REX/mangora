@@ -19,6 +19,7 @@ expo-env.d.ts
 *.p12
 *.key
 *.pem
+*.keystore
 *.mobileprovision
 
 # Metro
