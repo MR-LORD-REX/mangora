@@ -1,30 +1,14 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import ChapterMangaViewer from "@/components/manga/ChapterMangaViewer";
 import { chapterSourceFor } from "@/components/manga/sources";
 import { colors } from "@/constants/theme";
-import {
-  isComixBridgeReady,
-  subscribeComixBridge,
-} from "@/services/comix/comixBridge";
 
 function paramString(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
-
-function useComixBridgeReady(): boolean {
-  const [ready, setReady] = useState(() => isComixBridgeReady());
-  useEffect(
-    () =>
-      subscribeComixBridge((nextState: string) => {
-        setReady(nextState === "ready");
-      }),
-    [],
-  );
-  return ready;
 }
 
 export default function MangaScreen() {
@@ -39,7 +23,6 @@ export default function MangaScreen() {
   const thumbnailUrl = paramString(params.thumbnailUrl) || null;
   const downloadsOnly = paramString(params.downloadsOnly) === "1";
   const source = chapterSourceFor(provider);
-  const bridgeReady = useComixBridgeReady();
 
   if (!source) {
     return (
@@ -59,7 +42,6 @@ export default function MangaScreen() {
       param={slug}
       source={source}
       thumbnailUrl={thumbnailUrl}
-      bridgeReady={bridgeReady}
       downloadsOnly={downloadsOnly}
     />
   );

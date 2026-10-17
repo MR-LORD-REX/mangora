@@ -36,17 +36,8 @@ import {
 import { syncLibrary } from "@/services/library/librarySync";
 import { listDownloadedManga } from "@/services/downloader";
 import { imageSourceForUrl } from "@/utils/reader/imageHeaders";
+import { providerLabel } from "@/utils/providerLabel";
 
-const PROVIDER_LABEL: Record<string, string> = {
-  mangadex: "MangaDex",
-  mangakatana: "MangaKatana",
-  manhwa18: "Manhwa18",
-  nh: "NHentai",
-  mgeko: "MangaGeko",
-  comix: "Comix",
-  brainrot: "BrainRot",
-  philia: "Philia Scans",
-};
 
 /** Maps downloaded-manga rows into the same card shape the grid renders. */
 async function listDownloadCards(
@@ -390,7 +381,7 @@ export default function LibraryScreen() {
               {item.title}
             </Text>
             <Text numberOfLines={1} style={styles.cardMeta}>
-              {PROVIDER_LABEL[item.provider] ?? item.provider} ·{" "}
+              {providerLabel(item.provider)} ·{" "}
               {item.unreadChapters} unread of {item.totalChapters}
             </Text>
           </Pressable>

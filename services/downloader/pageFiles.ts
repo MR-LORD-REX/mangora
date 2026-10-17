@@ -93,8 +93,6 @@ export interface DownloadPagesOptions {
   /** Returns a reason string while the job must wait. */
   pauseReason: () => string | null;
   onProgress: (pagesDone: number, bytes: number) => void;
-  /** Optional per-page transform (e.g. Philia DRM decrypt) applied before writing. */
-  decode?: (bytes: Uint8Array, index: number) => Promise<Uint8Array>;
 }
 
 /**
@@ -109,7 +107,6 @@ export async function downloadChapterPages({
   isCancelled,
   pauseReason,
   onProgress,
-  decode,
 }: DownloadPagesOptions): Promise<CachedPage[]> {
   prepareChapterDirectory(directory);
   const names = urls.map((url, index) => pageExtension(url, index));
@@ -157,7 +154,6 @@ export async function downloadChapterPages({
           directory,
           name,
           imageHeadersForPage(provider, urls[index]),
-          decode ? (bytes) => decode(bytes, index) : undefined,
         );
         pages[index] = { path: file.uri, name, bytes: file.size };
         pagesDone += 1;
@@ -187,23 +183,15 @@ async function downloadPage(
   directory: Directory,
   name: string,
   headers: Record<string, string> | undefined,
-  decode?: (bytes: Uint8Array) => Promise<Uint8Array>,
 ): Promise<File> {
   const temp = new File(directory, `${name}.part`);
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
       if (temp.exists) temp.delete();
-      if (decode) {
-        // Provider DRM (Philia): buffer the blob, decrypt it, then write.
-        const response = await fetch(url, headers ? { headers } : undefined);
-        if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
-        const buffer = await response.arrayBuffer();
-        if (!buffer.byteLength) throw new Error("Empty page payload");
-        const decoded = await decode(new Uint8Array(buffer));
-        temp.create({ intermediates: true, overwrite: true });
-        temp.write(decoded);
-      } else if (needsBrowserCookies(url)) {
+      if (needsBrowserCookies(url)) {
+        // Cloudflare-gated hosts: RN's fetch carries the WebView cookies.
+        await fetchToFile(url, temp, headers);
         // Cloudflare-gated hosts: RN's fetch carries the WebView cookies.
         await fetchToFile(url, temp, headers);
       } else {

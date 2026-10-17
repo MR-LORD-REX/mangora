@@ -4,15 +4,12 @@ import { db } from "../client";
 import { chapters, manga } from "../schema";
 import type { Manga } from "../schema";
 
-export type ProviderId =
-  | "mangadex"
-  | "mangakatana"
-  | "manhwa18"
-  | "nh"
-  | "mgeko"
-  | "comix"
-  | "brainrot"
-  | "philia";
+/**
+ * Extension sources are namespaced by their 64-bit source id. Legacy
+ * hand-written provider ids can still exist in old database rows; they are
+ * treated as inert records and have no adapter.
+ */
+export type ProviderId = `ext:${string}` | (string & {});
 
 export interface TrackedMangaInput {
   provider: ProviderId;

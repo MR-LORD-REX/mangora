@@ -2,13 +2,11 @@
  * identity.ts
  * ---------------------------------------------------------------------------
  * Canonical identities for download jobs. They match the rows the library,
- * history and progress layers persist, so a downloaded chapter is the same
- * record as an opened chapter.
+ * history and progress layers persist.
  * ---------------------------------------------------------------------------
  */
 
 import { canonicalId } from "@/services/db/repositories/catalogRepository";
-import { encodePath } from "@/services/mangakatana/mangakatana.utils";
 import { resolveReaderIdentity } from "@/utils/reader/readerIdentity";
 
 export interface DownloadTargetInput {
@@ -41,35 +39,17 @@ export function downloadTarget(input: DownloadTargetInput): DownloadTarget {
   };
 }
 
-/**
- * Encodes a provider identity the way that provider's route params expect it
- * (mangakatana uses `encodePath`, URL-based providers use `encodeURIComponent`).
- */
-export function encodeProviderParam(provider: string, value: string): string {
-  if (provider === "mangakatana") return encodePath(value);
-  if (
-    provider === "manhwa18" ||
-    provider === "mgeko" ||
-    provider === "comix" ||
-    provider === "brainrot" ||
-    provider === "philia"
-  ) {
-    return encodeURIComponent(value);
-  }
-  return value;
+/** Extension route params are URL-encoded chapter and manga paths. */
+export function encodeProviderParam(_provider: string, value: string): string {
+  return encodeURIComponent(value);
 }
 
-/**
- * Reader route params are encoded for URL-based providers; the downloader
- * works with the decoded identities, exactly like the library does.
- */
+/** Reader route params are encoded for URL-based extension sources. */
 export function readerTarget(input: {
   source: string;
   chapterId: string;
   mangaId?: string;
 }): DownloadTarget {
-  // Uses the reader's own resolver so a download always refers to the exact
-  // chapter ids the reader, history and progress layers persist.
   const ids = resolveReaderIdentity({
     source: input.source,
     chapterId: input.chapterId,

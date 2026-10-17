@@ -30,7 +30,7 @@ export interface ChapterMeta {
   extraMeta?: { icon: LucideIcon; text: string }[];
   /** Single flat genre/tag list. */
   tags?: SharedTag[];
-  /** Grouped tag sections (used by the gallery/one-shot viewer). */
+  /** Grouped tag sections returned by some extension sources. */
   tagSections?: { title: string; tags: SharedTag[] }[];
   /** Canonical web URL on the provider, when one exists. */
   sourceUrl?: string | null;
@@ -38,7 +38,7 @@ export interface ChapterMeta {
 
 /**
  * One row in the chapter list. A row can either be a real chapter or a
- * section header (used by MangaDex to group scanlation uploads per number).
+ * section header used by some extension sources to group uploads.
  */
 export interface ViewerChapterRow {
   key: string;
@@ -59,7 +59,7 @@ export interface ViewerChapterRow {
   number?: number | null;
   /** Epoch milliseconds for date sorting / display. */
   date?: number | null;
-  /** Pre-formatted date used when no epoch is available (Comix). */
+  /** Pre-formatted date used when no epoch is available. */
   dateLabel?: string | null;
   pageCount?: number | null;
   languageCode?: string | null;

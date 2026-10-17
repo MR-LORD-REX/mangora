@@ -1,13 +1,8 @@
 /**
  * metadata.ts
  * ---------------------------------------------------------------------------
- * Offline metadata for downloaded manga.
- *
- * Every finished chapter already stores its own snapshot in the `downloads`
- * table. This module additionally refreshes the shared catalog (`manga` +
- * `chapters`) through the provider adapters so the manga / one-shot viewers
- * can render from the database when the network is gone, and so the snapshot
- * again whenever the internet comes back.
+ * Offline metadata for downloaded manga. Only extension providers are active;
+ * legacy built-in rows are skipped.
  * ---------------------------------------------------------------------------
  */
 
@@ -15,19 +10,8 @@ import { listDownloadedManga } from "@/services/db/repositories/downloadReposito
 import { trySyncProviderManga } from "@/services/library/catalogSync";
 import type { ProviderId } from "@/services/library/providerAdapters";
 
-const KNOWN_PROVIDERS = new Set<string>([
-  "mangadex",
-  "mangakatana",
-  "manhwa18",
-  "nh",
-  "mgeko",
-  "comix",
-  "brainrot",
-  "philia",
-]);
-
 function isKnownProvider(provider: string): provider is ProviderId {
-  return KNOWN_PROVIDERS.has(provider);
+  return provider.startsWith("ext:");
 }
 
 /**

@@ -116,7 +116,6 @@ export interface ChapterMangaViewerProps {
   param: string;
   thumbnailUrl?: string | null;
   source: ChapterSourceModule;
-  bridgeReady?: boolean;
   /** Offline mode: load from the download database only, no network. */
   downloadsOnly?: boolean;
 }
@@ -125,7 +124,6 @@ export default function ChapterMangaViewer({
   param,
   thumbnailUrl,
   source,
-  bridgeReady = true,
   downloadsOnly = false,
 }: ChapterMangaViewerProps) {
   const accent = source.accent;
@@ -229,8 +227,8 @@ export default function ChapterMangaViewer({
   const meta = data?.meta ?? null;
   const rows = useMemo(() => data?.rows ?? [], [data]);
 
-  /** One entry per "main chapter": explicit sections (MangaDex) or rows that
-   *  share a chapter key/number (duplicate scanlation-group uploads). */
+  /** One entry per "main chapter": explicit sections or rows that share a
+   *  chapter key/number (duplicate scanlation-group uploads). */
   const rawGroups = useMemo(() => groupRows(rows), [rows]);
 
   /** Scanlation groups available in this series (drives the Groups tab). */
@@ -356,17 +354,6 @@ export default function ChapterMangaViewer({
       identity,
       meta,
       coverUrl: meta.coverUrl ?? thumbnailUrl,
-      bridgeReady,
-    });
-  };
-
-  const openChapterFallback = (row: ViewerChapterRow) => {
-    if (!meta || !source.openChapterFallback) return;
-    source.openChapterFallback(row, {
-      identity,
-      meta,
-      coverUrl: meta.coverUrl ?? thumbnailUrl,
-      bridgeReady,
     });
   };
 
@@ -931,14 +918,7 @@ export default function ChapterMangaViewer({
         </Text>
       </View>
 
-      {source.provider === "comix" && !bridgeReady ? (
-        <View style={styles.warnBox}>
-          <Text style={styles.warnText}>
-            The Comix bridge is still connecting. Chapter taps will open the web
-            view until it is ready.
-          </Text>
-        </View>
-      ) : null}
+
     </View>
   );
 
@@ -964,11 +944,7 @@ export default function ChapterMangaViewer({
       <Pressable
         onPress={() => {
           if (updatingRead) return;
-          if (bridgeReady || source.provider !== "comix") {
-            void openChapter(row);
-          } else {
-            openChapterFallback(row);
-          }
+          void openChapter(row);
         }}
         onLongPress={() => onLongPressChapter(row)}
         delayLongPress={400}

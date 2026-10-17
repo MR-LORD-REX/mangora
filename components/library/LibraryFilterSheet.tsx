@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Modal,
   Pressable,
@@ -19,16 +19,11 @@ import type { LucideIcon } from "lucide-react-native";
 
 import { colors, radius } from "@/constants/theme";
 import type { LibrarySort } from "@/services/db/repositories/libraryRepository";
+import {
+  cachedInstalledExtensions,
+  extensionProviderFor,
+} from "@/services/extensions/registry";
 
-const PROVIDERS = [
-  { value: "", label: "All sources", icon: LibraryBig },
-  { value: "mangadex", label: "MangaDex", icon: BookOpen },
-  { value: "mangakatana", label: "MangaKatana", icon: BookOpen },
-  { value: "manhwa18", label: "Manhwa18", icon: BookOpen },
-  { value: "mgeko", label: "MangaGeko", icon: BookOpen },
-  { value: "comix", label: "Comix", icon: BookOpen },
-  { value: "nh", label: "NHentai", icon: BookOpen },
-];
 
 const SORTS: { value: LibrarySort; label: string; icon: LucideIcon }[] = [
   { value: "addedDesc", label: "Date added · newest", icon: ArrowDownUp },
@@ -55,6 +50,20 @@ export default function LibraryFilterSheet({
   onSort,
   onProvider,
 }: LibraryFilterSheetProps) {
+  const providers = useMemo(() => {
+    const entries = cachedInstalledExtensions().flatMap((extension) =>
+      extension.sources.map((source) => ({
+        value: extensionProviderFor(source.id),
+        label: `${extension.name} · ${source.name}`,
+        icon: BookOpen,
+      })),
+    );
+    return [
+      { value: "", label: "All sources", icon: LibraryBig },
+      ...entries,
+    ];
+  }, []);
+
   return (
     <Modal
       visible={visible}
@@ -105,7 +114,7 @@ export default function LibraryFilterSheet({
             <Text style={[styles.sectionTitle, styles.secondSection]}>
               Source
             </Text>
-            {PROVIDERS.map((item) => {
+            {providers.map((item) => {
               const Icon = item.icon;
               const selected = provider === item.value;
               return (

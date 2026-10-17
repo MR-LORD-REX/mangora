@@ -45,14 +45,3 @@ export const viewModeLabels: Record<ViewMode, string> = {
   list: "Compact list",
 };
 
-/** Per-provider brand accents used on source screens. */
-export const providerAccent: Record<string, string> = {
-  mangadex: "#8faeff",
-  mangakatana: "#63d2a4",
-  manhwa18: "#ffb86b",
-  nh: "#ff8ac2",
-  mgeko: "#c084fc",
-  comix: "#22d3ee",
-  brainrot: "#a78bfa",
-  philia: "#2dd4bf",
-};

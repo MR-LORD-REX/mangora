@@ -1,8 +1,7 @@
 /**
  * SourceFilterOverlay.tsx
  * ---------------------------------------------------------------------------
- * Generic MangaDex-style filter sheet shared by the BrainRot and Philia main
- * screens. Each section is either multi-select (genres/statuses) or a single
+ * Generic extension filter sheet shared by extension browse screens. Each section is either multi-select (genres/statuses) or a single
  * choice (sort). Values are string arrays so a section can drive one query
  * param (`sort`) or many (`genres`, `statuses`).
  * ---------------------------------------------------------------------------

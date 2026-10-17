@@ -1,31 +1,21 @@
 /**
  * browserFetch.ts
  * ---------------------------------------------------------------------------
- * Downloading assets through React Native's networking stack on purpose.
- *
- * On Android, React Native installs the WebView's cookie jar
- * (android.webkit.CookieManager) into the shared OkHttp client that backs
- * both `fetch` and `<Image>` (FrescoModule / NetworkingModule). That is the
- * only way to send a Cloudflare `cf_clearance` cookie, because it is HttpOnly
- * and can never be read from JS.
- *
- * expo-file-system's downloader runs its own HTTP client with its own cookie
- * store, so cookie-gated hosts are streamed through RN's fetch and written to
- * disk here instead.
+ * Downloads assets through React Native's networking stack so requests carry
+ * the Android WebView cookie jar. Cloudflare-gated hosts are registered at
+ * runtime by the extension/network layer; no provider hosts are hard-coded.
  * ---------------------------------------------------------------------------
  */
 
 import { File } from "expo-file-system";
 
-/** Hosts whose assets are served behind the app's browser cookie jar. */
-const COOKIE_GATED_HOSTS = [
-  /^comix\.to$/i,
-  /\.comix\.to$/i,
-  /^comix\.ws$/i,
-  /\.comix\.ws$/i,
-  /^brainrotcomics\.com$/i,
-  /\.brainrotcomics\.com$/i,
-];
+const cookieGatedHosts = new Set<string>();
+
+/** Marks a host (lowercase, no port) as requiring WebView cookies. */
+export function registerCookieGatedHost(host: string): void {
+  const value = host.trim().toLowerCase();
+  if (value) cookieGatedHosts.add(value);
+}
 
 function hostOf(url: string): string | null {
   const match = /^https?:\/\/([^/?#]+)/i.exec(url);
@@ -36,9 +26,7 @@ function hostOf(url: string): string | null {
 export function needsBrowserCookies(url: string | null | undefined): boolean {
   if (!url) return false;
   const host = hostOf(url);
-  return host
-    ? COOKIE_GATED_HOSTS.some((pattern) => pattern.test(host))
-    : false;
+  return host ? cookieGatedHosts.has(host) : false;
 }
 
 /**
@@ -57,8 +45,7 @@ export async function fetchToFile(
   }
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType.toLowerCase().includes("text/html")) {
-    // A 200 that is really a Cloudflare challenge page - never write it as an
-    // image. Reaching this means the cookie/UA pair did not match the session.
+    // A 200 that is really a challenge page - never write it as an image.
     throw new Error(`HTML response for ${url} (Cloudflare challenge?)`);
   }
   const buffer = await response.arrayBuffer();

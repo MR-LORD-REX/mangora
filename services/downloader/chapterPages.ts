@@ -25,7 +25,6 @@ export function resolveChapterPageUrls(input: {
       source: input.provider,
       chapterId: encodeProviderParam(input.provider, input.providerChapterId),
       mangaId: "",
-      purpose: "download",
       onPages: (pages) => {
         settled = true;
         resolve(pages);

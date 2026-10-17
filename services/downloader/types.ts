@@ -11,11 +11,9 @@ export type DownloadStatus =
   | "failed"
   | "completed";
 
-/** Providers whose page list needs the in-app Comix bridge to be alive. */
-export const FOREGROUND_ONLY_PROVIDERS = ["comix"] as const;
-
-export function requiresForegroundApp(provider: string): boolean {
-  return (FOREGROUND_ONLY_PROVIDERS as readonly string[]).includes(provider);
+/** Extension downloads run in the foreground service without a WebView gate. */
+export function requiresForegroundApp(_provider: string): boolean {
+  return false;
 }
 
 export interface DownloadJob {

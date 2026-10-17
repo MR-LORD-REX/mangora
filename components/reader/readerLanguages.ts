@@ -1,8 +1,7 @@
 /**
  * readerLanguages.ts
  * ---------------------------------------------------------------------------
- * Reader-specific language helpers: source language options, NH display-name
- * mapping and the "auto" guess used to pick the OCR backend.
+ * Reader language helpers shared by extension sources.
  * ---------------------------------------------------------------------------
  */
 
@@ -35,25 +34,10 @@ export const READER_LANGUAGE_OPTIONS: {
   { code: "vi", label: "Vietnamese", detail: "Local Latin model" },
 ];
 
-/** NHentai exposes language tags by display name, not by ISO code. */
-const NH_LANGUAGE_CODE: Record<string, string> = {
-  english: "en",
-  japanese: "ja",
-  korean: "ko",
-  chinese: "zh-TW",
-  "chinese (simplified)": "zh",
-  "chinese simplified": "zh",
-  "chinese-simplified": "zh",
-  "chinese (traditional)": "zh-TW",
-  "chinese traditional": "zh-TW",
-  "chinese-traditional": "zh-TW",
-  spanish: "es",
-  french: "fr",
-  german: "de",
-  russian: "ru",
-  portuguese: "pt",
-  italian: "it",
-};
+const LANGUAGE_CODES = new Set([
+  "en", "ja", "ko", "zh", "zh-tw", "es", "fr", "de", "ru", "pt", "it",
+  "id", "ms", "pl", "tr", "vi", "tl", "nl",
+]);
 
 /** Maps Chinese variants to the codes TR_API declares for paddle-ocr. */
 export function canonicalChineseForReader(code: string): string {
@@ -74,26 +58,23 @@ export function canonicalChineseForReader(code: string): string {
 }
 
 /**
- * Auto language for a chapter, passed through to the OCR backend as-is.
- * No abstraction: MangaDex codes pass through unchanged, NH display names are
- * mapped to their ISO code, and aggregators without a language tag default to
- * English (their pages are pre-translated).
+ * Auto language for a chapter. Extension chapters may not expose a language,
+ * so a provided ISO code is used when present and English is the fallback.
  */
 export function autoLanguageForReader(
-  source: string,
-  raw?: string | string[] | null
+  _source: string,
+  raw?: string | string[] | null,
 ): string {
   const value = String(raw ?? "").trim().toLowerCase();
   if (!value) return "en";
-  if (source === "mangadex") return canonicalChineseForReader(value);
-  if (source === "nh") return NH_LANGUAGE_CODE[value] ?? "en";
+  if (LANGUAGE_CODES.has(value)) return canonicalChineseForReader(value);
   return "en";
 }
 
 /** Human label for a source or target language code. */
 export function languageLabel(code: string): string {
   const known = [...READER_LANGUAGE_OPTIONS, ...READER_TARGET_OPTIONS].find(
-    (option) => option.code === code
+    (option) => option.code === code,
   );
   return known?.label ?? code.toUpperCase();
 }

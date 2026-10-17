@@ -5,11 +5,11 @@ const {
 
 /** Host and paths the app claims as verified Android App Links (plan S14.2). */
 const HOST = "mangora-web.web.app";
-const PATHS = ["/manga", "/oneshot"];
+const PATHS = ["/manga"];
 
 /**
  * Adds an auto-verified https App Link intent-filter to MainActivity for
- * `https://mangora-web.web.app/manga/*` and `/oneshot/*`, so a shared series
+ * `https://mangora-web.web.app/manga/*`, so a shared series
  * link opens straight in the app when it is installed and verified (the
  * website /manga/:id landing covers the not-installed case). The `mangora://`
  * scheme filter is left untouched.

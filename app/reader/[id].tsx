@@ -65,8 +65,6 @@ import {
   markChapterGroupCompleted,
   updateProgress,
 } from "@/services/db/repositories/progressRepository";
-import { resolveLanguage } from "@/services/mangadex/mangaDex";
-import { paramString } from "@/services/mangakatana/mangakatana.utils";
 import type { LocalModelId } from "@/services/ocr/executorchModels";
 import { suggestLocalModelIdForLanguage } from "@/services/ocr/executorchModels";
 import {
@@ -87,11 +85,6 @@ import { validateGeminiApiKey } from "@/services/translation/geminiTranslator";
 import { chapterNumberLabel, chapterTitleFromId } from "@/utils/reader/chapterLabel";
 import { imageHeadersForPage } from "@/utils/reader/imageHeaders";
 import { loadChapterPages } from "@/utils/reader/loadChapterPages";
-import {
-  ensurePhiliaPageAt,
-  philiaCachedPageIndices,
-  subscribePhiliaPageReady,
-} from "@/services/philia/philiaDecrypt";
 import { pageGeometry, type PageDims } from "@/utils/reader/pageGeometry";
 import { readerBackgroundColor } from "@/utils/reader/readerBackground";
 import {
@@ -107,6 +100,10 @@ import type { DownloadCandidate } from "@/services/downloader";
 import { resolveReaderIdentity } from "@/utils/reader/readerIdentity";
 import { prepareReaderOpen } from "@/services/library/readerTracking";
 import { useReaderTranslation } from "@/utils/reader/useReaderTranslation";
+
+function paramString(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+}
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -193,11 +190,6 @@ export default function GenericReader() {
     [mangaTitle, thumbnailUrl],
   );
 
-  const chapterLanguage = useMemo(
-    () =>
-      source === "mangadex" && language ? resolveLanguage(language) : undefined,
-    [source, language],
-  );
   const autoLanguage = useMemo(
     () => autoLanguageForReader(source, language),
     [source, language],
@@ -208,12 +200,6 @@ export default function GenericReader() {
   // The first five pages are ready immediately; navigation moves this window.
   const [imageWindow, setImageWindow] = useState<Set<number>>(
     () => new Set([0, 1, 2, 3, 4]),
-  );
-  // Philia Scans serves DRM-wrapped pages: they are decrypted on demand as the
-  // reader nears them, so only the pages the user can see are fetched.
-  const [progressivePhilia, setProgressivePhilia] = useState(false);
-  const [philiaReadyPages, setPhiliaReadyPages] = useState<Set<number>>(
-    () => new Set(),
   );
   const [showHeader, setShowHeader] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -443,9 +429,7 @@ export default function GenericReader() {
   }, [currentPageIndex]);
 
   const goBack = () => {
-    if (source === "nh") {
-      openMangaInfo({ provider: "nh", id: chapterId });
-    } else if (mangaId) {
+    if (mangaId) {
       openMangaInfo({ provider: source, id: mangaId });
     } else {
       router.back();
@@ -465,8 +449,6 @@ export default function GenericReader() {
       setNextChapterId(null);
       setImageWindow(new Set([0, 1, 2, 3, 4]));
       setConfigOpen(false);
-      setProgressivePhilia(false);
-      setPhiliaReadyPages(new Set());
       resetTranslationPipeline();
 
       try {
@@ -504,13 +486,10 @@ export default function GenericReader() {
           console.warn("Downloaded chapter lookup by provider failed:", error);
         }
 
-        if (source === "philia") setProgressivePhilia(true);
-
         await loadChapterPages({
           source,
           chapterId,
           mangaId,
-          chapterLanguageCode: chapterLanguage?.code,
           onPages: (nextPages) => {
             if (!cancelled) setPages(nextPages);
           },
@@ -545,8 +524,6 @@ export default function GenericReader() {
         Image.getSize(url, onSize, onError);
         return;
       }
-      // Per-page: Comix chapter images live on third-party CDN hosts that
-      // reject a Referer, while comix's own hosts require one.
       const headers = imageHeadersForPage(source, url);
       if (headers && typeof (Image as any).getSizeWithHeaders === "function") {
         // Android needs getSizeWithHeaders to attach per-host headers;
@@ -638,63 +615,6 @@ export default function GenericReader() {
       return nextWindow;
     });
   }, [currentPageIndex, pages.length]);
-
-  // Philia: seed which pages are already decrypted and react as the on-demand
-  // decryption finishes while the reader stays open.
-  useEffect(() => {
-    if (!progressivePhilia || source !== "philia") {
-      setPhiliaReadyPages(new Set());
-      return;
-    }
-    const chapterIdNum = Number(readerIdentity.providerChapterId);
-    if (!Number.isFinite(chapterIdNum)) return;
-    setPhiliaReadyPages(new Set(philiaCachedPageIndices(chapterIdNum)));
-    return subscribePhiliaPageReady((readyChapterId, index) => {
-      if (readyChapterId !== chapterIdNum) return;
-      setPhiliaReadyPages((previous) => {
-        if (previous.has(index)) return previous;
-        const next = new Set(previous);
-        next.add(index);
-        return next;
-      });
-    });
-  }, [progressivePhilia, source, readerIdentity.providerChapterId, pages.length]);
-
-  // Philia: decrypt only the pages inside the visible window (the window
-  // already carries the reader's lookahead) instead of the whole chapter.
-  useEffect(() => {
-    if (!progressivePhilia || source !== "philia" || pages.length === 0) return;
-    const chapterIdNum = Number(readerIdentity.providerChapterId);
-    if (!Number.isFinite(chapterIdNum)) return;
-    for (const index of imageWindow) {
-      if (index < 0 || index >= pages.length) continue;
-      void ensurePhiliaPageAt(chapterIdNum, index).catch((error) => {
-        console.warn("Philia page load failed:", error);
-      });
-    }
-  }, [
-    progressivePhilia,
-    source,
-    readerIdentity.providerChapterId,
-    imageWindow,
-    pages.length,
-  ]);
-
-  // Philia: measure a page once its decrypted file exists. The Android tiled
-  // renderer used for local pages does not report onLoad, so the geometry would
-  // otherwise keep the placeholder ratio.
-  useEffect(() => {
-    if (!progressivePhilia) return;
-    philiaReadyPages.forEach((index) => {
-      const url = pages[index];
-      if (!url || pageDims[url]) return;
-      Image.getSize(
-        url,
-        (width, height) => rememberPageDims(url, width, height),
-        () => undefined,
-      );
-    });
-  }, [progressivePhilia, philiaReadyPages, pages, pageDims]);
 
   // Paged modes only: every page fills the viewport, so viewability is
   // exact there. Scroll modes are handled by syncPageIndexFromOffset.
@@ -1358,10 +1278,7 @@ export default function GenericReader() {
           renderItem={({ item, index }) => (
             <ReaderPage
               url={item}
-              loadImage={
-                imageWindow.has(index) &&
-                (!progressivePhilia || philiaReadyPages.has(index))
-              }
+              loadImage={imageWindow.has(index)}
               geometry={pageGeometry(
                 item,
                 chrome.readingMode,

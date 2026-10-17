@@ -1,22 +1,5 @@
-/**
- * readerIdentity.ts
- * ---------------------------------------------------------------------------
- * Resolves the provider-specific reader route params (source + encoded
- * manga/chapter ids) into the canonical DB identities used by the catalog,
- * history, progress and translation-cache repositories.
- *
- * MangaKatana and Manhwa18/Mgeko/Comix pass URLs through Expo Router, so the
- * encoded values must be decoded exactly the same way everywhere they are
- * stored - keeping that rule here avoids the reader screen from carrying two
- * copies of it.
- * ---------------------------------------------------------------------------
- */
-
-import {
-  canonicalId,
-  type ProviderId,
-} from "@/services/db/repositories/catalogRepository";
-import { decodePath } from "@/services/mangakatana/mangakatana.utils";
+import { canonicalId } from "@/services/db/repositories/catalogRepository";
+import type { ProviderId } from "@/services/db/repositories/catalogRepository";
 
 export interface ReaderRouteIdentity {
   source: string;
@@ -26,9 +9,9 @@ export interface ReaderRouteIdentity {
 
 export interface ProviderReaderIds {
   provider: ProviderId;
-  /** Decoded provider manga id (URL for URL-based providers). */
+  /** Decoded provider manga id (URL for extension sources). */
   providerMangaId: string;
-  /** Decoded provider chapter id (URL for URL-based providers). */
+  /** Decoded provider chapter id (URL for extension sources). */
   providerChapterId: string;
 }
 
@@ -39,27 +22,14 @@ export interface ReaderIdentity extends ProviderReaderIds {
   chapterId: string;
 }
 
-/** Decodes the provider manga/chapter route params (URL-based providers). */
+/** Decodes extension manga/chapter route params. */
 export function providerReaderIds({
   source,
   chapterId,
   mangaId,
 }: ReaderRouteIdentity): ProviderReaderIds {
   const provider = source as ProviderId;
-  if (provider === "mangakatana") {
-    return {
-      provider,
-      providerMangaId: decodePath(mangaId || chapterId),
-      providerChapterId: decodePath(chapterId),
-    };
-  }
-  if (
-    provider === "manhwa18" ||
-    provider === "mgeko" ||
-    provider === "comix" ||
-    provider === "brainrot" ||
-    provider === "philia"
-  ) {
+  if (provider.startsWith("ext:")) {
     return {
       provider,
       providerMangaId: decodeURIComponent(mangaId || chapterId),

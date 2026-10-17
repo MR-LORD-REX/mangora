@@ -7,7 +7,7 @@
  * (`.../files/trapp-settings/settings.json`) so they survive restarts and do
  * not need any extra dependency (AsyncStorage etc.). Every write is mirrored
  * into the SQLite `app_settings` table via settingsRepository so the database
- * holds a global copy as well (see spec §15). The file remains the source of
+ * holds a global copy as well (see spec Â§15). The file remains the source of
  * truth; the DB row is a mirror that is seeded at bootstrap when missing.
  *
  * The reader and home screen both read the same store; the reader subscribes
@@ -65,6 +65,12 @@ export type ReaderInvertTapZones = "none" | "horizontal" | "vertical" | "both";
 
 export type ReaderBackgroundColor = "black" | "gray" | "white" | "auto";
 
+export interface ExtensionRepoSetting {
+  url: string;
+  name: string;
+  addedAt: number;
+}
+
 export interface AppSettings {
   /** OCR.space API key (entered on the home screen). */
   ocrApiKey: string;
@@ -103,6 +109,10 @@ export interface AppSettings {
   readerFitMode: ReaderFitMode;
   /** Initial scale for zoomable pages (0.5..1.5, default 1). */
   readerDefaultZoomScale: number;
+  /** Repositories the user explicitly added for extension discovery. */
+  extensionRepos: ExtensionRepoSetting[];
+  /** Epoch millis when the user accepted the extension install terms. */
+  extensionTermsAcceptedAt: number | null;
   /** Hide providers marked mature from source discovery. */
   safeMode: boolean;
   /**
@@ -174,6 +184,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   readerOrientation: "default",
   readerFitMode: "fit",
   readerDefaultZoomScale: 1,
+  extensionRepos: [],
+  extensionTermsAcceptedAt: null,
   safeMode: true,
   ageRestrictedSources: false,
   updateIncludePrereleases: false,
@@ -308,6 +320,20 @@ function sanitize(raw: unknown): AppSettings {
     readerOrientation: oneOf(value.readerOrientation, ORIENTATIONS, "default"),
     readerFitMode: value.readerFitMode === "original" ? "original" : "fit",
     readerDefaultZoomScale: num(value.readerDefaultZoomScale, 1, 0.5, 1.5),
+    extensionRepos: Array.isArray(value.extensionRepos)
+      ? value.extensionRepos.filter(
+          (entry): entry is ExtensionRepoSetting =>
+            Boolean(entry) &&
+            typeof entry === "object" &&
+            typeof (entry as ExtensionRepoSetting).url === "string" &&
+            (entry as ExtensionRepoSetting).url.length > 0,
+        )
+      : [],
+    extensionTermsAcceptedAt:
+      typeof value.extensionTermsAcceptedAt === "number" &&
+      Number.isFinite(value.extensionTermsAcceptedAt)
+        ? value.extensionTermsAcceptedAt
+        : null,
     safeMode: bool(value.safeMode, true),
     ageRestrictedSources: bool(value.ageRestrictedSources, false),
     updateIncludePrereleases: bool(value.updateIncludePrereleases, false),

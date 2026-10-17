@@ -27,17 +27,8 @@ import { listDownloadedManga } from "@/services/downloader";
 import { formatBytes } from "@/services/settings/storageUsage";
 import { openMangaInfo } from "@/components/manga/openMangaInfo";
 import { imageSourceForUrl } from "@/utils/reader/imageHeaders";
+import { providerLabel } from "@/utils/providerLabel";
 
-const PROVIDER_LABEL: Record<string, string> = {
-  mangadex: "MangaDex",
-  mangakatana: "MangaKatana",
-  manhwa18: "Manhwa18",
-  nh: "NHentai",
-  mgeko: "MangaGeko",
-  comix: "Comix",
-  brainrot: "BrainRot",
-  philia: "Philia Scans",
-};
 
 export default function DownloadManagerScreen() {
   const [entries, setEntries] = useState<DownloadedMangaSummary[]>([]);
@@ -71,7 +62,7 @@ export default function DownloadManagerScreen() {
     }
     return Array.from(counts.entries()).map(([key, count]) => ({
       key,
-      label: `${PROVIDER_LABEL[key] ?? key} (${count})`,
+      label: `${providerLabel(key)} (${count})`,
     }));
   }, [entries]);
 

@@ -11,8 +11,7 @@
  * Every state change is mirrored into the `downloads` table and broadcast to
  * subscribers, so the readers/viewers can show live badges. An Android
  * foreground service keeps the process (and therefore the queue) alive while
- * the app is backgrounded; providers that need the in-app Comix bridge pause
- * themselves and say so in the notification.
+ * the app is backgrounded.
  * ---------------------------------------------------------------------------
  */
 
@@ -32,10 +31,7 @@ import { getSettings, subscribeSettings } from "@/services/settings/settingsStor
 import { notifyDownloadsFinished } from "@/services/notifications/notifications";
 import { snapshotDownloadMetadata } from "./metadata";
 import { resolveChapterPageUrls } from "./chapterPages";
-import {
-  decodePhiliaPageBlob,
-  loadPhiliaDrmContext,
-} from "@/services/philia/philiaDecrypt";
+
 import { chapterFileName } from "./naming";
 import {
   buildArchive,
@@ -338,13 +334,6 @@ async function runJob(
     }
     if (control.cancel) throw new DownloadCancelledError();
 
-    // Philia serves DRM-wrapped blobs; decrypt each page before it is written.
-    let decode: ((bytes: Uint8Array, index: number) => Promise<Uint8Array>) | undefined;
-    if (job.provider === "philia") {
-      const context = await loadPhiliaDrmContext(Number(job.providerChapterId));
-      decode = (bytes, index) => decodePhiliaPageBlob(bytes, context, index);
-    }
-
     const files = await downloadChapterPages({
       directory,
       urls: pageUrls,
@@ -352,7 +341,6 @@ async function runJob(
       concurrency: settings.pageConcurrency,
       isCancelled: () => control.cancel,
       pauseReason: () => gateReason(job),
-      decode,
       onProgress: (pagesDone, bytes) => {
         job.pagesDone = pagesDone;
         job.byteSize = bytes;

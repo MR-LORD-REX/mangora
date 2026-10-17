@@ -1,19 +1,21 @@
 /**
  * providers.ts
  * ---------------------------------------------------------------------------
- * Provider metadata shared across features. `MATURE_PROVIDERS` drives Safe
- * mode (Browse hides them) and the age-restricted share gate (plan S9/S14.4).
+ * Provider metadata shared by sharing and safe-mode gates.
+ * Built-in provider integrations were removed; extension maturity comes from
+ * the registry record for the extension that owns the source.
  * ---------------------------------------------------------------------------
  */
 
-/** Providers whose content is adult-oriented. */
-export const MATURE_PROVIDERS: Record<string, boolean> = {
-  nh: true,
-  manhwa18: true,
-};
+import {
+  cachedExtensionSource,
+  sourceIdFromProvider,
+} from "@/services/extensions/registry";
 
 export function isMatureProvider(
   provider: string | null | undefined,
 ): boolean {
-  return Boolean(provider && MATURE_PROVIDERS[provider]);
+  const sourceId = sourceIdFromProvider(provider);
+  if (!sourceId) return false;
+  return cachedExtensionSource(sourceId)?.nsfw ?? false;
 }

@@ -4,8 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { AppState, Pressable, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
-import BrainRotBridgeHost from "@/components/brainrot/BrainRotBridgeHost";
-import ComixBridgeHost from "@/components/comix/ComixBridgeHost";
+
 import DownloadSheetHost from "@/components/downloader/DownloadSheetHost";
 import { colors } from "@/constants/theme";
 import { initializeDatabase } from "@/services/db/bootstrap";
@@ -15,6 +14,7 @@ import {
   refreshDownloadedMetadata,
 } from "@/services/downloader";
 import { syncAllLibraries } from "@/services/library/librarySync";
+import { refreshExtensionRegistry } from "@/services/extensions/registry";
 
 import "@/global.css";
 
@@ -56,6 +56,9 @@ export default function RootLayout() {
   useEffect(() => {
     if (databaseState !== "ready" || syncStarted.current) return;
     syncStarted.current = true;
+    void refreshExtensionRegistry().catch((error) => {
+      console.warn("Extension registry refresh failed:", error);
+    });
     syncAllLibraries().catch((error) => {
       console.warn("Startup library sync failed:", error);
     });
@@ -125,8 +128,6 @@ export default function RootLayout() {
             contentStyle: { backgroundColor: colors.bg },
           }}
         />
-        <ComixBridgeHost />
-        <BrainRotBridgeHost />
         <DownloadSheetHost />
       </View>
     </GestureHandlerRootView>

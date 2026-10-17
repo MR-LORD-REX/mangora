@@ -9,36 +9,20 @@ export interface OpenMangaInfoOptions {
   downloadsOnly?: boolean;
 }
 
-/**
- * Opens the shared manga viewer for a provider. Chapter-based sources use the
- * /manga/[slug] route; gallery (one-shot) sources use /oneshot/[id].
- */
+/** Opens the shared manga viewer for an extension source. */
 export function openMangaInfo({
   provider,
   id,
   thumbnailUrl,
   downloadsOnly,
 }: OpenMangaInfoOptions): void {
-  const offline = downloadsOnly ? { downloadsOnly: "1" } : {};
-  if (provider === "nh") {
-    router.push({
-      pathname: "/oneshot/[id]",
-      params: {
-        id,
-        provider,
-        ...(thumbnailUrl ? { thumbnailUrl } : {}),
-        ...offline,
-      },
-    });
-    return;
-  }
   router.push({
     pathname: "/manga/[slug]",
     params: {
       slug: id,
       provider,
       ...(thumbnailUrl ? { thumbnailUrl } : {}),
-      ...offline,
+      ...(downloadsOnly ? { downloadsOnly: "1" } : {}),
     },
   });
 }

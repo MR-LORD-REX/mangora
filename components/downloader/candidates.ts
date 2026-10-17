@@ -1,15 +1,12 @@
 /**
  * candidates.ts
  * ---------------------------------------------------------------------------
- * Translates viewer rows (and gallery metadata) into download candidates, so
+ * Translates viewer rows into download candidates, so
  * the buttons never have to know provider identity rules.
  * ---------------------------------------------------------------------------
  */
 
-import type {
-  ChapterSourceModule,
-  GallerySourceModule,
-} from "@/components/manga/sources/module";
+import type { ChapterSourceModule } from "@/components/manga/sources/module";
 import type { ChapterMeta, ViewerChapterRow } from "@/components/manga/types";
 import { downloadTarget } from "@/services/downloader";
 import type { DownloadCandidate } from "@/services/downloader";
@@ -61,27 +58,4 @@ export function candidatesFromRows(
     candidates.push(candidate);
   }
   return candidates;
-}
-
-/** A one-shot gallery behaves like a single chapter. */
-export function galleryCandidate(
-  source: GallerySourceModule,
-  identity: string,
-  meta: ChapterMeta,
-  pageCount?: number | null,
-): DownloadCandidate {
-  return {
-    target: downloadTarget({
-      provider: source.provider,
-      providerMangaId: identity,
-      providerChapterId: identity,
-    }),
-    chapterTitle: meta.title,
-    chapterIndex: "1",
-    chapterNumber: null,
-    scanlationGroup: null,
-    chapterGroupKey: null,
-    languageCode: null,
-    pageCount: pageCount ?? null,
-  };
 }

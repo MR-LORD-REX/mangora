@@ -24,11 +24,6 @@
               "scheme": "https",
               "host": "mangora-web.web.app",
               "pathPrefix": "/manga"
-            },
-            {
-              "scheme": "https",
-              "host": "mangora-web.web.app",
-              "pathPrefix": "/oneshot"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
@@ -57,6 +52,7 @@
       "onnxruntime-react-native",
       "./plugins/withOnnxruntimePackage",
       "./plugins/withDownloadService",
+      "./plugins/withExtensionHost",
       "./plugins/withAppLinks",
       "./plugins/withUpdater",
       "./plugins/withSubsamplingScaleImageView",

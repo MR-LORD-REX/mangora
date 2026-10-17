@@ -5,6 +5,8 @@ import android.content.res.Configuration
 
 import ai.onnxruntime.reactnative.OnnxruntimePackage
 import com.mangora.app.DownloadPackage
+import com.mangora.app.extensions.ExtensionHost
+import com.mangora.app.extensions.ExtensionPackage
 import com.mangora.app.SubsamplingScaleImageViewPackage
 
 import com.facebook.react.PackageList
@@ -29,6 +31,7 @@ class MainApplication : Application(), ReactApplication {
             PackageList(this).packages.apply {
               add(OnnxruntimePackage())
               add(DownloadPackage())
+              add(ExtensionPackage())
               add(SubsamplingScaleImageViewPackage())
               // Packages that cannot be autolinked yet can be added manually here, for example:
               // add(MyReactNativePackage())
@@ -47,6 +50,7 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    ExtensionHost.initialize(this)
     DefaultNewArchitectureEntryPoint.releaseLevel = try {
       ReleaseLevel.valueOf(BuildConfig.REACT_NATIVE_RELEASE_LEVEL.uppercase())
     } catch (e: IllegalArgumentException) {

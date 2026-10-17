@@ -17,8 +17,6 @@ export interface OpenChapterContext {
   identity: string;
   meta: ChapterMeta;
   coverUrl?: string | null;
-  /** Whether the native bridge is ready (only meaningful for Comix). */
-  bridgeReady: boolean;
 }
 
 /** Provider chapter identity used by the shared viewer to persist read state. */
@@ -62,27 +60,4 @@ export interface ChapterSourceModule {
   openSite?(identity: string, meta: ChapterMeta): void;
   /** Called when a genre/tag chip is tapped. */
   openTag?(tag: SharedTag): void;
-}
-
-/** Contract for the gallery (one-shot) viewer. */
-export interface GallerySourceModule {
-  provider: string;
-  accent: string;
-  label: string;
-  decodeIdentity(param: string): string;
-  load(identity: string): Promise<{
-    meta: ChapterMeta;
-    galleryCode?: string;
-    pageCount?: number;
-    favorites?: number;
-    uploadedAt?: number | null;
-    library?: { id: string; aliases?: string[] };
-  }>;
-  progressQuery(identity: string): SourceProgressQuery;
-  library(identity: string, meta: ChapterMeta): { id: string; aliases?: string[] };
-  /** Reads the gallery (or its equivalent single "chapter"). */
-  read(identity: string, meta: ChapterMeta): Promise<void>;
-  /** Called when a tag chip is tapped. */
-  openTag?(tag: SharedTag): void;
-  openSite?(identity: string, meta: ChapterMeta): void;
 }
