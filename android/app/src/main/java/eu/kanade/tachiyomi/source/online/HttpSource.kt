@@ -49,6 +49,10 @@ abstract class HttpSource : CatalogueSource {
 
     protected open fun imageRequest(page: Page): Request = GET(page.imageUrl!!, headers)
 
+    /** Public bridge wrapper so the extension host can run an extension's
+     * image interceptor (headers, Cloudflare cookies, DRM/descrambling). */
+    open fun imageRequestFor(page: Page): Request = imageRequest(page)
+
     fun setUrlWithoutDomain(manga: SManga, url: String) {
         manga.url = getUrlWithoutDomain(url)
     }

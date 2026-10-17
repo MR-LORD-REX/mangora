@@ -30,6 +30,8 @@ export interface ReaderPageProps {
   url: string;
   /** False while the page is outside the prefetch window. */
   loadImage: boolean;
+  /** Set for `ext:*` pages so the native extension client fetches images. */
+  extensionSourceId?: string;
   geometry: PageGeometry;
   pageBackground: string;
   imageHeaders?: Record<string, string>;
@@ -46,6 +48,7 @@ export interface ReaderPageProps {
 function ReaderPage({
   url,
   loadImage,
+  extensionSourceId,
   geometry,
   pageBackground,
   imageHeaders,
@@ -119,6 +122,7 @@ function ReaderPage({
           <SubsamplingStripImage
             uri={url}
             headers={imageHeaders}
+            extensionSourceId={extensionSourceId}
             width={geometry.imgW}
             height={geometry.imgH}
             backgroundColor={pageBackground}
@@ -164,6 +168,7 @@ function ReaderPage({
           <SubsamplingStripImage
             uri={url}
             headers={imageHeaders}
+            extensionSourceId={extensionSourceId}
             width={geometry.imgW}
             height={geometry.imgH}
             backgroundColor={pageBackground}
@@ -178,6 +183,7 @@ function ReaderPage({
         <SubsamplingStripImage
           uri={url}
           headers={imageHeaders}
+          extensionSourceId={extensionSourceId}
           width={geometry.imgW}
           height={geometry.itemH > geometry.imgH ? geometry.itemH : geometry.imgH}
           backgroundColor={pageBackground}
@@ -238,6 +244,7 @@ export default memo(
   (prev, next) =>
     prev.url === next.url &&
     prev.loadImage === next.loadImage &&
+    prev.extensionSourceId === next.extensionSourceId &&
     geometryEqual(prev.geometry, next.geometry) &&
     prev.pageBackground === next.pageBackground &&
     prev.imageHeaders === next.imageHeaders &&

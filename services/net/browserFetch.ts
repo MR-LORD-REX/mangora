@@ -56,3 +56,35 @@ export async function fetchToFile(
   target.create({ intermediates: true, overwrite: true });
   target.write(new Uint8Array(buffer));
 }
+
+/**
+ * Native file download with a Cloudflare-safe retry. expo-file-system uses
+ * OkHttp without the WebView cookie jar, so a host that just passed a
+ * challenge can still return 403 here. React Native's fetch carries those
+ * cookies; retry through it before surfacing the failure.
+ */
+export async function downloadToFile(
+  url: string,
+  target: File,
+  headers?: Record<string, string>,
+): Promise<void> {
+  if (needsBrowserCookies(url)) {
+    await fetchToFile(url, target, headers);
+    return;
+  }
+  try {
+    await File.downloadFileAsync(url, target, {
+      headers,
+      idempotent: true,
+    });
+    if (!target.exists || target.size <= 0) {
+      throw new Error(`Empty download for ${url}`);
+    }
+  } catch (error) {
+    console.warn(
+      "[net] native download failed; retrying with WebView cookies:",
+      error,
+    );
+    await fetchToFile(url, target, headers);
+  }
+}

@@ -130,6 +130,9 @@ export default function GenericReader() {
   const thumbnailUrl = paramString(params.thumbnailUrl);
   const language = paramString(params.language);
   const chapterMemo = paramString(params.chapterMemo);
+  const extensionSourceId = source.startsWith("ext:")
+    ? source.slice(4)
+    : undefined;
 
   /** Canonical DB identities used by history, translation cache + AI context. */
   const readerIdentity = useMemo(
@@ -1350,6 +1353,7 @@ export default function GenericReader() {
             <ReaderPage
               url={item}
               loadImage={imageWindow.has(index)}
+              extensionSourceId={extensionSourceId}
               geometry={pageGeometry(
                 item,
                 chrome.readingMode,

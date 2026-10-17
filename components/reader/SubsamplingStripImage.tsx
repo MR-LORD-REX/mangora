@@ -29,6 +29,8 @@ import {
 } from "react-native";
 
 import { downloadPageToCache } from "@/services/ocr/pageOcr";
+import { fetchExtensionPageImage } from "@/services/extensions/native";
+import { extensionPageUrlFor } from "@/utils/reader/imageHeaders";
 
 const TILED_EXTENSIONS = /\.(jpe?g|png|webp)(\?|#|$)/i;
 
@@ -40,6 +42,8 @@ if (Platform.OS === "android") {
 export interface SubsamplingStripImageProps {
   uri: string;
   headers?: Record<string, string>;
+  /** Extension source id: route through the extension image client. */
+  extensionSourceId?: string;
   width: number;
   height: number;
   backgroundColor: string;
@@ -51,40 +55,69 @@ export interface SubsamplingStripImageProps {
 export default function SubsamplingStripImage({
   uri,
   headers,
+  extensionSourceId,
   width,
   height,
   backgroundColor,
   onFallbackLoad,
 }: SubsamplingStripImageProps) {
   const [localUri, setLocalUri] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [localFailed, setLocalFailed] = useState(false);
+  const [loadingLocal, setLoadingLocal] = useState(false);
   const tiledSupported =
     Platform.OS === "android" &&
     NativeTiledImage !== null &&
     TILED_EXTENSIONS.test(uri);
 
   useEffect(() => {
-    if (!tiledSupported) return;
     if (uri.startsWith("file://")) {
       // Downloaded pages are already on disk; reuse them as-is.
       setLocalUri(uri);
+      setLocalFailed(false);
+      setLoadingLocal(false);
+      return;
+    }
+    // Extension images must go through the source's OkHttp client. That is
+    // what runs its image interceptor: Cloudflare cookies, per-page headers,
+    // and Philia-style decryption/descrambling.
+    const needsLocal = tiledSupported || Boolean(extensionSourceId);
+    if (!needsLocal) {
+      setLocalUri(null);
+      setLocalFailed(false);
+      setLoadingLocal(false);
       return;
     }
     let cancelled = false;
-    downloadPageToCache(uri, headers)
+    setLocalUri(null);
+    setLocalFailed(false);
+    setLoadingLocal(true);
+    const load = extensionSourceId
+      ? fetchExtensionPageImage(
+          extensionSourceId,
+          uri,
+          extensionPageUrlFor(uri) ?? "",
+        ).then((image) => image.path)
+      : downloadPageToCache(uri, headers);
+    load
       .then((fileUri) => {
-        if (!cancelled) setLocalUri(fileUri);
+        if (!cancelled) {
+          setLocalUri(fileUri);
+          setLoadingLocal(false);
+        }
       })
       .catch((error) => {
         console.warn("Tiled page download failed, using regular image:", error);
-        if (!cancelled) setFailed(true);
+        if (!cancelled) {
+          setLocalFailed(true);
+          setLoadingLocal(false);
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [uri, headers, tiledSupported]);
+  }, [uri, headers, tiledSupported, extensionSourceId]);
 
-  if (tiledSupported && localUri && !failed && NativeTiledImage) {
+  if (tiledSupported && localUri && !localFailed && NativeTiledImage) {
     const TiledView = NativeTiledImage;
     return (
       <View style={{ width, height, backgroundColor, overflow: "hidden" }}>
@@ -93,7 +126,7 @@ export default function SubsamplingStripImage({
     );
   }
 
-  if (tiledSupported && !localUri && !failed) {
+  if (loadingLocal && !localFailed) {
     return (
       <View
         style={{
@@ -106,6 +139,24 @@ export default function SubsamplingStripImage({
       >
         <ActivityIndicator color="#fbbf24" />
       </View>
+    );
+  }
+
+  if (localUri && !localFailed) {
+    return (
+      <Image
+        source={{ uri: localUri }}
+        onLoad={onFallbackLoad}
+        onError={(event) =>
+          console.warn("[reader] page image failed", event.nativeEvent, uri)
+        }
+        style={{
+          width,
+          height,
+          resizeMode: "contain",
+          backgroundColor,
+        }}
+      />
     );
   }
 

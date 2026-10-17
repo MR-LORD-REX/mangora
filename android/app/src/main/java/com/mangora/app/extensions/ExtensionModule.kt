@@ -1,6 +1,7 @@
 package com.mangora.app.extensions
 
 import android.content.Context
+import android.net.Uri
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -13,6 +14,7 @@ import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -21,6 +23,8 @@ import kotlinx.serialization.json.jsonObject
 import okhttp3.Headers
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
+import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
@@ -227,6 +231,49 @@ class ExtensionModule(private val reactContext: ReactApplicationContext) :
                 }
             }
             throw failure ?: IllegalStateException("Extension returned no pages")
+        }
+    }
+
+    @ReactMethod
+    fun fetchPageImage(
+        sourceId: String,
+        imageUrl: String,
+        pageUrl: String,
+        promise: Promise,
+    ) = run(promise) {
+        withSource(sourceId) { source ->
+            val http = source as? HttpSource
+                ?: throw IllegalStateException("Source $sourceId cannot fetch images")
+            val page = Page(0, pageUrl.ifBlank { imageUrl.substringBefore('#') }, imageUrl)
+            val response = http.client.newCall(http.imageRequestFor(page)).execute()
+            response.use {
+                if (!it.isSuccessful) {
+                    throw eu.kanade.tachiyomi.network.HttpException(it.code)
+                }
+                val body = it.body ?: throw IllegalStateException("Empty image response")
+                val mime = body.contentType()?.toString()?.substringBefore(';') ?: "image/jpeg"
+                val extension = when (mime.lowercase()) {
+                    "image/png" -> "png"
+                    "image/webp" -> "webp"
+                    "image/gif" -> "gif"
+                    "image/avif" -> "avif"
+                    else -> "jpg"
+                }
+                val digest = MessageDigest.getInstance("SHA-256")
+                    .digest(imageUrl.toByteArray())
+                    .joinToString("") { byte -> "%02x".format(byte) }
+                val dir = File(reactContext.cacheDir, "ext-images").apply { mkdirs() }
+                val target = File(dir, "$digest.$extension")
+                if (!target.exists() || target.length() == 0L) {
+                    body.byteStream().use { input ->
+                        target.outputStream().use { output -> input.copyTo(output) }
+                    }
+                }
+                JSONObject().apply {
+                    put("path", Uri.fromFile(target).toString())
+                    put("mime", mime)
+                }.toString()
+            }
         }
     }
 

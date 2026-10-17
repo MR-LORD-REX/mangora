@@ -10,6 +10,7 @@
 const extensionHeadersByUrl = new Map<string, Record<string, string>>();
 const extensionHeadersByHost = new Map<string, Record<string, string>>();
 const extensionSourceHeaders = new Map<string, Record<string, string>>();
+const extensionPageUrls = new Map<string, string>();
 
 function hostOf(url: string): string | null {
   const match = /^https?:\/\/([^/?#]+)/i.exec(url);
@@ -34,6 +35,22 @@ export function registerExtensionSourceHeaders(
 ) {
   if (!headers || Object.keys(headers).length === 0) return;
   extensionSourceHeaders.set(provider, headers);
+}
+
+/** Remembers the page URL (Referer) paired with an extension image URL. */
+export function registerExtensionPageUrl(
+  imageUrl: string | null | undefined,
+  pageUrl: string | null | undefined,
+) {
+  if (!imageUrl || !pageUrl) return;
+  extensionPageUrls.set(imageUrl, pageUrl);
+}
+
+export function extensionPageUrlFor(
+  imageUrl: string | null | undefined,
+): string | undefined {
+  if (!imageUrl) return undefined;
+  return extensionPageUrls.get(imageUrl);
 }
 
 /** Returns the request headers needed to load page images for a source. */

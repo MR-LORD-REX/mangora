@@ -12,6 +12,7 @@ import {
 } from "@/services/extensions/native";
 import {
   registerExtensionHeaders,
+  registerExtensionPageUrl,
   registerExtensionSourceHeaders,
 } from "@/utils/reader/imageHeaders";
 
@@ -64,9 +65,10 @@ export async function loadChapterPages({
     mangaId,
   );
   registerExtensionSourceHeaders(source, res.headers);
-  res.pages.forEach((page) =>
-    registerExtensionHeaders(page.imageUrl, res.headers),
-  );
+  res.pages.forEach((page) => {
+    registerExtensionHeaders(page.imageUrl, res.headers);
+    registerExtensionPageUrl(page.imageUrl, page.url);
+  });
   onPages(res.pages.map((page) => page.imageUrl));
 
   if (mangaId) {

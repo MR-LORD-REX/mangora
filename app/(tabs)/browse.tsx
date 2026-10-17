@@ -9,6 +9,7 @@ import {
   Languages,
   Link2,
   Package,
+  Pin,
   Plus,
   RefreshCw,
   SlidersHorizontal,
@@ -23,6 +24,7 @@ import {
   Image,
   Modal,
   Pressable,
+  SectionList,
   ScrollView,
   StyleSheet,
   Text,
@@ -102,17 +104,28 @@ function sourceLanguages(extension: ExtensionCatalogEntry): string[] {
 }
 
 type InstalledSource = InstalledExtensionRecord["sources"][number];
+type SourceRow = { extension: InstalledExtensionRecord; source: InstalledSource };
+
+function sourceLanguageLabel(lang: string): string {
+  if (lang === "en") return "English";
+  if (lang === "all" || lang === "multi") return "Multi";
+  return lang.toUpperCase();
+}
 
 const SourceListRow = React.memo(function SourceListRow({
   source,
   extensionName,
   nsfw,
+  pinned,
   onOpen,
+  onTogglePin,
 }: {
   source: InstalledSource;
   extensionName: string;
   nsfw: boolean;
+  pinned: boolean;
   onOpen: (sourceId: string) => void;
+  onTogglePin: (sourceId: string) => void;
 }) {
   return (
     <Pressable
@@ -127,7 +140,7 @@ const SourceListRow = React.memo(function SourceListRow({
       <View style={styles.rowBody}>
         <Text style={styles.rowTitle}>{source.name}</Text>
         <Text style={styles.rowMeta}>
-          {source.lang.toUpperCase()} {"\u00b7"} {extensionName}
+          {sourceLanguageLabel(source.lang)} {"\u00b7"} {extensionName}
         </Text>
       </View>
       {nsfw ? (
@@ -135,6 +148,21 @@ const SourceListRow = React.memo(function SourceListRow({
           <Text style={styles.matureText}>18+</Text>
         </View>
       ) : null}
+      <Pressable
+        onPress={(event) => {
+          event.stopPropagation();
+          onTogglePin(source.id);
+        }}
+        hitSlop={10}
+        accessibilityLabel={pinned ? "Unpin source" : "Pin source"}
+        style={({ pressed }) => [styles.pinButton, pressed && styles.pressed]}
+      >
+        <Pin
+          color={pinned ? colors.accent : colors.textFaint}
+          fill={pinned ? colors.accent : "transparent"}
+          size={18}
+        />
+      </Pressable>
     </Pressable>
   );
 });
@@ -356,6 +384,48 @@ export default function BrowseScreen() {
     [installed, content, language, query],
   );
 
+  const pinnedIds = useMemo(
+    () => new Set(settings?.pinnedSourceIds ?? []),
+    [settings?.pinnedSourceIds],
+  );
+  const lastUsedAt = settings?.sourceLastUsedAt ?? {};
+  const sourceSections = useMemo(() => {
+    const byName = (a: SourceRow, b: SourceRow) =>
+      a.source.name.localeCompare(b.source.name);
+    const pinned = sourceRows
+      .filter((row) => pinnedIds.has(row.source.id))
+      .sort(byName);
+    const unpinned = sourceRows.filter((row) => !pinnedIds.has(row.source.id));
+    const recentlyUsed = unpinned
+      .filter((row) => Boolean(lastUsedAt[row.source.id]))
+      .sort(
+        (a, b) =>
+          (lastUsedAt[b.source.id] ?? 0) - (lastUsedAt[a.source.id] ?? 0) ||
+          byName(a, b),
+      );
+    const english = unpinned
+      .filter((row) => row.source.lang === "en")
+      .sort(byName);
+    const multi = unpinned
+      .filter((row) => row.source.lang === "all" || row.source.lang === "multi")
+      .sort(byName);
+    const other = unpinned
+      .filter(
+        (row) =>
+          row.source.lang !== "en" &&
+          row.source.lang !== "all" &&
+          row.source.lang !== "multi",
+      )
+      .sort(byName);
+    return [
+      { title: "Pinned", data: pinned },
+      { title: "Last used", data: recentlyUsed },
+      { title: "English", data: english },
+      { title: "Multi", data: multi },
+      { title: "Other", data: other },
+    ].filter((section) => section.data.length > 0);
+  }, [lastUsedAt, pinnedIds, sourceRows]);
+
   const extensionRows = useMemo(
     () =>
       catalog.filter((extension) => {
@@ -407,9 +477,25 @@ export default function BrowseScreen() {
   const handleInstall = useCallback((extension: ExtensionCatalogEntry) => {
     void installRef.current(extension);
   }, []);
-  const handleOpenSource = useCallback((sourceId: string) => {
-    router.push(`/extensions/source/${encodeURIComponent(sourceId)}` as Href);
-  }, []);
+  const handleOpenSource = useCallback(
+    (sourceId: string) => {
+      const current = settings?.sourceLastUsedAt ?? {};
+      void updateSettings({
+        sourceLastUsedAt: { ...current, [sourceId]: Date.now() },
+      }).catch(console.error);
+      router.push(`/extensions/source/${encodeURIComponent(sourceId)}` as Href);
+    },
+    [settings?.sourceLastUsedAt],
+  );
+  const handleTogglePin = useCallback(
+    (sourceId: string) => {
+      const current = new Set(settings?.pinnedSourceIds ?? []);
+      if (current.has(sourceId)) current.delete(sourceId);
+      else current.add(sourceId);
+      void updateSettings({ pinnedSourceIds: [...current] }).catch(console.error);
+    },
+    [settings?.pinnedSourceIds],
+  );
 
   async function beginInstall(extension: ExtensionCatalogEntry) {
     setPendingInstall(extension);
@@ -631,8 +717,8 @@ export default function BrowseScreen() {
           <RepoIntro onAdd={() => setRepoOpen(true)} />
         </ScrollView>
       ) : tab === "sources" ? (
-        <FlatList
-          data={sourceRows}
+        <SectionList
+          sections={sourceSections}
           keyExtractor={(item) => `${item.extension.packageName}:${item.source.id}`}
           contentContainerStyle={styles.listContent}
           initialNumToRender={10}
@@ -640,12 +726,18 @@ export default function BrowseScreen() {
           updateCellsBatchingPeriod={40}
           windowSize={9}
           removeClippedSubviews
+          stickySectionHeadersEnabled={false}
+          renderSectionHeader={({ section }) => (
+            <Text style={styles.sectionHeader}>{section.title}</Text>
+          )}
           renderItem={({ item }) => (
             <SourceListRow
               source={item.source}
               extensionName={item.extension.name}
               nsfw={item.extension.nsfw}
+              pinned={pinnedIds.has(item.source.id)}
               onOpen={handleOpenSource}
+              onTogglePin={handleTogglePin}
             />
           )}
           ListEmptyComponent={
@@ -1060,6 +1152,14 @@ const styles = StyleSheet.create({
   },
   bannerText: { color: colors.gold, fontSize: 12, flex: 1, lineHeight: 17 },
 
+  sectionHeader: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+    marginTop: 10,
+    marginBottom: 2,
+  },
   sourceRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1079,6 +1179,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   sourceInitial: { color: colors.accent, fontSize: 19, fontWeight: "800" },
+  pinButton: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   rowBody: { flex: 1, minWidth: 0 },
   rowTitle: { color: colors.text, fontSize: 15, fontWeight: "700" },
   rowMeta: { color: colors.textFaint, fontSize: 12, marginTop: 4 },

@@ -111,6 +111,10 @@ export interface AppSettings {
   readerDefaultZoomScale: number;
   /** Repositories the user explicitly added for extension discovery. */
   extensionRepos: ExtensionRepoSetting[];
+  /** Source ids pinned above every other section in Browse > Sources. */
+  pinnedSourceIds: string[];
+  /** Last time each source was opened, keyed by source id. */
+  sourceLastUsedAt: Record<string, number>;
   /** Epoch millis when the user accepted the extension install terms. */
   extensionTermsAcceptedAt: number | null;
   /** Hide providers marked mature from source discovery. */
@@ -185,6 +189,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   readerFitMode: "fit",
   readerDefaultZoomScale: 1,
   extensionRepos: [],
+  pinnedSourceIds: [],
+  sourceLastUsedAt: {},
   extensionTermsAcceptedAt: null,
   safeMode: true,
   ageRestrictedSources: false,
@@ -329,6 +335,20 @@ function sanitize(raw: unknown): AppSettings {
             (entry as ExtensionRepoSetting).url.length > 0,
         )
       : [],
+    pinnedSourceIds: Array.isArray(value.pinnedSourceIds)
+      ? value.pinnedSourceIds.filter(
+          (id): id is string => typeof id === "string" && id.length > 0,
+        )
+      : [],
+    sourceLastUsedAt:
+      value.sourceLastUsedAt && typeof value.sourceLastUsedAt === "object"
+        ? Object.fromEntries(
+            Object.entries(value.sourceLastUsedAt).filter(
+              (entry): entry is [string, number] =>
+                typeof entry[1] === "number" && Number.isFinite(entry[1]),
+            ),
+          )
+        : {},
     extensionTermsAcceptedAt:
       typeof value.extensionTermsAcceptedAt === "number" &&
       Number.isFinite(value.extensionTermsAcceptedAt)

@@ -14,7 +14,7 @@
 import { Directory, File, Paths } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 
-import { fetchToFile, needsBrowserCookies } from "@/services/net/browserFetch";
+import { downloadToFile } from "@/services/net/browserFetch";
 
 
 /** A YOLO text-region box in natural page pixels. */
@@ -130,15 +130,7 @@ export async function downloadPageToCache(
     const dir = await getPagesDirectory();
     const target = new File(dir, `page-${hashString(pageUrl)}.img`);
     if (target.exists) return target.uri;
-    if (needsBrowserCookies(pageUrl)) {
-      // Cloudflare-gated hosts: RN's fetch carries the WebView cookies.
-      await fetchToFile(pageUrl, target, headers);
-    } else {
-      await File.downloadFileAsync(pageUrl, target, {
-        headers,
-        idempotent: true,
-      });
-    }
+    await downloadToFile(pageUrl, target, headers);
     if (!target.exists) {
       throw new OcrError(`Downloading the page image failed: ${pageUrl}`);
     }

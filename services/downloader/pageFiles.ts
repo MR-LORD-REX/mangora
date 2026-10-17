@@ -13,8 +13,12 @@
 
 import { Directory, File } from "expo-file-system";
 
-import { fetchToFile, needsBrowserCookies } from "@/services/net/browserFetch";
-import { imageHeadersForPage } from "@/utils/reader/imageHeaders";
+import { downloadToFile } from "@/services/net/browserFetch";
+import { fetchExtensionPageImage } from "@/services/extensions/native";
+import {
+  extensionPageUrlFor,
+  imageHeadersForPage,
+} from "@/utils/reader/imageHeaders";
 import { pageExtension, providerSegment, safeSegment, shortHash } from "./naming";
 import { downloaderCacheRoot } from "./native";
 
@@ -150,6 +154,7 @@ export async function downloadChapterPages({
 
       try {
         const file = await downloadPage(
+          provider,
           urls[index],
           directory,
           name,
@@ -179,6 +184,7 @@ export async function downloadChapterPages({
 
 /** Downloads one page to a `.part` file, then moves it into place. */
 async function downloadPage(
+  provider: string,
   url: string,
   directory: Directory,
   name: string,
@@ -189,13 +195,19 @@ async function downloadPage(
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
       if (temp.exists) temp.delete();
-      if (needsBrowserCookies(url)) {
-        // Cloudflare-gated hosts: RN's fetch carries the WebView cookies.
-        await fetchToFile(url, temp, headers);
-        // Cloudflare-gated hosts: RN's fetch carries the WebView cookies.
-        await fetchToFile(url, temp, headers);
+      if (provider.startsWith("ext:")) {
+        const image = await fetchExtensionPageImage(
+          provider.slice(4),
+          url,
+          extensionPageUrlFor(url) ?? "",
+        );
+        const source = new File(image.path);
+        if (!source.exists || source.size <= 0) {
+          throw new Error("Extension returned an empty page image");
+        }
+        source.copy(temp);
       } else {
-        await File.downloadFileAsync(url, temp, { headers, idempotent: true });
+        await downloadToFile(url, temp, headers);
       }
       if (!temp.exists || temp.size <= 0) {
         throw new Error("Empty page payload");
@@ -243,13 +255,17 @@ export async function cacheMangaThumbnail(input: {
       input.provider,
       input.thumbnailUrl,
     );
-    if (needsBrowserCookies(input.thumbnailUrl)) {
-      await fetchToFile(input.thumbnailUrl, temp, thumbHeaders);
+    if (input.provider.startsWith("ext:")) {
+      const image = await fetchExtensionPageImage(
+        input.provider.slice(4),
+        input.thumbnailUrl,
+        input.thumbnailUrl,
+      );
+      const source = new File(image.path);
+      if (!source.exists || source.size <= 0) return null;
+      source.copy(temp);
     } else {
-      await File.downloadFileAsync(input.thumbnailUrl, temp, {
-        headers: thumbHeaders,
-        idempotent: true,
-      });
+      await downloadToFile(input.thumbnailUrl, temp, thumbHeaders);
     }
     if (!temp.exists || temp.size <= 0) return null;
     if (target.exists) target.delete();

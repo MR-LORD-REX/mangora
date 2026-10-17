@@ -38,6 +38,11 @@ interface MangoraExtensionsModule {
     memoJson: string,
     mangaId: string,
   ): Promise<string>;
+  fetchPageImage(
+    sourceId: string,
+    imageUrl: string,
+    pageUrl: string,
+  ): Promise<string>;
   getMangaUrl(sourceId: string, url: string): Promise<string>;
   getChapterUrl(sourceId: string, url: string): Promise<string>;
   getHeaders(sourceId: string): Promise<string>;
@@ -164,6 +169,26 @@ export async function getExtensionPages(
 ): Promise<NativePageList> {
   return parse<NativePageList>(
     await requireNative().getPages(sourceId, chapterUrl, memoJson, mangaId),
+  );
+}
+
+export interface NativePageImage {
+  path: string;
+  mime: string;
+}
+
+/**
+ * Fetches a page image through the extension's own client, so its
+ * ImageInterceptor (headers, Cloudflare cookies, decryption/descrambling) runs
+ * before the bytes reach the reader or downloader.
+ */
+export async function fetchExtensionPageImage(
+  sourceId: string,
+  imageUrl: string,
+  pageUrl = "",
+): Promise<NativePageImage> {
+  return parse<NativePageImage>(
+    await requireNative().fetchPageImage(sourceId, imageUrl, pageUrl),
   );
 }
 
