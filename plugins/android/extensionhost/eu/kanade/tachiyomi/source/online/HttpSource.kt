@@ -75,11 +75,26 @@ abstract class HttpSource : CatalogueSource {
 
     internal fun joinUrl(path: String): String {
         if (path.startsWith("http://") || path.startsWith("https://")) return path
-        return if (baseUrl.endsWith("/") || path.startsWith("/")) {
-            baseUrl + path
-        } else {
-            "$baseUrl/$path"
+        // Some sources store opaque ids ("118") while others store paths
+        // ("/manga/118"). Normalise only the join boundary and collapse
+        // duplicated path separators; never invent a leading slash in the
+        // stored value itself.
+        val base = baseUrl.trimEnd('/')
+        val (rawPath, suffix) = splitPathSuffix(path.trim())
+        val cleaned = rawPath.replace(Regex("/{2,}"), "/")
+        if (cleaned.isEmpty()) return "$base/$suffix"
+        return "$base/${cleaned.trimStart('/')}$suffix"
+    }
+
+    private fun splitPathSuffix(value: String): Pair<String, String> {
+        val query = value.indexOf('?')
+        val fragment = value.indexOf('#')
+        val cut = when {
+            query < 0 -> fragment
+            fragment < 0 -> query
+            else -> minOf(query, fragment)
         }
+        return if (cut < 0) value to "" else value.substring(0, cut) to value.substring(cut)
     }
 
     override val supportsRelatedMangas: Boolean get() = false

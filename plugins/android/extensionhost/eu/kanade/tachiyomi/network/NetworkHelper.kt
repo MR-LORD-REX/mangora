@@ -4,13 +4,12 @@ import android.content.Context
 import eu.kanade.tachiyomi.network.interceptor.CloudflareInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UncaughtExceptionInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UserAgentInterceptor
-import okhttp3.CookieJar
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
 class NetworkHelper(context: Context) {
     private val appContext: Context = context.applicationContext
-    val cookieJar: CookieJar = AndroidCookieJar()
+    val cookieJar: AndroidCookieJar = AndroidCookieJar()
 
     val client: OkHttpClient by lazy {
         val builder = OkHttpClient.Builder()
@@ -23,7 +22,7 @@ class NetworkHelper(context: Context) {
             .retryOnConnectionFailure(true)
             .addInterceptor(UncaughtExceptionInterceptor())
             .addInterceptor(UserAgentInterceptor(::defaultUserAgentProvider))
-            .addInterceptor(CloudflareInterceptor())
+            .addInterceptor(CloudflareInterceptor(appContext, cookieJar, ::defaultUserAgentProvider))
 
         // Keiyoushi's helper expects no Brotli or legacy gzip interceptor in
         // the default client; it installs CompressionInterceptor itself.

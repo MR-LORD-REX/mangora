@@ -14,15 +14,21 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import okhttp3.Headers
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 class ExtensionModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
 
     private val io = Executors.newCachedThreadPool()
+    private val chapterMemos = ConcurrentHashMap<String, JsonObject>()
 
     init {
         ExtensionHost.initialize(reactContext.applicationContext)
@@ -111,71 +117,123 @@ class ExtensionModule(private val reactContext: ReactApplicationContext) :
     @ReactMethod
     fun getManga(sourceId: String, url: String, promise: Promise) = run(promise) {
         withSource(sourceId) { source ->
-            val manga = SManga.create().apply { this.url = normalizePath(url) }
-            val update = runBlocking {
-                source.getMangaUpdate(manga, emptyList(), true, true)
+            withMangaFallback(url) { identity ->
+                withPathFallback(identity) { path ->
+                    val manga = SManga.create().apply { this.url = path; this.title = "" }
+                    val update = runBlocking {
+                        source.getMangaUpdate(manga, emptyList(), true, true)
+                    }
+                    val resolvedManga = update.manga.also { result ->
+                        val current = runCatching { result.url }.getOrNull()
+                        if (current.isNullOrBlank()) result.url = manga.url
+                        // Some extensions return a fresh SManga with fields left
+                        // unset; getMangaUrl may dereference title immediately.
+                        val resolvedTitle = runCatching { result.title }.getOrNull()
+                        if (resolvedTitle.isNullOrBlank()) result.title = manga.title
+                    }
+                    rememberChapterMemos(sourceId, update.chapters)
+                    JSONObject().apply {
+                        put("manga", resolvedManga.toJson())
+                        put("chapters", update.chapters.toJsonArray())
+                        put("headers", headersOf(source).toJson())
+                        put("mangaUrl", sourceUrl(source, resolvedManga))
+                    }.toString()
+                }
             }
-            val resolvedManga = update.manga.also { result ->
-                val current = runCatching { result.url }.getOrNull()
-                if (current.isNullOrBlank()) result.url = manga.url
-            }
-            JSONObject().apply {
-                put("manga", resolvedManga.toJson())
-                put("chapters", update.chapters.toJsonArray())
-                put("headers", headersOf(source).toJson())
-                put("mangaUrl", sourceUrl(source, resolvedManga))
-            }.toString()
         }
     }
 
     @ReactMethod
     fun getChapters(sourceId: String, url: String, promise: Promise) = run(promise) {
         withSource(sourceId) { source ->
-            val manga = SManga.create().apply { this.url = normalizePath(url) }
-            val update = runBlocking {
-                source.getMangaUpdate(manga, emptyList(), false, true)
+            withMangaFallback(url) { identity ->
+                withPathFallback(identity) { path ->
+                    val manga = SManga.create().apply { this.url = path; this.title = "" }
+                    val update = runBlocking {
+                        source.getMangaUpdate(manga, emptyList(), false, true)
+                    }
+                    rememberChapterMemos(sourceId, update.chapters)
+                    JSONObject().apply {
+                        put("chapters", update.chapters.toJsonArray())
+                    }.toString()
+                }
             }
-            JSONObject().apply {
-                put("chapters", update.chapters.toJsonArray())
-            }.toString()
         }
     }
 
     @ReactMethod
-    fun getPages(sourceId: String, url: String, promise: Promise) = run(promise) {
+    fun getPages(
+        sourceId: String,
+        url: String,
+        memoJson: String,
+        mangaId: String,
+        promise: Promise,
+    ) = run(promise) {
         withSource(sourceId) { source ->
-            val chapter = SChapter.create().apply { this.url = normalizePath(url) }
-            val pages = runBlocking { source.getPageList(chapter) }
-            val resolved = pages.map { page ->
-                var image = page.imageUrl
-                if (image.isNullOrBlank()) {
-                    val http = source as? eu.kanade.tachiyomi.source.online.HttpSource
-                    image = runCatching {
-                        if (http != null) runBlocking { http.getImageUrl(page) } else page.imageUrl
-                    }.getOrNull()
+            fun loadPages(path: String, memo: JsonObject): String {
+                val chapter = SChapter.create().apply {
+                    this.url = path
+                    this.name = ""
+                    this.memo = memo
                 }
-                page to (image ?: page.url)
-            }
-            val headers = headersOf(source)
-            JSONObject().apply {
-                put("headers", headers.toJson())
-                put("pages", JSONArray().apply {
-                    resolved.forEachIndexed { index, (page, image) ->
-                        put(JSONObject().apply {
-                            put("index", index)
-                            put("url", page.url)
-                            put("imageUrl", image)
-                        })
+                val pages = runBlocking { source.getPageList(chapter) }
+                val resolved = pages.map { page ->
+                    var image = page.imageUrl
+                    if (image.isNullOrBlank()) {
+                        val http = source as? eu.kanade.tachiyomi.source.online.HttpSource
+                        image = runCatching {
+                            if (http != null) runBlocking { http.getImageUrl(page) } else page.imageUrl
+                        }.getOrNull()
                     }
-                })
-            }.toString()
+                    page to (image ?: page.url)
+                }
+                val headers = headersOf(source)
+                return JSONObject().apply {
+                    put("headers", headers.toJson())
+                    put("pages", JSONArray().apply {
+                        resolved.forEachIndexed { index, (page, image) ->
+                            put(JSONObject().apply {
+                                put("index", index)
+                                put("url", page.url)
+                                put("imageUrl", image)
+                            })
+                        }
+                    })
+                }.toString()
+            }
+
+            // Path variants repair older rows: Madara/Philia sometimes stored a
+            // leading slash, and legacy Philia rows used "chapter-2" instead of
+            // "2". The original path is always tried first.
+            val paths = chapterPathCandidates(url)
+            val primaryMemo = parseMemo(memoJson, sourceId, url)
+            val memos = linkedSetOf(primaryMemo)
+            if (primaryMemo.isEmpty() && mangaId.isNotBlank()) {
+                // AryaScans/BrainRotComics read SChapter.memo["mangaPath"].
+                // Old history rows predate memo persistence; the provider
+                // manga id is the same value the extension puts there.
+                memos.add(JsonObject(mapOf("mangaPath" to JsonPrimitive(mangaId.trim()))))
+            }
+
+            var failure: Throwable? = null
+            for (path in paths) {
+                for (memo in memos) {
+                    try {
+                        return@withSource loadPages(path, memo)
+                    } catch (error: Throwable) {
+                        failure?.addSuppressed(error)
+                        failure = error
+                    }
+                }
+            }
+            throw failure ?: IllegalStateException("Extension returned no pages")
         }
     }
 
     @ReactMethod
     fun getMangaUrl(sourceId: String, url: String, promise: Promise) = run(promise) {
         withSource(sourceId) { source ->
-            val manga = SManga.create().apply { this.url = normalizePath(url) }
+            val manga = SManga.create().apply { this.url = preferredIdentity(url); this.title = "" }
             JSONObject().put("url", sourceUrl(source, manga)).toString()
         }
     }
@@ -183,7 +241,7 @@ class ExtensionModule(private val reactContext: ReactApplicationContext) :
     @ReactMethod
     fun getChapterUrl(sourceId: String, url: String, promise: Promise) = run(promise) {
         withSource(sourceId) { source ->
-            val chapter = SChapter.create().apply { this.url = normalizePath(url) }
+            val chapter = SChapter.create().apply { this.url = preferredIdentity(url); this.name = "" }
             JSONObject().put("url", sourceChapterUrl(source, chapter)).toString()
         }
     }
@@ -215,24 +273,127 @@ class ExtensionModule(private val reactContext: ReactApplicationContext) :
         }
     }
 
-    private fun normalizePath(url: String): String {
-        val trimmed = url.trim()
-        if (trimmed.isEmpty() || trimmed.startsWith("/") ||
-            trimmed.startsWith("http://") || trimmed.startsWith("https://")
-        ) return trimmed
-        return "/$trimmed"
+    /**
+     * Extension URLs are either opaque ids ("118", a MangaDex UUID, ...) or
+     * paths ("/manga/118"). Prepending a slash to an id silently corrupts
+     * every request built from it, so keep the value verbatim.
+     *
+     * Older Mangora rows may have stored `/118` after the previous blanket
+     * slash fix. A single-segment value after the slash is an id, not a path,
+     * so repair just that shape. Multi-segment paths keep their slash.
+     */
+    private fun preferredIdentity(url: String): String {
+        val raw = url.trim()
+        if (!raw.startsWith("/")) return raw
+        val rest = raw.trimStart('/')
+        return if (rest.isNotEmpty() && !rest.contains('/')) rest else raw
+    }
+
+    private fun memoKey(sourceId: String, url: String): String = "$sourceId\u0000$url"
+
+    private fun rememberChapterMemos(sourceId: String, chapters: List<SChapter>) {
+        chapters.forEach { chapter -> chapterMemos[memoKey(sourceId, chapter.url)] = chapter.memo }
+    }
+
+    private fun parseMemo(raw: String, sourceId: String, url: String): JsonObject {
+        if (raw.isNotBlank()) {
+            val parsed = runCatching { Json.parseToJsonElement(raw).jsonObject }.getOrNull()
+            if (parsed != null && parsed.isNotEmpty()) return parsed
+        }
+        return chapterMemos[memoKey(sourceId, url)] ?: JsonObject(emptyMap())
+    }
+
+    private fun <T> withPathFallback(url: String, block: (String) -> T): T {
+        val raw = url.trim()
+        val preferred = preferredIdentity(raw)
+        val candidates = when {
+            raw.isEmpty() || raw.startsWith("http://") || raw.startsWith("https://") ->
+                listOf(raw)
+            preferred == raw && raw.startsWith("/") -> listOf(raw)
+            preferred == raw -> listOf(raw, "/$raw")
+            else -> listOf(preferred, raw)
+        }
+        var failure: Throwable? = null
+        for (candidate in candidates) {
+            try {
+                return block(candidate)
+            } catch (error: Throwable) {
+                failure?.addSuppressed(error)
+                failure = error
+            }
+        }
+        throw failure ?: IllegalStateException("Extension returned no result")
+    }
+
+    /**
+     * Some extensions expect the bare slug/id in `SManga.url`, while older
+     * Mangora rows may hold the full `/manga/<id>` path. Only retry with the
+     * last path segment after the preferred identity fails.
+     */
+    private fun <T> withMangaFallback(url: String, block: (String) -> T): T {
+        val preferred = preferredIdentity(url)
+        val path = preferred.substringBefore('?').substringBefore('#').trimEnd('/')
+        val last = path.substringAfterLast('/')
+        val candidates = linkedSetOf(preferred)
+        if (last.isNotBlank() && last != path) candidates.add(last)
+        var failure: Throwable? = null
+        for (candidate in candidates) {
+            try {
+                return block(candidate)
+            } catch (error: Throwable) {
+                failure?.addSuppressed(error)
+                failure = error
+            }
+        }
+        throw failure ?: IllegalStateException("Extension returned no result")
     }
 
     private fun sourceUrl(source: Source, manga: SManga): String {
         val http = source as? eu.kanade.tachiyomi.source.online.HttpSource
-        if (http != null) return http.getMangaUrl(manga)
-        return manga.url
+        val url = if (http != null) http.getMangaUrl(manga) else manga.url
+        return cleanUrl(url)
     }
 
     private fun sourceChapterUrl(source: Source, chapter: SChapter): String {
         val http = source as? eu.kanade.tachiyomi.source.online.HttpSource
-        if (http != null) return http.getChapterUrl(chapter)
-        return chapter.url
+        val url = if (http != null) http.getChapterUrl(chapter) else chapter.url
+        return cleanUrl(url)
+    }
+
+    /** Collapses repeated path separators while keeping the URL scheme intact. */
+    private fun cleanUrl(url: String): String = url.replace(Regex("(?<!:)/{2,}"), "/")
+
+    private fun legacyChapterUrl(url: String): String? {
+        val match = Regex("(^|/)chapter-([^/?#]+)(?=$|[?#])").find(url) ?: return null
+        return url.replaceRange(match.range, match.groupValues[1] + match.groupValues[2])
+    }
+
+    /**
+     * Ordered path repairs for chapter ids. Full URLs are passed through
+     * untouched; relative ids get slash and legacy "chapter-N" variants.
+     */
+    private fun chapterPathCandidates(url: String): List<String> {
+        val raw = url.trim()
+        if (raw.isEmpty() || raw.startsWith("http://") || raw.startsWith("https://")) {
+            return listOf(raw)
+        }
+        val out = linkedSetOf<String>()
+        fun add(value: String?) {
+            if (!value.isNullOrBlank()) out.add(value)
+        }
+        val preferred = preferredIdentity(raw)
+        val noLeading = raw.trimStart('/')
+        val legacy = legacyChapterUrl(raw)
+        val legacyNoLeading = legacy?.trimStart('/')
+        add(preferred)
+        add(raw)
+        add(noLeading)
+        add("/" + noLeading)
+        add(noLeading.trimEnd('/'))
+        add(legacy)
+        add(legacyNoLeading)
+        add(legacyNoLeading?.trimEnd('/')?.substringAfterLast('/'))
+        return out.toList()
     }
 
     private fun headersOf(source: Source): Headers {
@@ -378,6 +539,7 @@ class ExtensionModule(private val reactContext: ReactApplicationContext) :
         put("chapterNumber", if (chapter_number.isFinite()) chapter_number else JSONObject.NULL)
         put("scanlator", scanlator ?: JSONObject.NULL)
         put("dateUpload", date_upload)
+        put("memo", JSONObject(memo.toString()))
     }
 
     private fun List<SChapter>.toJsonArray(): JSONArray = JSONArray().apply {

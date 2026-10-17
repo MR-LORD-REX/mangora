@@ -93,6 +93,7 @@ export interface NativeChapter {
   chapterNumber: number | null;
   scanlator: string | null;
   dateUpload: number;
+  memo?: Record<string, unknown>;
 }
 
 export interface NativeMangaPage {

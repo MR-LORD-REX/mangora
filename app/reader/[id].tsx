@@ -11,7 +11,6 @@ import {
   Dimensions,
   FlatList,
   Image,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -117,6 +116,7 @@ export default function GenericReader() {
     title?: string | string[];
     mangaTitle?: string | string[];
     chapterTitle?: string | string[];
+    chapterMemo?: string | string[];
     thumbnailUrl?: string | string[];
     language?: string;
   }>();
@@ -129,6 +129,7 @@ export default function GenericReader() {
   const mangaTitle = paramString(params.mangaTitle) || title;
   const thumbnailUrl = paramString(params.thumbnailUrl);
   const language = paramString(params.language);
+  const chapterMemo = paramString(params.chapterMemo);
 
   /** Canonical DB identities used by history, translation cache + AI context. */
   const readerIdentity = useMemo(
@@ -215,16 +216,20 @@ export default function GenericReader() {
   const pagedModeRef = useRef(false);
 
   /** Records the decoded pixel size of a page once known (getSize/onLoad). */
-  const rememberPageDims = (url: string, width: number, height: number) => {
-    if (!width || !height) return;
-    setPageDims((prev) => {
-      const current = prev[url];
-      if (current && current.width === width && current.height === height) {
-        return prev;
-      }
-      return { ...prev, [url]: { width, height } };
-    });
-  };
+  const rememberPageDims = useCallback(
+    (url: string, width: number, height: number) => {
+      if (!width || !height) return;
+      setPageDims((prev) => {
+        const current = prev[url];
+        if (current && current.width === width && current.height === height) {
+          return prev;
+        }
+        return { ...prev, [url]: { width, height } };
+      });
+    },
+    [],
+  );
+  const requestedPageDimsRef = useRef<Set<string>>(new Set());
   const [bodySize, setBodySize] = useState({
     width: screenWidth,
     height: screenHeight,
@@ -349,6 +354,7 @@ export default function GenericReader() {
           source: provider,
           mangaTitle,
           chapterTitle: title,
+          chapterMemo,
           ...(mangaId ? { mangaId } : {}),
           ...(thumbnailUrl ? { thumbnailUrl } : {}),
           ...(language ? { language } : {}),
@@ -373,6 +379,7 @@ export default function GenericReader() {
     };
   }, [
     chapterId,
+    chapterMemo,
     language,
     mangaId,
     mangaTitle,
@@ -490,6 +497,7 @@ export default function GenericReader() {
           source,
           chapterId,
           mangaId,
+          chapterMemo,
           onPages: (nextPages) => {
             if (!cancelled) setPages(nextPages);
           },
@@ -514,15 +522,26 @@ export default function GenericReader() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterId, source]);
 
+  // Only measure pages near the current position. Measuring every page in a
+  // 300-page chapter fired hundreds of network requests before first paint.
   useEffect(() => {
-    pages.forEach((url) => {
+    requestedPageDimsRef.current = new Set();
+  }, [pages]);
+
+  useEffect(() => {
+    if (!pages.length) return;
+    const requested = requestedPageDimsRef.current;
+    for (const index of imageWindow) {
+      const url = pages[index];
+      if (!url || requested.has(url) || pageDims[url]) continue;
+      requested.add(url);
       const onSize = (width: number, height: number) =>
         rememberPageDims(url, width, height);
       const onError = () => undefined;
       if (url.startsWith("file://")) {
         // Downloaded pages are already local; remote headers would break it.
         Image.getSize(url, onSize, onError);
-        return;
+        continue;
       }
       const headers = imageHeadersForPage(source, url);
       if (headers && typeof (Image as any).getSizeWithHeaders === "function") {
@@ -532,8 +551,8 @@ export default function GenericReader() {
       } else {
         Image.getSize(url, onSize, onError);
       }
-    });
-  }, [pages, source]);
+    }
+  }, [imageWindow, pageDims, pages, rememberPageDims, source]);
 
   const scrollOffset = useRef(0);
   const [scrollSpeed, setScrollSpeed] = useState(1);
@@ -547,17 +566,14 @@ export default function GenericReader() {
   };
 
   /**
-   * Scroll-mode page counter: resolves the strip/page whose band contains
-   * the top of the viewport from the accumulated row heights. FlatList
-   * viewability cannot work for stitched strips because a 9000px-tall page
-   * is never "50% visible" inside a ~700px viewport - that is what made
-   * the counter freeze on those chapters.
+   * Prefix offsets for the current strip layout. Recomputing every page's
+   * geometry inside onScroll was O(pages) on every frame; lookups now use a
+   * binary search over this table, and jumps reuse the same offsets.
    */
-  const syncPageIndexFromOffset = (offset: number) => {
-    if (pagedModeRef.current || pages.length === 0) return;
+  const pageOffsets = useMemo(() => {
     const horizontal = isHorizontalMode(chrome.readingMode);
-    let accumulated = 0;
-    let index = pages.length - 1;
+    const offsets = new Array<number>(pages.length + 1);
+    offsets[0] = 0;
     for (let i = 0; i < pages.length; i += 1) {
       const geometry = pageGeometry(
         pages[i],
@@ -568,15 +584,33 @@ export default function GenericReader() {
         pageDims,
       );
       const length = horizontal ? geometry.itemW : geometry.itemH;
-      if (offset < accumulated + Math.max(length, 1)) {
-        index = i;
-        break;
-      }
-      accumulated += length;
+      offsets[i + 1] = offsets[i] + Math.max(length, 1);
     }
-    if (lastPageIndexRef.current !== index) {
-      lastPageIndexRef.current = index;
-      setCurrentPageIndex(index);
+    return offsets;
+  }, [
+    bodySize,
+    chrome.fitMode,
+    chrome.readingMode,
+    chrome.sidePadding,
+    pageDims,
+    pages,
+  ]);
+
+  const syncPageIndexFromOffset = (offset: number) => {
+    if (pagedModeRef.current || pages.length === 0) return;
+    let low = 0;
+    let high = pages.length - 1;
+    while (low < high) {
+      const mid = (low + high) >> 1;
+      if (pageOffsets[mid + 1] > offset) {
+        high = mid;
+      } else {
+        low = mid + 1;
+      }
+    }
+    if (lastPageIndexRef.current !== low) {
+      lastPageIndexRef.current = low;
+      setCurrentPageIndex(low);
     }
   };
 
@@ -598,8 +632,11 @@ export default function GenericReader() {
       return;
     }
 
-    const start = Math.max(0, currentPageIndex - 3);
-    const end = Math.min(pages.length - 1, currentPageIndex + 3);
+    // Keep the prefetch window tight: each entry can hold a decoded tiled
+    // page, and a 300-page chapter should not keep seven huge images alive.
+    const radius = isPagedMode(chrome.readingMode) ? 1 : 2;
+    const start = Math.max(0, currentPageIndex - radius);
+    const end = Math.min(pages.length - 1, currentPageIndex + radius);
     const nextWindow = new Set<number>();
     for (let index = start; index <= end; index += 1) {
       nextWindow.add(index);
@@ -614,11 +651,11 @@ export default function GenericReader() {
       }
       return nextWindow;
     });
-  }, [currentPageIndex, pages.length]);
+  }, [chrome.readingMode, currentPageIndex, pages.length]);
 
   // Paged modes only: every page fills the viewport, so viewability is
   // exact there. Scroll modes are handled by syncPageIndexFromOffset.
-  const onViewableItemsChanged = ({ viewableItems }: any) => {
+  const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
     if (!pagedModeRef.current) return;
     if (viewableItems && viewableItems.length > 0) {
       const index = viewableItems[0].index ?? 0;
@@ -627,7 +664,7 @@ export default function GenericReader() {
         setCurrentPageIndex(index);
       }
     }
-  };
+  }, []);
 
   const animateScroll = () => {
     scrollOffset.current += scrollSpeedRef.current;
@@ -832,38 +869,48 @@ export default function GenericReader() {
     setRotationSheetOpen(true);
   };
 
-  const scrollToPage = (index: number) => {
-    const target = Math.min(Math.max(index, 0), pages.length - 1);
-    if (pages.length === 0) return;
-    setCurrentPageIndex(target);
-    lastPageIndexRef.current = target;
-    const isPagedReadingMode = isPagedMode(chrome.readingMode);
-    if (isPagedReadingMode) {
-      listRef.current?.scrollToIndex({ index: target, animated: false });
-      return;
-    }
-    let offset = 0;
-    for (let pageIndex = 0; pageIndex < target; pageIndex += 1) {
-      const geometry = pageGeometry(
-        pages[pageIndex],
-        chrome.readingMode,
-        chrome.fitMode,
-        chrome.sidePadding,
-        bodySize,
-        pageDims,
-      );
-      offset += horizontalList ? geometry.itemW : geometry.itemH;
-    }
-    listRef.current?.scrollToOffset({ offset, animated: false });
-  };
+  const scrollRetryRef = useRef(0);
 
-  const handleScrollToIndexFailed = ({ index }: { index: number }) => {
-    const pageLength = horizontalList ? bodySize.width : bodySize.height;
-    listRef.current?.scrollToOffset({
-      offset: Math.max(0, index) * pageLength,
-      animated: false,
-    });
-  };
+  const scrollToPage = useCallback(
+    (index: number) => {
+      const target = Math.min(Math.max(index, 0), pages.length - 1);
+      if (pages.length === 0) return;
+      scrollRetryRef.current = 0;
+      setCurrentPageIndex(target);
+      lastPageIndexRef.current = target;
+      if (isPagedMode(chrome.readingMode)) {
+        listRef.current?.scrollToIndex({ index: target, animated: false });
+        return;
+      }
+      listRef.current?.scrollToOffset({
+        offset: pageOffsets[target] ?? 0,
+        animated: false,
+      });
+    },
+    [chrome.readingMode, pageOffsets, pages.length],
+  );
+
+  const handleScrollToIndexFailed = useCallback(
+    ({ index, averageItemLength }: { index: number; averageItemLength: number }) => {
+      const target = Math.min(Math.max(index, 0), pages.length - 1);
+      const estimated =
+        pageOffsets[target] ?? Math.max(0, averageItemLength) * target;
+      listRef.current?.scrollToOffset({ offset: estimated, animated: false });
+      // FlatList needs one frame after the estimated offset before the target
+      // row exists. Retry once so variable-height pages land exactly.
+      if (scrollRetryRef.current < 1) {
+        scrollRetryRef.current += 1;
+        setTimeout(() => {
+          listRef.current?.scrollToIndex({
+            index: target,
+            animated: false,
+            viewPosition: 0,
+          });
+        }, 120);
+      }
+    },
+    [pageOffsets, pages.length],
+  );
 
   /**
    * Paged-mode tap handling: the active tap-zone preset turns pages from the
@@ -871,30 +918,41 @@ export default function GenericReader() {
    * While the chrome is open, any tap closes it first - that keeps the bar
    * buttons and the page-turn zones from fighting over the same touches.
    */
-  const handlePagedTap = (x: number, y: number) => {
-    if (configOpen) return;
-    const rtl =
-      chrome.readingMode === "pagedHorizontal" &&
-      chrome.pagedDirection === "rtl";
-    const action = resolveTapZoneAction({
-      layout: chrome.tapZoneLayout,
-      invert: chrome.invertTapZones,
-      rtl,
-      x,
-      y,
-      width: bodySize.width,
-      height: bodySize.height,
-    });
-    if (action === "prev") {
-      if (currentPageIndex > 0) scrollToPage(currentPageIndex - 1);
-    } else if (action === "next") {
-      if (currentPageIndex < pages.length - 1) {
-        scrollToPage(currentPageIndex + 1);
+  const handlePagedTap = useCallback(
+    (x: number, y: number) => {
+      if (configOpen) return;
+      const rtl =
+        chrome.readingMode === "pagedHorizontal" &&
+        chrome.pagedDirection === "rtl";
+      const action = resolveTapZoneAction({
+        layout: chrome.tapZoneLayout,
+        invert: chrome.invertTapZones,
+        rtl,
+        x,
+        y,
+        width: bodySize.width,
+        height: bodySize.height,
+      });
+      if (action === "prev") {
+        if (currentPageIndex > 0) scrollToPage(currentPageIndex - 1);
+      } else if (action === "next") {
+        if (currentPageIndex < pages.length - 1) {
+          scrollToPage(currentPageIndex + 1);
+        }
+      } else {
+        setShowHeader(true);
       }
-    } else {
-      setShowHeader(true);
-    }
-  };
+    },
+    [
+      bodySize.height,
+      bodySize.width,
+      chrome,
+      configOpen,
+      currentPageIndex,
+      pages.length,
+      scrollToPage,
+    ],
+  );
 
   // Short-lived preview that flashes the active tap zones whenever the user
   // switches the tap-zone preset.
@@ -968,6 +1026,18 @@ export default function GenericReader() {
     itemVisiblePercentThreshold: 50,
   }).current;
 
+  /** FlatList jump targets use the same prefix table as scroll tracking. */
+  const getItemLayout = useCallback(
+    (_data: ArrayLike<string> | null | undefined, index: number) => {
+      const offset = pageOffsets[index] ?? 0;
+      const next = pageOffsets[index + 1] ?? offset;
+      return { length: Math.max(next - offset, 1), offset, index };
+    },
+    [pageOffsets],
+  );
+
+  const toggleChrome = useCallback(() => setShowHeader((visible) => !visible), []);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -992,7 +1062,6 @@ export default function GenericReader() {
   }
 
   const pageBackground = readerBackgroundColor(chrome.backgroundColor);
-  const toggleChrome = () => setShowHeader((visible) => !visible);
 
   const chapterTitleText = paramString(params.chapterTitle);
   const chapterLabel = chapterTitleText
@@ -1257,19 +1326,21 @@ export default function GenericReader() {
           }
           pagingEnabled={pagedMode}
           keyExtractor={(item, index) => `${item}-${index}`}
-          initialNumToRender={pages.length}
-          maxToRenderPerBatch={3}
+          initialNumToRender={pagedMode ? 1 : 3}
+          maxToRenderPerBatch={4}
           windowSize={5}
+          updateCellsBatchingPeriod={60}
           scrollEnabled={!pagedMode}
           nestedScrollEnabled
           directionalLockEnabled
-          removeClippedSubviews={Platform.OS === "android"}
+          removeClippedSubviews={false}
           showsVerticalScrollIndicator={false}
           showsHorizontalScrollIndicator={false}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
-          onScroll={onScrollEvent}
-          scrollEventThrottle={16}
+          getItemLayout={getItemLayout}
+          onScroll={pagedMode ? undefined : onScrollEvent}
+          scrollEventThrottle={32}
           onScrollBeginDrag={handleScrollBeginDrag}
           onScrollToIndexFailed={handleScrollToIndexFailed}
           contentContainerStyle={

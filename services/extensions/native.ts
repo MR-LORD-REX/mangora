@@ -32,7 +32,12 @@ interface MangoraExtensionsModule {
   ): Promise<string>;
   getManga(sourceId: string, url: string): Promise<string>;
   getChapters(sourceId: string, url: string): Promise<string>;
-  getPages(sourceId: string, url: string): Promise<string>;
+  getPages(
+    sourceId: string,
+    url: string,
+    memoJson: string,
+    mangaId: string,
+  ): Promise<string>;
   getMangaUrl(sourceId: string, url: string): Promise<string>;
   getChapterUrl(sourceId: string, url: string): Promise<string>;
   getHeaders(sourceId: string): Promise<string>;
@@ -154,9 +159,11 @@ export async function getExtensionChapters(
 export async function getExtensionPages(
   sourceId: string,
   chapterUrl: string,
+  memoJson = "{}",
+  mangaId = "",
 ): Promise<NativePageList> {
   return parse<NativePageList>(
-    await requireNative().getPages(sourceId, chapterUrl),
+    await requireNative().getPages(sourceId, chapterUrl, memoJson, mangaId),
   );
 }
 

@@ -128,7 +128,12 @@ export function extensionModuleFor(sourceId: string): ChapterSourceModule {
 
     chapterWriteIdentity(row) {
       const chapter = row.raw as
-        | { url: string; chapterNumber: number | null; scanlator: string | null }
+        | {
+            url: string;
+            chapterNumber: number | null;
+            scanlator: string | null;
+            memo?: Record<string, unknown>;
+          }
         | undefined;
       if (!chapter) return null;
       const number = chapterNumber(chapter.chapterNumber);
@@ -144,12 +149,18 @@ export function extensionModuleFor(sourceId: string): ChapterSourceModule {
 
     async openChapter(row, context) {
       const chapter = row.raw as
-        | { url: string; chapterNumber: number | null; scanlator: string | null }
+        | {
+            url: string;
+            chapterNumber: number | null;
+            scanlator: string | null;
+            memo?: Record<string, unknown>;
+          }
         | undefined;
       if (!chapter) return;
       const number = chapterNumber(chapter.chapterNumber);
       const chapterId = encodeURIComponent(chapter.url);
       const mangaId = encodeURIComponent(context.identity);
+      const chapterMemo = JSON.stringify(chapter.memo ?? {});
       await prepareReaderOpen({
         provider,
         providerMangaId: context.identity,
@@ -166,6 +177,7 @@ export function extensionModuleFor(sourceId: string): ChapterSourceModule {
           mangaId,
           mangaTitle: context.meta.title,
           chapterTitle: row.title,
+          chapterMemo,
           ...(context.coverUrl ? { thumbnailUrl: context.coverUrl } : {}),
         },
       });
@@ -178,6 +190,7 @@ export function extensionModuleFor(sourceId: string): ChapterSourceModule {
           title: row.title,
           mangaTitle: context.meta.title,
           chapterTitle: row.title,
+          chapterMemo,
           ...(context.coverUrl ? { thumbnailUrl: context.coverUrl } : {}),
         },
       });

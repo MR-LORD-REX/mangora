@@ -11,6 +11,7 @@ export interface ReaderParamsSnapshot {
   title?: string;
   mangaTitle?: string;
   chapterTitle?: string;
+  chapterMemo?: string;
   chapterNumber?: number;
   thumbnailUrl?: string;
   language?: string;

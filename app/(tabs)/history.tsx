@@ -59,6 +59,7 @@ export default function HistoryScreen() {
           ...(params.title ? { title: params.title } : {}),
           ...(params.mangaTitle ? { mangaTitle: params.mangaTitle } : {}),
           ...(params.chapterTitle ? { chapterTitle: params.chapterTitle } : {}),
+          ...(params.chapterMemo ? { chapterMemo: params.chapterMemo } : {}),
           ...(params.thumbnailUrl ? { thumbnailUrl: params.thumbnailUrl } : {}),
           ...(params.language ? { language: params.language } : {}),
         },

@@ -10,6 +10,7 @@
  * ---------------------------------------------------------------------------
  */
 
+import { memo } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -42,7 +43,7 @@ export interface ReaderPageProps {
   onTapAt: (x: number, y: number) => void;
 }
 
-export default function ReaderPage({
+function ReaderPage({
   url,
   loadImage,
   geometry,
@@ -219,3 +220,33 @@ export default function ReaderPage({
     </Pressable>
   );
 }
+
+function geometryEqual(a: PageGeometry, b: PageGeometry): boolean {
+  return (
+    a.itemW === b.itemW &&
+    a.itemH === b.itemH &&
+    a.imgW === b.imgW &&
+    a.imgH === b.imgH &&
+    a.overlayW === b.overlayW &&
+    a.overlayH === b.overlayH &&
+    a.zoom === b.zoom
+  );
+}
+
+export default memo(
+  ReaderPage,
+  (prev, next) =>
+    prev.url === next.url &&
+    prev.loadImage === next.loadImage &&
+    geometryEqual(prev.geometry, next.geometry) &&
+    prev.pageBackground === next.pageBackground &&
+    prev.imageHeaders === next.imageHeaders &&
+    prev.chrome === next.chrome &&
+    prev.defaultZoomScale === next.defaultZoomScale &&
+    prev.pagedMode === next.pagedMode &&
+    prev.translation === next.translation &&
+    prev.textScale === next.textScale &&
+    prev.onLoadDims === next.onLoadDims &&
+    prev.onToggleChrome === next.onToggleChrome &&
+    prev.onTapAt === next.onTapAt,
+);

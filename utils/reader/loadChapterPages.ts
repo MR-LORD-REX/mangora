@@ -24,6 +24,8 @@ export interface LoadChapterPagesOptions {
   source: string;
   chapterId: string;
   mangaId: string;
+  /** Extension-specific chapter memo (Madara stores mangaPath here). */
+  chapterMemo?: string;
   /** Called once the page image URLs are known. */
   onPages: (pages: string[]) => void;
   /** Called when the extension's prev/next chapter ids resolve. */
@@ -38,6 +40,7 @@ export async function loadChapterPages({
   source,
   chapterId,
   mangaId,
+  chapterMemo,
   onPages,
   onAdjacent,
 }: LoadChapterPagesOptions): Promise<void> {
@@ -54,7 +57,12 @@ export async function loadChapterPages({
 
   const sourceId = source.slice(4);
   const chapterUrl = decodeURIComponent(chapterId);
-  const res = await getExtensionPages(sourceId, chapterUrl);
+  const res = await getExtensionPages(
+    sourceId,
+    chapterUrl,
+    chapterMemo || "{}",
+    mangaId,
+  );
   registerExtensionSourceHeaders(source, res.headers);
   res.pages.forEach((page) =>
     registerExtensionHeaders(page.imageUrl, res.headers),
