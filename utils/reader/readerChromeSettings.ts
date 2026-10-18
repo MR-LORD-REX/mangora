@@ -51,6 +51,7 @@ export function chromeFromSettings(settings: AppSettings): ReaderChromeSettings 
     customColorFilterEnabled: settings.readerCustomColorFilterEnabled,
     customColorFilter: settings.readerCustomColorFilter,
     grayscale: settings.readerGrayscale,
+    grayscaleAmount: settings.readerGrayscaleAmount,
     inverted: settings.readerInverted,
   };
 }

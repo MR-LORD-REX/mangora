@@ -221,6 +221,8 @@ dependencies {
     implementation "com.github.zhanghai.quickjs-java:quickjs-android:547f5b1597"
     implementation "com.android.tools.build:apksig:8.7.3"
     implementation "com.davemorrissey.labs:subsampling-scale-image-view:3.10.0"
+    // AVIF decoder (libavif/AOM) for page images the platform cannot decode.
+    implementation "org.aomedia.avif.android:avif:1.1.1.14d8e3c4"
     // onnxruntime-react-native @generated begin onnxruntime-react-native - expo prebuild (DO NOT MODIFY) sync-ec94e2a0d49f04b1bbc51ec3f57c45710b04aad8
     implementation project(':onnxruntime-react-native')
     // onnxruntime-react-native @generated end onnxruntime-react-native

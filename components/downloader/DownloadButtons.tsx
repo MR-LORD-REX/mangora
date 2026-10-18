@@ -5,7 +5,7 @@
  *
  *   <SeriesDownloadButton />  - viewer header: chapter picker with select all
  *   <ChapterDownloadButton /> - right side of a chapter row: one chapter
- *   <ReaderDownloadButton />  - reader bottom bar: the open chapter
+ *   <ReaderDownloadButton />  - reader header: the open chapter
  *
  * Every variant reflects the live job state (idle / queued / running /
  * downloaded / failed) and routes through the shared flows in actions.ts.
@@ -143,7 +143,7 @@ export function ReaderDownloadButton({
 }: {
   candidate: DownloadCandidate | null;
   context: DownloadContext;
-  variant?: "toolbar" | "card";
+  variant?: "header" | "toolbar" | "card";
 }) {
   const job = useDownloadJob(candidate?.target.chapterId ?? null);
   const status = job?.status;
@@ -171,7 +171,13 @@ export function ReaderDownloadButton({
   return (
     <Pressable
       onPress={() => void onPress()}
-      style={variant === "card" ? styles.cardBtn : styles.toolbarBtn}
+      style={
+        variant === "card"
+          ? styles.cardBtn
+          : variant === "header"
+            ? styles.headerBtn
+            : styles.toolbarBtn
+      }
       accessibilityLabel={downloaded ? "Downloaded" : "Download chapter"}
     >
       {status === "running" ? (
@@ -182,7 +188,7 @@ export function ReaderDownloadButton({
         <StatusIcon
           status={status}
           accent={colors.accent}
-          size={variant === "card" ? 20 : 22}
+          size={variant === "card" ? 20 : variant === "header" ? 20 : 22}
         />
       )}
       {downloaded && job && job.pageCount ? (

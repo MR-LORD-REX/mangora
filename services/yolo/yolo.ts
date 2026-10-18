@@ -28,6 +28,7 @@ import {
   mergeDetections,
   type Letterbox,
 } from "@/services/yolo/yolo.utils";
+import { ensureDecodablePageUri } from "@/services/ocr/pageOcr";
 
 type OrtModule = typeof import("onnxruntime-react-native");
 type SkiaModule = typeof import("@shopify/react-native-skia");
@@ -163,10 +164,36 @@ function buildTiles(imageWidth: number, imageHeight: number): TileRect[] {
 }
 
 /** Downloads + decodes the source image once for the whole detect call. */
-async function decodeSource(uri: string, rt: YoloRuntime) {
+async function decodeSource(
+  uri: string,
+  rt: YoloRuntime,
+  options: YoloOptions = {},
+) {
   const { Skia } = rt.skia;
-  const encoded = await Skia.Data.fromURI(uri);
-  const source = Skia.Image.MakeImageFromEncoded(encoded);
+  // AVIF is not supported by Skia's decoder. Transcode it to a cached PNG
+  // first so extension pages from CDNs like cdn.atsu.moe work here too.
+  const decode = async (sourceUri: string) => {
+    const encoded = await Skia.Data.fromURI(sourceUri);
+    return Skia.Image.MakeImageFromEncoded(encoded);
+  };
+  let sourceUri = await ensureDecodablePageUri(uri, {
+    headers: options.headers,
+    extensionSourceId: options.extensionSourceId,
+    pageUrl: uri,
+  });
+  let source = await decode(sourceUri);
+  // Some providers serve AVIF from urls without an extension. If Skia cannot
+  // open the remote image, fetch the bytes through the extension client (which
+  // also runs Cloudflare/decryption interceptors) and try the local file.
+  if (!source && options.extensionSourceId && !sourceUri.startsWith("file://")) {
+    sourceUri = await ensureDecodablePageUri(uri, {
+      headers: options.headers,
+      extensionSourceId: options.extensionSourceId,
+      pageUrl: uri,
+      force: true,
+    });
+    source = await decode(sourceUri);
+  }
   if (!source) {
     throw new YoloError(`Could not decode the image from ${uri}`);
   }
@@ -274,7 +301,7 @@ export class YoloDetector {
   ): Promise<DetectionResult> {
     const rt = loadRuntime();
     const session = await this.loadSession(rt);
-    const source = await decodeSource(uri, rt);
+    const source = await decodeSource(uri, rt, options);
     const imageWidth = source.width();
     const imageHeight = source.height();
     const tiles = buildTiles(imageWidth, imageHeight);

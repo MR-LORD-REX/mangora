@@ -15,6 +15,7 @@ import {
   SlidersHorizontal,
   Trash2,
   X,
+  ExternalLink,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -30,6 +31,7 @@ import {
   Text,
   TextInput,
   View,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -296,6 +298,8 @@ export default function BrowseScreen() {
     () => JSON.stringify(settings?.extensionRepos ?? []),
     [settings?.extensionRepos],
   );
+
+
 
   const load = useCallback(async () => {
     if (!settings) return;
@@ -863,8 +867,7 @@ export default function BrowseScreen() {
               </Pressable>
             </View>
             <Text style={styles.sheetBody}>
-              Paste a Mihon/Keiyoushi repository index URL. Mangora stores the
-              link you provide and never ships a catalog of its own.
+              Paste a repository URL of extension provider . 
             </Text>
             <View style={styles.inputRow}>
               <Link2 color={colors.textFaint} size={17} />
@@ -1085,9 +1088,9 @@ function RepoIntro({ onAdd }: { onAdd: () => void }) {
       </View>
       <Text style={styles.introTitle}>Add a source repository</Text>
       <Text style={styles.introBody}>
-        Mangora is a reader and translator. Paste the repository link you want
-        to use; its extensions will appear in the Extensions tab after you
-        install them.
+        Mangora is a reader and translator. Paste the repository link of 
+        extesion provider you want to use; its extensions will appear in the 
+        Extensions tab after you install them.
       </Text>
       <Pressable
         onPress={onAdd}
@@ -1095,6 +1098,14 @@ function RepoIntro({ onAdd }: { onAdd: () => void }) {
       >
         <Plus color={colors.onAccent} size={17} />
         <Text style={styles.primaryLabel}>Add repository</Text>
+      </Pressable>
+      <Pressable 
+      
+        onPress={() => Linking.openURL('https://t.me/MangoraApp/31')}
+        style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
+      >
+        <Text style={styles.primaryLabel}>Read the guide</Text>
+        <ExternalLink size={15} color={colors.onAccent} />
       </Pressable>
       <Text style={styles.hintText}>
         Example: a GitHub index.json link. Nothing is preloaded.

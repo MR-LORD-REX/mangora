@@ -1,6 +1,6 @@
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { BookOpen, RefreshCw, Trash2 } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
     FlatList,
     Image,
@@ -41,9 +41,11 @@ export default function HistoryScreen() {
     }
   }, [search]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
 
   const openEntry = (readerParamsJson: string) => {
     try {

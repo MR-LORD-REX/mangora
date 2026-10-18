@@ -7,8 +7,14 @@
  * ---------------------------------------------------------------------------
  */
 
-/** Characters Android's external storage providers reject in a display name. */
-const UNSAFE_CHARS = /[\\/:*?"<>|\u0000-\u001f]/g;
+/**
+ * Characters Android rejects in a display name, plus characters that
+ * expo-file-system leaves unescaped but `java.net.URI` refuses in a path
+ * (`[` `]` `{` `}` `^`, backtick and a bare `%`). Titles such as
+ * `[Artist] Title` are common, so these must be cleaned before they become
+ * part of a `file://` cache path.
+ */
+const UNSAFE_CHARS = /[\\/:*?"<>|%\[\]{}^`\u0000-\u001f]/g;
 
 const MAX_SEGMENT_LENGTH = 80;
 

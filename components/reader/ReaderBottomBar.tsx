@@ -100,8 +100,6 @@ export interface ReaderBottomBarProps {
   fitMode: ReaderFitMode;
   onToggleFit: () => void;
   onOpenSettings: () => void;
-  /** Extra toolbar control (the downloader button) supplied by the reader. */
-  downloadSlot?: React.ReactNode;
 }
 
 export default function ReaderBottomBar({
@@ -121,7 +119,6 @@ export default function ReaderBottomBar({
   fitMode,
   onToggleFit,
   onOpenSettings,
-  downloadSlot,
 }: ReaderBottomBarProps) {
   const ReadingModeIcon =
     readingMode === "scrollVertical"
@@ -198,8 +195,6 @@ export default function ReaderBottomBar({
             <Expand color={READER_ACCENT} size={22} />
           )}
         </Pressable>
-
-        {downloadSlot}
 
         <Pressable style={styles.toolbarBtn} onPress={onOpenSettings}>
           <Settings color="#fff" size={22} />

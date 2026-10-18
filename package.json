@@ -11,6 +11,9 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@expo-google-fonts/bangers": "^0.4.1",
+    "@expo-google-fonts/chewy": "^0.4.0",
+    "@expo-google-fonts/comic-neue": "^0.4.1",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-cookies/cookies": "^6.2.1",
     "@react-navigation/bottom-tabs": "^7.4.0",
@@ -24,7 +27,7 @@
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.14",
     "expo-file-system": "~19.0.24",
-    "expo-font": "~14.0.11",
+    "expo-font": "~14.0.12",
     "expo-haptics": "~15.0.8",
     "expo-image": "~3.0.11",
     "expo-image-manipulator": "~14.0.8",

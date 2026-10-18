@@ -54,6 +54,121 @@ function inflate(box: Box, ratio: number): Box {
   };
 }
 
+function boxWidth(box: Box): number {
+  return Math.max(0, box.x2 - box.x1);
+}
+
+function boxHeight(box: Box): number {
+  return Math.max(0, box.y2 - box.y1);
+}
+
+function boxArea(box: Box): number {
+  return boxWidth(box) * boxHeight(box);
+}
+
+function intersectionArea(a: Box, b: Box): number {
+  const w = Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1);
+  const h = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1);
+  return w > 0 && h > 0 ? w * h : 0;
+}
+
+/** True when two boxes describe the same detection (near-identical). */
+function nearDuplicate(a: Box, b: Box): boolean {
+  const smallest = Math.min(boxArea(a), boxArea(b));
+  if (smallest <= 0) return false;
+  return intersectionArea(a, b) / smallest >= 0.75;
+}
+
+function unionBoxes(boxes: Box[]): Box {
+  return {
+    x1: Math.min(...boxes.map((box) => box.x1)),
+    y1: Math.min(...boxes.map((box) => box.y1)),
+    x2: Math.max(...boxes.map((box) => box.x2)),
+    y2: Math.max(...boxes.map((box) => box.y2)),
+  };
+}
+
+/** Grows a box by `ratio` of its own width/height (split evenly per side). */
+function expandBox(box: Box, ratio: number): Box {
+  const dx = (boxWidth(box) * ratio) / 2;
+  const dy = (boxHeight(box) * ratio) / 2;
+  return {
+    x1: box.x1 - dx,
+    y1: box.y1 - dy,
+    x2: box.x2 + dx,
+    y2: box.y2 + dy,
+  };
+}
+
+/** Keeps a paste box inside the bubble it came from. */
+function clipBox(box: Box, outer: Box): Box {
+  return {
+    x1: Math.max(box.x1, outer.x1),
+    y1: Math.max(box.y1, outer.y1),
+    x2: Math.min(box.x2, outer.x2),
+    y2: Math.min(box.y2, outer.y2),
+  };
+}
+
+/**
+ * Text boxes that read as one group: words on a row separated by a small
+ * horizontal gap, or stacked lines separated by a small vertical gap.
+ */
+function shouldCluster(a: Box, b: Box): boolean {
+  const ix = Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1);
+  const iy = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1);
+  if (ix > 0 && iy > 0) {
+    const smallest = Math.min(boxArea(a), boxArea(b));
+    if (smallest > 0 && (ix * iy) / smallest >= 0.15) return true;
+  }
+
+  const minH = Math.min(boxHeight(a), boxHeight(b)) || 1;
+  const minW = Math.min(boxWidth(a), boxWidth(b)) || 1;
+  const gapX = Math.max(0, Math.max(a.x1, b.x1) - Math.min(a.x2, b.x2));
+  const gapY = Math.max(0, Math.max(a.y1, b.y1) - Math.min(a.y2, b.y2));
+
+  // Same row.
+  if (iy >= minH * 0.45 && gapX <= minH * 0.55) return true;
+  // Adjacent lines in the same column.
+  if (ix >= minW * 0.35 && gapY <= minH * 0.9) return true;
+  return false;
+}
+
+/** Connected components of text boxes - one component per text group. */
+function clusterBoxes(boxes: Box[]): Box[][] {
+  const parent = boxes.map((_, index) => index);
+  const find = (index: number): number => {
+    let root = index;
+    while (parent[root] !== root) root = parent[root];
+    while (parent[index] !== index) {
+      const next = parent[index];
+      parent[index] = root;
+      index = next;
+    }
+    return root;
+  };
+  const unite = (a: number, b: number) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent[rb] = ra;
+  };
+
+  for (let i = 0; i < boxes.length; i += 1) {
+    for (let j = i + 1; j < boxes.length; j += 1) {
+      if (shouldCluster(boxes[i], boxes[j])) unite(i, j);
+    }
+  }
+
+  const groups = new Map<number, Box[]>();
+  boxes.forEach((box, index) => {
+    const root = find(index);
+    const group = groups.get(root) ?? [];
+    group.push(box);
+    groups.set(root, group);
+  });
+  return [...groups.values()];
+}
+
 /**
  * Builds one slot per text_bubble / messy_text detection.
  * - Bubble slots erase the clean_text boxes living inside them and paste into
@@ -63,26 +178,54 @@ function inflate(box: Box, ratio: number): Box {
 export function buildTranslationSlots(detection: DetectionResult): TranslationSlot[] {
   const boxes = detection.boxes ?? [];
   const slots: TranslationSlot[] = [];
+  const acceptedBubbles: Box[] = [];
 
   for (const bubble of boxes) {
     if (bubble.classId !== 2) continue;
     const bubbleBox = boxFromDetection(bubble);
+    // Some pages return the same bubble twice; one overlay is enough.
+    if (acceptedBubbles.some((accepted) => nearDuplicate(accepted, bubbleBox))) {
+      continue;
+    }
+    acceptedBubbles.push(bubbleBox);
     const padded = inflate(bubbleBox, 0.1);
     const cleanInside = boxes
       .filter((box) => box.classId === 0 && centerInside(padded, boxFromDetection(box)))
       .map(boxFromDetection);
-    slots.push({
-      id: slots.length,
-      kind: "bubble",
-      pasteBox: bubbleBox,
-      eraseBoxes: cleanInside,
-      sourceText: "",
-    });
+
+    // A single YOLO bubble can contain two joined bubbles. Clean-text boxes
+    // reveal how many separate text groups live inside it, so split the slot
+    // instead of translating both groups as one paragraph.
+    const groups = clusterBoxes(cleanInside);
+    if (groups.length > 1) {
+      for (const group of groups) {
+        slots.push({
+          id: slots.length,
+          kind: "bubble",
+          pasteBox: clipBox(expandBox(unionBoxes(group), 0.3), bubbleBox),
+          eraseBoxes: group,
+          sourceText: "",
+        });
+      }
+    } else {
+      slots.push({
+        id: slots.length,
+        kind: "bubble",
+        pasteBox: bubbleBox,
+        eraseBoxes: cleanInside,
+        sourceText: "",
+      });
+    }
   }
 
+  const acceptedMessy: Box[] = [];
   for (const messy of boxes) {
     if (messy.classId !== 1) continue;
     const messyBox = boxFromDetection(messy);
+    if (acceptedMessy.some((accepted) => nearDuplicate(accepted, messyBox))) {
+      continue;
+    }
+    acceptedMessy.push(messyBox);
     slots.push({
       id: slots.length,
       kind: "messy",

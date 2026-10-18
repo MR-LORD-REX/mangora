@@ -61,10 +61,10 @@ const GENERAL_TOGGLES: { key: keyof ReaderChromeSettings; label: string }[] = [
 ];
 
 const FILTER_TOGGLES: { key: keyof ReaderChromeSettings; label: string }[] = [
-  { key: "customBrightnessEnabled", label: "Custom brightness" },
+  // { key: "customBrightnessEnabled", label: "Custom brightness" },
   { key: "customColorFilterEnabled", label: "Custom color filter" },
-  { key: "grayscale", label: "Grayscale" },
-  { key: "inverted", label: "Inverted" },
+  // { key: "grayscale", label: "Grayscale" },
+  // { key: "inverted", label: "Inverted" },
 ];
 
 export interface ReaderConfigPanelProps {
@@ -318,26 +318,184 @@ function GeneralTab(props: ReaderConfigPanelProps) {
 
 function FilterTab(props: ReaderConfigPanelProps) {
   const { chrome, onChangeChrome } = props;
+  const rgb = hexToRgb(chrome.customColorFilter);
+  const setChannel = (channel: "r" | "g" | "b", value: number) => {
+    onChangeChrome({
+      customColorFilter: rgbToHex({ ...rgb, [channel]: Math.round(value) }),
+    });
+  };
+
   return (
     <View>
-      {FILTER_TOGGLES.map((toggle) => (
-        <CheckRow
-          key={toggle.key}
-          label={toggle.label}
-          checked={chrome[toggle.key] as boolean}
-          onToggle={() =>
-            onChangeChrome({
-              [toggle.key]: !chrome[toggle.key],
-            } as Partial<ReaderChromeSettings>)
-          }
-        />
-      ))}
-      <HelperText>
-        Filter controls are persisted now and will be wired to the page renderer
-        in a later pass.
-      </HelperText>
+      {FILTER_TOGGLES.map((toggle) => {
+        const enabled = chrome[toggle.key] as boolean;
+        return (
+          <View key={toggle.key}>
+            <CheckRow
+              label={toggle.label}
+              checked={enabled}
+              onToggle={() =>
+                onChangeChrome({
+                  [toggle.key]: !enabled,
+                } as Partial<ReaderChromeSettings>)
+              }
+            />
+            {enabled && toggle.key === "customBrightnessEnabled" && (
+              <FilterSlider
+                label="Brightness"
+                value={chrome.customBrightness}
+                min={0}
+                max={200}
+                step={5}
+                leftLabel="0%"
+                rightLabel="200%"
+                valueLabel={`${chrome.customBrightness}%`}
+                onChange={(customBrightness) =>
+                  onChangeChrome({ customBrightness })
+                }
+              />
+            )}
+            {enabled && toggle.key === "customColorFilterEnabled" && (
+              <View>
+                <RGBSlider
+                  channel="R"
+                  value={rgb.r}
+                  onChange={(value) => setChannel("r", value)}
+                />
+                <RGBSlider
+                  channel="G"
+                  value={rgb.g}
+                  onChange={(value) => setChannel("g", value)}
+                />
+                <RGBSlider
+                  channel="B"
+                  value={rgb.b}
+                  onChange={(value) => setChannel("b", value)}
+                />
+                <View style={styles.tintPreviewRow}>
+                  <View
+                    style={[
+                      styles.tintPreview,
+                      { backgroundColor: chrome.customColorFilter },
+                    ]}
+                  />
+                  <Text style={styles.filterValue}>
+                    {chrome.customColorFilter}
+                  </Text>
+                </View>
+              </View>
+            )}
+            {enabled && toggle.key === "grayscale" && (
+              <FilterSlider
+                label="Amount"
+                value={chrome.grayscaleAmount}
+                min={0}
+                max={100}
+                step={5}
+                leftLabel="0%"
+                rightLabel="100%"
+                valueLabel={`${chrome.grayscaleAmount}%`}
+                onChange={(grayscaleAmount) =>
+                  onChangeChrome({ grayscaleAmount })
+                }
+              />
+            )}
+          </View>
+        );
+      })}
+      {/* <HelperText>
+        Brightness, grayscale and invert use the page image filter. Custom color
+        is an overlay tint (Android 10+). Grayscale, inverted and custom color
+        are mutually exclusive; enabling one turns the other two off.
+      </HelperText> */}
     </View>
   );
+}
+
+function RGBSlider({
+  channel,
+  value,
+  onChange,
+}: {
+  channel: "R" | "G" | "B";
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <View style={styles.filterControl}>
+      <View style={styles.filterHeader}>
+        <Text style={styles.filterChannel}>{channel}</Text>
+        <Text style={styles.filterValue}>{Math.round(value)}</Text>
+      </View>
+      <DotSlider
+        value={value}
+        min={0}
+        max={255}
+        step={5}
+        leftLabel="0"
+        rightLabel="255"
+        onChange={onChange}
+      />
+    </View>
+  );
+}
+
+function FilterSlider({
+  label,
+  value,
+  min,
+  max,
+  step,
+  leftLabel,
+  rightLabel,
+  valueLabel,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  leftLabel: string;
+  rightLabel: string;
+  valueLabel: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <View style={styles.filterControl}>
+      <View style={styles.filterHeader}>
+        <Text style={styles.filterChannel}>{label}</Text>
+        <Text style={styles.filterValue}>{valueLabel}</Text>
+      </View>
+      <DotSlider
+        value={value}
+        min={min}
+        max={max}
+        step={step}
+        leftLabel={leftLabel}
+        rightLabel={rightLabel}
+        onChange={onChange}
+      />
+    </View>
+  );
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!match) return { r: 128, g: 128, b: 128 };
+  return {
+    r: parseInt(match[1], 16),
+    g: parseInt(match[2], 16),
+    b: parseInt(match[3], 16),
+  };
+}
+
+function rgbToHex({ r, g, b }: { r: number; g: number; b: number }): string {
+  const channel = (value: number) =>
+    Math.min(255, Math.max(0, Math.round(value)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${channel(r)}${channel(g)}${channel(b)}`;
 }
 
 const styles = StyleSheet.create({
@@ -378,6 +536,35 @@ const styles = StyleSheet.create({
   body: { flex: 1, paddingHorizontal: 18, paddingTop: 14 },
   bodyContent: { paddingBottom: 40 },
   footerNote: { color: "#9ca3af", fontSize: 12, marginTop: 12 },
+  filterControl: {
+    marginLeft: 34,
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  filterHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  filterChannel: {
+    color: "#cbd5e1",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  filterValue: { color: "#94a3b8", fontSize: 12 },
+  tintPreviewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  tintPreview: {
+    width: 26,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#565b6e",
+  },
 
   pillGrid: {
     flexDirection: "row",

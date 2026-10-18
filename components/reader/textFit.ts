@@ -92,12 +92,13 @@ function fits(
   text: string,
   fontSize: number,
   width: number,
-  height: number
+  height: number,
+  lineHeightMultiplier: number,
 ): boolean {
   const layout = estimateLayout(text, fontSize, width);
   return (
     layout.longest <= width &&
-    layout.lines * fontSize * LINE_HEIGHT_MULTIPLIER <= height
+    layout.lines * fontSize * lineHeightMultiplier <= height
   );
 }
 
@@ -109,6 +110,8 @@ export interface FitTextOptions {
   height: number;
   minFont?: number;
   maxFont?: number;
+  /** Defaults to 1.2; display fonts override it. */
+  lineHeightMultiplier?: number;
 }
 
 /**
@@ -121,20 +124,29 @@ export function fitTextFontSize(options: FitTextOptions): number {
   const maxFont = options.maxFont ?? 72;
   const width = Math.max(8, options.width - 2);
   const height = Math.max(8, options.height - 2);
+  const lineHeightMultiplier =
+    options.lineHeightMultiplier ?? LINE_HEIGHT_MULTIPLIER;
   if (!text.trim()) return minFont;
 
   // Fast shrink from the maximum until the layout fits (safe upper bound).
   let fontSize = maxFont;
-  for (let iteration = 0; iteration < 24 && !fits(text, fontSize, width, height); iteration += 1) {
+  for (
+    let iteration = 0;
+    iteration < 24 &&
+    !fits(text, fontSize, width, height, lineHeightMultiplier);
+    iteration += 1
+  ) {
     const layout = estimateLayout(text, fontSize, width);
     const widthLimit = layout.longest > 0 ? (width * fontSize) / layout.longest : fontSize;
     const heightLimit =
-      layout.lines > 0 ? height / (layout.lines * LINE_HEIGHT_MULTIPLIER) : fontSize;
+      layout.lines > 0
+        ? height / (layout.lines * lineHeightMultiplier)
+        : fontSize;
     const next = Math.max(minFont, Math.min(widthLimit, heightLimit, fontSize - 1));
     if (next >= fontSize - 0.5) break;
     fontSize = Math.max(minFont, next);
   }
-  if (!fits(text, fontSize, width, height)) {
+  if (!fits(text, fontSize, width, height, lineHeightMultiplier)) {
     fontSize = minFont;
   }
 
@@ -142,7 +154,7 @@ export function fitTextFontSize(options: FitTextOptions): number {
   // first fit above is not necessarily the largest.
   let best = fontSize;
   for (let candidate = fontSize + 1; candidate <= maxFont; candidate += 1) {
-    if (!fits(text, candidate, width, height)) break;
+    if (!fits(text, candidate, width, height, lineHeightMultiplier)) break;
     best = candidate;
   }
   return Math.round(Math.max(minFont, Math.min(maxFont, best)) * 2) / 2;

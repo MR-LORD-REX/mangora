@@ -47,11 +47,18 @@ export default function DotSlider({
   const trackRef = useRef<View>(null);
   const trackX = useRef(0);
   const trackWidth = useRef(0);
+  // PanResponder is created once, so it must read the live props through a
+  // ref. Capturing onChange directly would freeze the first render's closure
+  // (RGB sliders would overwrite the other channels while dragging).
+  const configRef = useRef({ min, max, step, disabled, onChange });
+  configRef.current = { min, max, step, disabled, onChange };
 
   const percent = max > min ? clamp((value - min) / (max - min), 0, 1) : 0;
 
   const updateFromAbsoluteX = (absoluteX: number) => {
-    if (!trackWidth.current) return;
+    const { min, max, step, disabled: isDisabled, onChange } =
+      configRef.current;
+    if (isDisabled || !trackWidth.current) return;
     const relative = clamp(
       (absoluteX - trackX.current) / trackWidth.current,
       0,
@@ -64,8 +71,8 @@ export default function DotSlider({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !disabled,
-      onMoveShouldSetPanResponder: () => !disabled,
+      onStartShouldSetPanResponder: () => !configRef.current.disabled,
+      onMoveShouldSetPanResponder: () => !configRef.current.disabled,
       onPanResponderGrant: (evt) => updateFromAbsoluteX(evt.nativeEvent.pageX),
       onPanResponderMove: (evt) => updateFromAbsoluteX(evt.nativeEvent.pageX),
     }),

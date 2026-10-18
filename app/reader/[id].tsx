@@ -21,16 +21,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import ReaderBottomBar from "@/components/reader/ReaderBottomBar";
 import { ReaderDownloadButton } from "@/components/downloader/DownloadButtons";
 import {
+  applyFilterExclusivity,
   DEFAULT_READER_CHROME,
   isHorizontalMode,
   isPagedMode,
   orientationToLock,
   type ReaderChromeSettings,
   type ReaderOrientation,
+  type ReaderOverlayFont,
   type ReaderPagedDirection,
   type ReaderReadingMode,
   type ReaderTapZoneLayout,
 } from "@/components/reader/readerChrome";
+import { overlayFontSupportsLanguage } from "@/components/reader/overlayFonts";
 import ReaderConfigPanel, {
   type ReaderConfigTab,
 } from "@/components/reader/ReaderConfigPanel";
@@ -254,7 +257,15 @@ export default function GenericReader() {
   const [targetLanguage, setTargetLanguage] = useState("en");
   const [translateMode, setTranslateMode] =
     useState<AppSettings["readerTranslateMode"]>("off");
-  const [textScale, setTextScale] = useState(1);
+  const [overlayFont, setOverlayFont] =
+    useState<ReaderOverlayFont>("default");
+  const [overlayFontWeight, setOverlayFontWeight] = useState(600);
+  const [overlayFontScale, setOverlayFontScale] = useState(1);
+  const [overlayTextColor, setOverlayTextColor] = useState("#000000");
+  const settingsPersistTimerRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+  const pendingSettingsPatchRef = useRef<Partial<AppSettings>>({});
   const ocrLanguage = readerLanguage || autoLanguage;
 
   const [geminiApiKey, setGeminiApiKey] = useState("");
@@ -724,7 +735,10 @@ export default function GenericReader() {
       setAiRequestPageInterval(settings.aiRequestPageInterval);
       setAiRequestFrequency(settings.aiRequestFrequency);
       setAiMaxContextPages(settings.aiMaxContextPages);
-      setTextScale(settings.readerTextScale || 1);
+      setOverlayFont(settings.readerOverlayFont);
+      setOverlayFontWeight(settings.readerOverlayFontWeight);
+      setOverlayFontScale(settings.readerOverlayFontScale);
+      setOverlayTextColor(settings.readerOverlayTextColor);
       setChrome(chromeFromSettings(settings));
       setDefaultZoomScale(settings.readerDefaultZoomScale);
       setScrollSpeed(settings.readerScrollSpeed || 1);
@@ -818,8 +832,23 @@ export default function GenericReader() {
     setGeminiApiKey(trimmed);
     await updateSettings({ geminiApiKey: trimmed });
   };
-  const handleSelectTextScale = (scale: number) => {
-    updateSettings({ readerTextScale: scale }).catch(console.error);
+  const handleSelectOverlayFont = (font: ReaderOverlayFont) => {
+    setOverlayFont(font);
+    updateSettings({ readerOverlayFont: font }).catch(console.error);
+  };
+  const handleSelectOverlayFontWeight = (weight: number) => {
+    const normalized = Math.min(900, Math.max(400, Math.round(weight / 100) * 100));
+    setOverlayFontWeight(normalized);
+    queueSettingsPatch({ readerOverlayFontWeight: normalized });
+  };
+  const handleSelectOverlayTextColor = (color: string) => {
+    setOverlayTextColor(color);
+    queueSettingsPatch({ readerOverlayTextColor: color });
+  };
+  const handleSelectOverlayFontScale = (scale: number) => {
+    const normalized = Math.round(Math.min(1.5, Math.max(0.5, scale)) * 100) / 100;
+    setOverlayFontScale(normalized);
+    queueSettingsPatch({ readerOverlayFontScale: normalized });
   };
   const handleSelectDefaultZoomScale = (scale: number) => {
     const normalized = Math.min(2, Math.max(0.1, scale));
@@ -828,12 +857,42 @@ export default function GenericReader() {
     updateSettings({ readerDefaultZoomScale: normalized }).catch(console.error);
   };
 
+  /** Coalesces slider drags into one file/DB write (state still updates live). */
+  const queueSettingsPatch = (patch: Partial<AppSettings>, delay = 160) => {
+    pendingSettingsPatchRef.current = {
+      ...pendingSettingsPatchRef.current,
+      ...patch,
+    };
+    if (settingsPersistTimerRef.current) {
+      clearTimeout(settingsPersistTimerRef.current);
+    }
+    settingsPersistTimerRef.current = setTimeout(() => {
+      const pending = pendingSettingsPatchRef.current;
+      pendingSettingsPatchRef.current = {};
+      settingsPersistTimerRef.current = null;
+      if (Object.keys(pending).length > 0) {
+        updateSettings(pending).catch(console.error);
+      }
+    }, delay);
+  };
+
+  useEffect(
+    () => () => {
+      if (settingsPersistTimerRef.current) {
+        clearTimeout(settingsPersistTimerRef.current);
+      }
+      const pending = pendingSettingsPatchRef.current;
+      if (Object.keys(pending).length > 0) {
+        updateSettings(pending).catch(console.error);
+      }
+    },
+    [],
+  );
+
   const handleChromeChange = (patch: Partial<ReaderChromeSettings>) => {
-    setChrome((prev) => {
-      const next = { ...prev, ...patch };
-      updateSettings(chromeToSettingsPatch(patch)).catch(console.error);
-      return next;
-    });
+    const safePatch = applyFilterExclusivity(patch);
+    setChrome((prev) => ({ ...prev, ...safePatch }));
+    queueSettingsPatch(chromeToSettingsPatch(safePatch));
   };
 
   const horizontalList = isHorizontalMode(chrome.readingMode);
@@ -1185,6 +1244,13 @@ export default function GenericReader() {
               setRotationSheetOpen(false);
               setShowHeader(false);
             }}
+            downloadSlot={
+              <ReaderDownloadButton
+                candidate={downloadCandidate}
+                context={downloadContext}
+                variant="header"
+              />
+            }
           />
         )}
 
@@ -1219,8 +1285,14 @@ export default function GenericReader() {
             geminiModelId={geminiModelId}
             onSelectGeminiModel={handleSelectGeminiModel}
             onValidateAndSaveKey={handleValidateAndSaveGeminiKey}
-            textScale={textScale}
-            onChangeTextScale={handleSelectTextScale}
+            overlayFont={overlayFont}
+            onChangeOverlayFont={handleSelectOverlayFont}
+            overlayFontWeight={overlayFontWeight}
+            onChangeOverlayFontWeight={handleSelectOverlayFontWeight}
+            overlayFontScale={overlayFontScale}
+            onChangeOverlayFontScale={handleSelectOverlayFontScale}
+            overlayTextColor={overlayTextColor}
+            onChangeOverlayTextColor={handleSelectOverlayTextColor}
             targetLanguageLabel={targetLanguageLabel}
             pageCount={pages.length}
             aiRequestPageInterval={aiRequestPageInterval}
@@ -1254,12 +1326,6 @@ export default function GenericReader() {
               })
             }
             onOpenSettings={openSettings}
-            downloadSlot={
-              <ReaderDownloadButton
-                candidate={downloadCandidate}
-                context={downloadContext}
-              />
-            }
           />
         )}
 
@@ -1368,7 +1434,14 @@ export default function GenericReader() {
               defaultZoomScale={defaultZoomScale}
               pagedMode={pagedMode}
               translation={translationPages[item]}
-              textScale={textScale}
+              overlayFont={
+                overlayFontSupportsLanguage(targetLanguage)
+                  ? overlayFont
+                  : "default"
+              }
+              overlayFontWeight={overlayFontWeight}
+              overlayFontScale={overlayFontScale}
+              overlayTextColor={overlayTextColor}
               onLoadDims={rememberPageDims}
               onToggleChrome={toggleChrome}
               onTapAt={handlePagedTap}

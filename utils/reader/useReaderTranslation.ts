@@ -296,7 +296,12 @@ export function useReaderTranslation({
   const ensureDetection = async (url: string): Promise<DetectionResult> => {
     const cached = yoloCache[url];
     if (cached) return cached;
-    const result = await yoloDetector.detectFromUri(url);
+    const result = await yoloDetector.detectFromUri(url, {
+      headers: imageHeadersForPage(source, url),
+      extensionSourceId: source.startsWith("ext:")
+        ? source.slice(4)
+        : undefined,
+    });
     setYoloCache((prev) => ({ ...prev, [url]: result }));
     return result;
   };

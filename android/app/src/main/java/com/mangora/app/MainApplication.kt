@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.res.Configuration
 
 import ai.onnxruntime.reactnative.OnnxruntimePackage
+import com.mangora.app.AvifPackage
 import com.mangora.app.DownloadPackage
 import com.mangora.app.extensions.ExtensionHost
 import com.mangora.app.extensions.ExtensionPackage
@@ -30,6 +31,7 @@ class MainApplication : Application(), ReactApplication {
         override fun getPackages(): List<ReactPackage> =
             PackageList(this).packages.apply {
               add(OnnxruntimePackage())
+              add(AvifPackage())
               add(DownloadPackage())
               add(ExtensionPackage())
               add(SubsamplingScaleImageViewPackage())

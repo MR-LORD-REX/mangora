@@ -41,7 +41,7 @@ export interface OnboardingGuide {
  * Kept here so the overlay UI never changes when links move.
  */
 export const ONBOARDING_PLACEHOLDER_LINKS = {
-  telegram: "https://t.me/mangora_updates",
+  telegram: "https://t.me/MangoraApp",
   readerGuide: "https://t.me/c/4408464732/8",
   geminiSetup: "https://t.me/c/4408464732/11",
 } as const;

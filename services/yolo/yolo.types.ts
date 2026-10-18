@@ -48,4 +48,8 @@ export interface YoloOptions {
   minConfidence?: number;
   /** Cap on returned boxes. Default 200. */
   maxBoxes?: number;
+  /** Request headers used when an AVIF page has to be downloaded first. */
+  headers?: Record<string, string>;
+  /** Extension source id, so AVIF fetches use its image client. */
+  extensionSourceId?: string;
 }

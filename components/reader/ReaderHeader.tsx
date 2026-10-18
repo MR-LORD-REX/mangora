@@ -10,7 +10,7 @@
 
 import { ArrowLeft, Languages, SlidersHorizontal, X } from "lucide-react-native";
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import {
   READER_ACCENT,
@@ -28,6 +28,8 @@ export interface ReaderHeaderProps {
   onBack: () => void;
   /** Dismisses the header + footer overlays (shows the floating menu icon). */
   onClose: () => void;
+  /** Extra header control (the chapter downloader button). */
+  downloadSlot?: React.ReactNode;
 }
 
 export default function ReaderHeader({
@@ -39,6 +41,7 @@ export default function ReaderHeader({
   onOpenTranslation,
   onBack,
   onClose,
+  downloadSlot,
 }: ReaderHeaderProps) {
   return (
     <View style={styles.header}>
@@ -47,13 +50,24 @@ export default function ReaderHeader({
       </Pressable>
 
       <View style={styles.headerTitleWrap}>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {mangaTitle}
-        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          bounces={false}
+          nestedScrollEnabled
+          style={styles.headerTitleScroll}
+          contentContainerStyle={styles.headerTitleScrollContent}
+        >
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {mangaTitle}
+          </Text>
+        </ScrollView>
         <Text style={styles.headerSubtitle} numberOfLines={1}>
           {chapterLabel}
         </Text>
       </View>
+
+      {downloadSlot}
 
       <Pressable
         hitSlop={12}
@@ -101,23 +115,25 @@ const styles = StyleSheet.create({
     borderBottomColor: READER_BORDER,
   },
   headerIconBtn: {
-    width: 40,
+    width: 36,
     height: 40,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
   },
   closeBtn: {
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
     marginLeft: 2,
-    marginRight: 8,
-    borderRadius: 14,
+    marginRight: 6,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.14)",
   },
-  headerTitleWrap: { flex: 1, marginHorizontal: 4 },
+  headerTitleWrap: { flex: 1, minWidth: 0, marginHorizontal: 4 },
+  headerTitleScroll: { width: "100%", flexGrow: 0, maxHeight: 22 },
+  headerTitleScrollContent: { alignItems: "center", paddingRight: 8 },
   headerTitle: { color: "#fff", fontSize: 15, fontWeight: "700" },
   headerSubtitle: {
     color: READER_TEXT_MUTED,

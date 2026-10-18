@@ -20,8 +20,6 @@ import {
   ChevronDown,
   ChevronUp,
   KeyRound,
-  Minus,
-  Plus,
   X,
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
@@ -34,6 +32,7 @@ import {
   Text,
   TextInput,
   View,
+  type TextStyle,
 } from "react-native";
 
 import type { ReaderTranslateMode } from "@/services/settings/settingsStore";
@@ -49,6 +48,13 @@ import {
 } from "@/services/translation/geminiUsage";
 import { READER_TARGET_OPTIONS } from "@/services/translation/translationLang";
 import DotSlider from "./DotSlider";
+import {
+  OVERLAY_FONT_OPTIONS,
+  overlayFontFamily,
+  overlayFontSupportsLanguage,
+  useOverlayFonts,
+} from "./overlayFonts";
+import type { ReaderOverlayFont } from "./readerChrome";
 import { READER_LANGUAGE_OPTIONS } from "./readerLanguages";
 import { HelperText, SectionLabel, TabBar } from "./ReaderPanelPrimitives";
 import { READER_PANEL_BG, READER_PILL_BORDER } from "./readerTheme";
@@ -145,8 +151,14 @@ export interface ReaderTranslationPanelProps {
   onChangeMaxContextPages: (pages: number) => void;
 
   // Overlay tab.
-  textScale: number;
-  onChangeTextScale: (scale: number) => void;
+  overlayFont: ReaderOverlayFont;
+  onChangeOverlayFont: (font: ReaderOverlayFont) => void;
+  overlayFontWeight: number;
+  onChangeOverlayFontWeight: (weight: number) => void;
+  overlayFontScale: number;
+  onChangeOverlayFontScale: (scale: number) => void;
+  overlayTextColor: string;
+  onChangeOverlayTextColor: (color: string) => void;
   targetLanguageLabel: string;
 }
 
@@ -680,7 +692,7 @@ function AiSettingsTab(props: ReaderTranslationPanelProps) {
         rightLabel="10 pages per request"
         onChange={onChangeRequestInterval}
       />
-      <HelperText>
+      {/* <HelperText>
         Send this many freshly OCRed pages in each Gemini request - higher means
         fewer, bigger requests.{" "}
         {requests !== null
@@ -690,7 +702,7 @@ function AiSettingsTab(props: ReaderTranslationPanelProps) {
             pageCount +
             "-page chapter; a trailing partial batch still flushes once the scanned area is done."
           : "Request estimates appear once the chapter loads."}
-      </HelperText>
+      </HelperText> */}
 
       <SectionLabel>Request frequency</SectionLabel>
       <DotSlider
@@ -718,7 +730,7 @@ function AiSettingsTab(props: ReaderTranslationPanelProps) {
         rightLabel="50 pages"
         onChange={onChangeMaxContextPages}
       />
-      <HelperText>
+      {/* <HelperText>
         {maxContext === 0
           ? "No history is attached - each request only sees its own batch."
           : "Sends the last " +
@@ -726,7 +738,7 @@ function AiSettingsTab(props: ReaderTranslationPanelProps) {
             " OCRed page" +
             (maxContext === 1 ? "" : "s") +
             " of the manga, with their page numbers, so the model follows the story. History is RAM-only and never translated."}
-      </HelperText>
+      </HelperText> */}
 
       <SectionLabel>Model limits - {info.label}</SectionLabel>
       <View style={styles.limitsRow}>
@@ -756,45 +768,200 @@ function AiSettingsTab(props: ReaderTranslationPanelProps) {
 
 
 function OverlayTab(props: ReaderTranslationPanelProps) {
-  const { textScale, onChangeTextScale, targetLanguageLabel } = props;
-  const changeScale = (delta: number) => {
-    const next = Math.round((textScale + delta) * 10) / 10;
-    onChangeTextScale(Math.min(2, Math.max(0.5, next)));
+  const {
+    overlayFont,
+    onChangeOverlayFont,
+    overlayFontWeight,
+    onChangeOverlayFontWeight,
+    overlayFontScale,
+    onChangeOverlayFontScale,
+    overlayTextColor,
+    onChangeOverlayTextColor,
+    targetLanguage,
+    targetLanguageLabel,
+  } = props;
+  const fontsLoaded = useOverlayFonts();
+  const supported = overlayFontSupportsLanguage(targetLanguage);
+  const effectiveFont = supported ? overlayFont : "default";
+  const rgb = hexToRgb(overlayTextColor);
+  const setChannel = (channel: "r" | "g" | "b", value: number) => {
+    onChangeOverlayTextColor(
+      rgbToHex({ ...rgb, [channel]: Math.round(value) }),
+    );
   };
+
   return (
     <View>
-      <SectionLabel>Overlay text size</SectionLabel>
-      <View style={styles.scaleRow}>
-        <Pressable
-          onPress={() => changeScale(-0.1)}
-          hitSlop={8}
-          style={styles.scaleButton}
+      <SectionLabel>Preview</SectionLabel>
+      <View style={styles.overlayPreviewCard}>
+        <Text
+          allowFontScaling={false}
+          style={{
+            color: overlayTextColor,
+            fontFamily: overlayFontFamily(
+              effectiveFont,
+              fontsLoaded,
+              overlayFontWeight,
+            ),
+            fontWeight: String(overlayFontWeight) as TextStyle["fontWeight"],
+            fontSize: 20 * Math.min(1.5, Math.max(0.5, overlayFontScale || 1)),
+            textAlign: "center",
+          }}
         >
-          <Minus color="#e2e8f0" size={18} />
-        </Pressable>
-        <Text style={styles.scaleValue}>{textScale.toFixed(1)}x</Text>
-        <Pressable
-          onPress={() => changeScale(0.1)}
-          hitSlop={8}
-          style={styles.scaleButton}
-        >
-          <Plus color="#e2e8f0" size={18} />
-        </Pressable>
+          The quick brown fox jumps over the lazy dog.
+        </Text>
       </View>
-      <HelperText>
-        Translated text is auto-fitted to its box. Bubble text is pasted inside
-        ~90% of the detected bubble; messy text uses its full box. Target
-        language: {targetLanguageLabel}.
-      </HelperText>
 
-      <SectionLabel>Translation behaviour</SectionLabel>
+      <SectionLabel>Font style</SectionLabel>
+      <View style={styles.fontRadioGroup}>
+        {OVERLAY_FONT_OPTIONS.map((option) => (
+          <Pressable
+            key={option.key}
+            onPress={() => onChangeOverlayFont(option.key)}
+            style={styles.fontRadioRow}
+          >
+            <View
+              style={[
+                styles.radio,
+                overlayFont === option.key && styles.radioActive,
+              ]}
+            >
+              {overlayFont === option.key && <View style={styles.radioDot} />}
+            </View>
+            <Text
+              style={[
+                styles.fontRadioLabel,
+                {
+                  fontFamily: overlayFontFamily(option.key, fontsLoaded),
+                },
+              ]}
+            >
+              {option.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <SectionLabel>Font weight</SectionLabel>
+      <View style={styles.overlaySlider}>
+        <View style={styles.overlaySliderHeader}>
+          <Text style={styles.overlaySliderLabel}>Weight</Text>
+          <Text style={styles.overlaySliderValue}>{overlayFontWeight}</Text>
+        </View>
+        <DotSlider
+          value={overlayFontWeight}
+          min={400}
+          max={900}
+          step={100}
+          leftLabel="400"
+          rightLabel="900"
+          onChange={onChangeOverlayFontWeight}
+        />
+      </View>
+
+      <SectionLabel>Font size</SectionLabel>
+      <View style={styles.overlaySlider}>
+        <View style={styles.overlaySliderHeader}>
+          <Text style={styles.overlaySliderLabel}>Scale</Text>
+          <Text style={styles.overlaySliderValue}>
+            {Math.round((overlayFontScale || 1) * 100)}%
+          </Text>
+        </View>
+        <DotSlider
+          value={overlayFontScale || 1}
+          min={0.5}
+          max={1.5}
+          step={0.05}
+          leftLabel="50%"
+          rightLabel="150%"
+          onChange={onChangeOverlayFontScale}
+        />
+      </View>
+
+      <SectionLabel>Text color</SectionLabel>
+      <RGBSlider
+        channel="R"
+        value={rgb.r}
+        onChange={(value) => setChannel("r", value)}
+      />
+      <RGBSlider
+        channel="G"
+        value={rgb.g}
+        onChange={(value) => setChannel("g", value)}
+      />
+      <RGBSlider
+        channel="B"
+        value={rgb.b}
+        onChange={(value) => setChannel("b", value)}
+      />
+      <View style={styles.tintPreviewRow}>
+        <View style={[styles.tintPreview, { backgroundColor: overlayTextColor }]} />
+        <Text style={styles.overlaySliderValue}>{overlayTextColor}</Text>
+      </View>
+
+      {/* <HelperText>
+        Bubble text uses 85% of the detected bubble area (centred, with a
+        readable minimum) and auto-fits the font size. Target language:{" "}
+        {targetLanguageLabel}.
+        {supported
+          ? ""
+          : " This target script is not supported by the display fonts, so the system font is used."}
+      </HelperText> */}
+
+      {/* <SectionLabel>Translation behaviour</SectionLabel>
       <HelperText>
         Translated pages are cached on-device (source + coordinates + result).
         Re-opening a page that was already translated into the current target
         language restores it instantly without OCR or an API call.
-      </HelperText>
+      </HelperText> */}
     </View>
   );
+}
+
+function RGBSlider({
+  channel,
+  value,
+  onChange,
+}: {
+  channel: "R" | "G" | "B";
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <View style={styles.overlaySlider}>
+      <View style={styles.overlaySliderHeader}>
+        <Text style={styles.overlaySliderLabel}>{channel}</Text>
+        <Text style={styles.overlaySliderValue}>{Math.round(value)}</Text>
+      </View>
+      <DotSlider
+        value={value}
+        min={0}
+        max={255}
+        step={5}
+        leftLabel="0"
+        rightLabel="255"
+        onChange={onChange}
+      />
+    </View>
+  );
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!match) return { r: 0, g: 0, b: 0 };
+  return {
+    r: parseInt(match[1], 16),
+    g: parseInt(match[2], 16),
+    b: parseInt(match[3], 16),
+  };
+}
+
+function rgbToHex({ r, g, b }: { r: number; g: number; b: number }): string {
+  const channel = (value: number) =>
+    Math.min(255, Math.max(0, Math.round(value)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${channel(r)}${channel(g)}${channel(b)}`;
 }
 
 const styles = StyleSheet.create({
@@ -1065,5 +1232,51 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     minWidth: 52,
     textAlign: "center",
+  },
+  overlayPreviewCard: {
+    minHeight: 76,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#33354a",
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 4,
+  },
+  fontRadioGroup: { gap: 2, marginBottom: 4 },
+  fontRadioRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 9,
+  },
+  fontRadioLabel: { color: "#e2e8f0", fontSize: 15 },
+  overlaySlider: { marginBottom: 12 },
+  overlaySliderHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 2,
+  },
+  overlaySliderLabel: {
+    color: "#cbd5e1",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  overlaySliderValue: { color: "#94a3b8", fontSize: 12 },
+  tintPreviewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
+  },
+  tintPreview: {
+    width: 30,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#565b6e",
   },
 });

@@ -1,6 +1,6 @@
 import { useFocusEffect } from "expo-router";
 import { openMangaInfo } from "@/components/manga/openMangaInfo";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -122,19 +122,16 @@ export default function LibraryScreen() {
     [providerFilter, search, selectedLibraryId, sort],
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      void load({ quiet: true });
-    }, [load]),
-  );
+  const loadRef = useRef(load);
+  loadRef.current = load;
 
-  const updateLibrary = async () => {
+  const updateLibrary = useCallback(async () => {
     if (!selectedLibraryId) return;
     setSyncing(true);
     setError(null);
     try {
       await syncLibrary(selectedLibraryId);
-      await load({ quiet: true });
+      await loadRef.current({ quiet: true });
     } catch (syncError) {
       setError(
         syncError instanceof Error ? syncError.message : "Update failed.",
@@ -142,7 +139,19 @@ export default function LibraryScreen() {
     } finally {
       setSyncing(false);
     }
-  };
+  }, [selectedLibraryId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load({ quiet: true });
+    }, [load]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      void updateLibrary();
+    }, [updateLibrary]),
+  );
 
   const refresh = async () => {
     setRefreshing(true);

@@ -65,6 +65,8 @@ export type ReaderInvertTapZones = "none" | "horizontal" | "vertical" | "both";
 
 export type ReaderBackgroundColor = "black" | "gray" | "white" | "auto";
 
+export type ReaderOverlayFont = "default" | "comicNeue" | "bangers" | "chewy";
+
 export interface ExtensionRepoSetting {
   url: string;
   name: string;
@@ -100,8 +102,6 @@ export interface AppSettings {
   aiMaxContextPages: number;
   /** Reader Config -> Language -> Target: translate-into language code. */
   readerTargetLanguage: string;
-  /** Overlay text size multiplier (0.5..2). 1 = auto-fitted default. */
-  readerTextScale: number;
   /** Reading modes / orientation / fit & chrome toggles (new reader UI). */
   readerReadingMode: ReaderReadingMode;
   readerPagedDirection: ReaderPagedDirection;
@@ -144,11 +144,18 @@ export interface AppSettings {
   readerAnimatePageTransitions: boolean;
   readerFlashOnPageChange: boolean;
   readerCustomBrightnessEnabled: boolean;
-  readerCustomBrightness: number; // 0-100
+  readerCustomBrightness: number; // 0-200 (100 = original image brightness)
   readerCustomColorFilterEnabled: boolean;
   readerCustomColorFilter: string;
   readerGrayscale: boolean;
+  readerGrayscaleAmount: number; // 0-100
   readerInverted: boolean;
+  /** Overlay paste font + typography (target-language text only). */
+  readerOverlayFont: ReaderOverlayFont;
+  readerOverlayFontWeight: number; // 400-900
+  /** Multiplier applied to the auto-fitted overlay font size (0.5-1.5). */
+  readerOverlayFontScale: number;
+  readerOverlayTextColor: string; // #rrggbb
   /** Auto-scroll speed multiplier (1..5). */
   readerScrollSpeed: number;
   /**
@@ -182,7 +189,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   aiRequestFrequency: 1,
   aiMaxContextPages: 10,
   readerTargetLanguage: "en",
-  readerTextScale: 1,
   readerReadingMode: "scrollVertical",
   readerPagedDirection: "ltr",
   readerOrientation: "default",
@@ -215,9 +221,14 @@ export const DEFAULT_SETTINGS: AppSettings = {
   readerCustomBrightnessEnabled: false,
   readerCustomBrightness: 100,
   readerCustomColorFilterEnabled: false,
-  readerCustomColorFilter: "#000000",
+  readerCustomColorFilter: "#808080",
   readerGrayscale: false,
+  readerGrayscaleAmount: 100,
   readerInverted: false,
+  readerOverlayFont: "default",
+  readerOverlayFontWeight: 600,
+  readerOverlayFontScale: 1,
+  readerOverlayTextColor: "#000000",
   readerScrollSpeed: 1,
   onboardingSeenGuideIds: [],
   onboardingDismissedForever: false,
@@ -258,6 +269,12 @@ const ORIENTATIONS: ReaderOrientation[] = [
 const TAP_ZONES: ReaderTapZoneLayout[] = ["topBottom", "leftRight", "both"];
 const INVERTS: ReaderInvertTapZones[] = ["none", "horizontal", "vertical", "both"];
 const BACKGROUNDS: ReaderBackgroundColor[] = ["black", "gray", "white", "auto"];
+const OVERLAY_FONTS: ReaderOverlayFont[] = [
+  "default",
+  "comicNeue",
+  "bangers",
+  "chewy",
+];
 
 function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
   return typeof value === "string" && (allowed as readonly string[]).includes(value)
@@ -292,7 +309,6 @@ function sanitize(raw: unknown): AppSettings {
           rawMode === "free"
         ? "free"
         : "off";
-  const scale = typeof value.readerTextScale === "number" ? value.readerTextScale : 1;
   return {
     ocrApiKey: typeof value.ocrApiKey === "string" ? value.ocrApiKey : "",
     ocrBackend: backend,
@@ -319,7 +335,6 @@ function sanitize(raw: unknown): AppSettings {
       num(value.aiRequestFrequency, 1, 1, 5),
     ),
     aiMaxContextPages: Math.round(num(value.aiMaxContextPages, 10, 0, 50)),
-    readerTextScale: Math.min(2, Math.max(0.5, Number.isFinite(scale) ? scale : 1)),
     readerReadingMode: oneOf(value.readerReadingMode, READING_MODES, "scrollVertical"),
     readerPagedDirection:
       value.readerPagedDirection === "rtl" ? "rtl" : "ltr",
@@ -382,14 +397,31 @@ function sanitize(raw: unknown): AppSettings {
     readerAnimatePageTransitions: bool(value.readerAnimatePageTransitions, true),
     readerFlashOnPageChange: bool(value.readerFlashOnPageChange, false),
     readerCustomBrightnessEnabled: bool(value.readerCustomBrightnessEnabled, false),
-    readerCustomBrightness: Math.round(num(value.readerCustomBrightness, 100, 0, 100)),
+    readerCustomBrightness: Math.round(num(value.readerCustomBrightness, 100, 0, 200)),
     readerCustomColorFilterEnabled: bool(value.readerCustomColorFilterEnabled, false),
     readerCustomColorFilter:
-      typeof value.readerCustomColorFilter === "string"
-        ? value.readerCustomColorFilter
-        : "#000000",
+      typeof value.readerCustomColorFilter === "string" &&
+      /^#[0-9a-f]{6}$/i.test(value.readerCustomColorFilter)
+        ? value.readerCustomColorFilter === "#000000"
+          ? "#808080"
+          : value.readerCustomColorFilter
+        : "#808080",
     readerGrayscale: bool(value.readerGrayscale, false),
+    readerGrayscaleAmount: Math.round(
+      num(value.readerGrayscaleAmount, 100, 0, 100),
+    ),
     readerInverted: bool(value.readerInverted, false),
+    readerOverlayFont: oneOf(value.readerOverlayFont, OVERLAY_FONTS, "default"),
+    readerOverlayFontWeight: Math.round(
+      num(value.readerOverlayFontWeight, 600, 400, 900) / 100,
+    ) * 100,
+    readerOverlayFontScale:
+      Math.round(num(value.readerOverlayFontScale, 1, 0.5, 1.5) * 100) / 100,
+    readerOverlayTextColor:
+      typeof value.readerOverlayTextColor === "string" &&
+      /^#[0-9a-f]{6}$/i.test(value.readerOverlayTextColor)
+        ? value.readerOverlayTextColor
+        : "#000000",
     readerScrollSpeed: Math.round(num(value.readerScrollSpeed, 1, 1, 5)),
     onboardingSeenGuideIds: Array.isArray(value.onboardingSeenGuideIds)
       ? value.onboardingSeenGuideIds.filter(

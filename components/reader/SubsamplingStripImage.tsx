@@ -26,13 +26,18 @@ import {
   requireNativeComponent,
   StyleSheet,
   View,
+  type ViewStyle,
 } from "react-native";
 
-import { downloadPageToCache } from "@/services/ocr/pageOcr";
+import {
+  downloadPageToCache,
+  ensureDecodablePageUri,
+} from "@/services/ocr/pageOcr";
 import { fetchExtensionPageImage } from "@/services/extensions/native";
+import { isAvifUri } from "@/services/images/avif";
 import { extensionPageUrlFor } from "@/utils/reader/imageHeaders";
 
-const TILED_EXTENSIONS = /\.(jpe?g|png|webp)(\?|#|$)/i;
+const TILED_EXTENSIONS = /\.(jpe?g|png|webp|avif)(\?|#|$)/i;
 
 let NativeTiledImage: React.ElementType | null = null;
 if (Platform.OS === "android") {
@@ -47,6 +52,10 @@ export interface SubsamplingStripImageProps {
   width: number;
   height: number;
   backgroundColor: string;
+  /** RN 0.81 color-matrix filters (brightness / grayscale / invert). */
+  imageFilter?: ViewStyle["filter"];
+  /** `#rrggbb` tint composited over the page with overlay blending. */
+  colorTint?: string | null;
   onFallbackLoad?: (event: {
     nativeEvent: { source: { width?: number; height?: number } };
   }) => void;
@@ -59,6 +68,8 @@ export default function SubsamplingStripImage({
   width,
   height,
   backgroundColor,
+  imageFilter,
+  colorTint,
   onFallbackLoad,
 }: SubsamplingStripImageProps) {
   const [localUri, setLocalUri] = useState<string | null>(null);
@@ -68,10 +79,51 @@ export default function SubsamplingStripImage({
     Platform.OS === "android" &&
     NativeTiledImage !== null &&
     TILED_EXTENSIONS.test(uri);
+  const tintSupported =
+    Platform.OS !== "android" || Number(Platform.Version) >= 29;
+
+  const frameStyle = [
+    { width, height, backgroundColor, overflow: "hidden" as const },
+    imageFilter ? { filter: imageFilter } : null,
+  ];
+  const tintOverlay =
+    colorTint && tintSupported ? (
+      <View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: colorTint, mixBlendMode: "overlay" },
+        ]}
+      />
+    ) : null;
 
   useEffect(() => {
     if (uri.startsWith("file://")) {
-      // Downloaded pages are already on disk; reuse them as-is.
+      // Downloaded pages are already on disk. AVIF still needs a PNG
+      // transcode before either the tiled view or RN's <Image> can open it.
+      if (isAvifUri(uri)) {
+        let cancelled = false;
+        setLocalUri(null);
+        setLocalFailed(false);
+        setLoadingLocal(true);
+        ensureDecodablePageUri(uri)
+          .then((fileUri) => {
+            if (!cancelled) {
+              setLocalUri(fileUri);
+              setLoadingLocal(false);
+            }
+          })
+          .catch((error) => {
+            console.warn("AVIF page transcode failed:", error);
+            if (!cancelled) {
+              setLocalFailed(true);
+              setLoadingLocal(false);
+            }
+          });
+        return () => {
+          cancelled = true;
+        };
+      }
       setLocalUri(uri);
       setLocalFailed(false);
       setLoadingLocal(false);
@@ -99,6 +151,7 @@ export default function SubsamplingStripImage({
         ).then((image) => image.path)
       : downloadPageToCache(uri, headers);
     load
+      .then((fileUri) => ensureDecodablePageUri(fileUri))
       .then((fileUri) => {
         if (!cancelled) {
           setLocalUri(fileUri);
@@ -120,8 +173,12 @@ export default function SubsamplingStripImage({
   if (tiledSupported && localUri && !localFailed && NativeTiledImage) {
     const TiledView = NativeTiledImage;
     return (
-      <View style={{ width, height, backgroundColor, overflow: "hidden" }}>
+      <View
+        pointerEvents="none"
+        style={frameStyle}
+      >
         <TiledView src={localUri} style={StyleSheet.absoluteFill} />
+        {tintOverlay}
       </View>
     );
   }
@@ -144,8 +201,29 @@ export default function SubsamplingStripImage({
 
   if (localUri && !localFailed) {
     return (
+      <View pointerEvents="none" style={frameStyle}>
+        <Image
+          source={{ uri: localUri }}
+          onLoad={onFallbackLoad}
+          onError={(event) =>
+            console.warn("[reader] page image failed", event.nativeEvent, uri)
+          }
+          style={{
+            width,
+            height,
+            resizeMode: "contain",
+            backgroundColor,
+          }}
+        />
+        {tintOverlay}
+      </View>
+    );
+  }
+
+  return (
+    <View pointerEvents="none" style={frameStyle}>
       <Image
-        source={{ uri: localUri }}
+        source={headers ? { uri, headers } : { uri }}
         onLoad={onFallbackLoad}
         onError={(event) =>
           console.warn("[reader] page image failed", event.nativeEvent, uri)
@@ -157,22 +235,7 @@ export default function SubsamplingStripImage({
           backgroundColor,
         }}
       />
-    );
-  }
-
-  return (
-    <Image
-      source={headers ? { uri, headers } : { uri }}
-      onLoad={onFallbackLoad}
-      onError={(event) =>
-        console.warn("[reader] page image failed", event.nativeEvent, uri)
-      }
-      style={{
-        width,
-        height,
-        resizeMode: "contain",
-        backgroundColor,
-      }}
-    />
+      {tintOverlay}
+    </View>
   );
 }

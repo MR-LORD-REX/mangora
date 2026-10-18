@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mangora",
     "slug": "mangora",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "orientation": "portrait",
     "scheme": "mangora",
     "icon": "./assets/icons/appLogo.png",
@@ -26,7 +26,10 @@
               "pathPrefix": "/manga"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -56,8 +59,10 @@
       "./plugins/withAppLinks",
       "./plugins/withUpdater",
       "./plugins/withSubsamplingScaleImageView",
+      "./plugins/withAvifDecoder",
       "expo-sqlite",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,

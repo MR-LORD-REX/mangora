@@ -34,6 +34,9 @@ export type ReaderInvertTapZones = "none" | "horizontal" | "vertical" | "both";
 
 export type ReaderBackgroundColor = "black" | "gray" | "white" | "auto";
 
+/** Overlay paste fonts. "default" keeps the system font. */
+export type ReaderOverlayFont = "default" | "comicNeue" | "bangers" | "chewy";
+
 export interface ReaderChromeSettings {
   readingMode: ReaderReadingMode;
   pagedDirection: ReaderPagedDirection;
@@ -57,10 +60,14 @@ export interface ReaderChromeSettings {
   animatePageTransitions: boolean;
   flashOnPageChange: boolean;
   customBrightnessEnabled: boolean;
+  /** Percent of the original image brightness (0-200, 100 = neutral). */
   customBrightness: number;
   customColorFilterEnabled: boolean;
+  /** `#rrggbb` tint composited over the page (128,128,128 = neutral). */
   customColorFilter: string;
   grayscale: boolean;
+  /** Grayscale strength in percent (0-100). */
+  grayscaleAmount: number;
   inverted: boolean;
 }
 
@@ -89,10 +96,35 @@ export const DEFAULT_READER_CHROME: ReaderChromeSettings = {
   customBrightnessEnabled: false,
   customBrightness: 100,
   customColorFilterEnabled: false,
-  customColorFilter: "#000000",
+  customColorFilter: "#808080",
   grayscale: false,
+  grayscaleAmount: 100,
   inverted: false,
 };
+
+/**
+ * Grayscale, inverted and custom color are mutually exclusive (Mihon's
+ * single color-filter mode). Enabling one disables the other two; brightness
+ * stacks on top of whichever mode is active.
+ */
+export function applyFilterExclusivity(
+  patch: Partial<ReaderChromeSettings>,
+): Partial<ReaderChromeSettings> {
+  const next = { ...patch };
+  if (patch.customColorFilterEnabled === true) {
+    next.grayscale = false;
+    next.inverted = false;
+  }
+  if (patch.grayscale === true) {
+    next.customColorFilterEnabled = false;
+    next.inverted = false;
+  }
+  if (patch.inverted === true) {
+    next.customColorFilterEnabled = false;
+    next.grayscale = false;
+  }
+  return next;
+}
 
 export const READING_MODE_OPTIONS: { key: ReaderReadingMode; label: string }[] = [
   { key: "scrollVertical", label: "Scroll \u2195 (vertical)" },

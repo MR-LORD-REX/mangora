@@ -32,7 +32,7 @@ import type { Box } from "@/services/translation/translation.types";
 import type { GeminiModelId } from "@/services/translation/geminiModels";
 
 /** Bump when the stored geometry/prompt contract changes. */
-export const TRANSLATION_CACHE_PROMPT_VERSION = "v1";
+export const TRANSLATION_CACHE_PROMPT_VERSION = "v2";
 
 export interface StoredTranslationRegion {
   regionId: number;

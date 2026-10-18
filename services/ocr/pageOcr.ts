@@ -15,6 +15,8 @@ import { Directory, File, Paths } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 
 import { downloadToFile } from "@/services/net/browserFetch";
+import { fetchExtensionPageImage } from "@/services/extensions/native";
+import { isAvifUri, transcodeAvifToPng } from "@/services/images/avif";
 
 
 /** A YOLO text-region box in natural page pixels. */
@@ -128,11 +130,21 @@ export async function downloadPageToCache(
 
   const download = (async () => {
     const dir = await getPagesDirectory();
-    const target = new File(dir, `page-${hashString(pageUrl)}.img`);
-    if (target.exists) return target.uri;
-    await downloadToFile(pageUrl, target, headers);
+    const avif = isAvifUri(pageUrl);
+    const target = new File(
+      dir,
+      `page-${hashString(pageUrl)}.${avif ? "avif" : "img"}`,
+    );
     if (!target.exists) {
-      throw new OcrError(`Downloading the page image failed: ${pageUrl}`);
+      await downloadToFile(pageUrl, target, headers);
+      if (!target.exists) {
+        throw new OcrError(`Downloading the page image failed: ${pageUrl}`);
+      }
+    }
+    if (avif) {
+      // Skia / ImageManipulator cannot open AVIF; hand every downstream
+      // consumer a normal PNG instead.
+      return transcodeAvifToPng(target.uri);
     }
     return target.uri;
   })();
@@ -144,6 +156,45 @@ export async function downloadPageToCache(
     pageFileCache.delete(pageUrl);
     throw error;
   }
+}
+
+export interface DecodablePageOptions {
+  headers?: Record<string, string>;
+  /** Extension source id: image bytes go through its OkHttp client. */
+  extensionSourceId?: string;
+  /** Page url, required for extension image interceptors. */
+  pageUrl?: string;
+  /**
+   * Fetch through the extension client even when the url has no `.avif`
+   * suffix. Used as a decode fallback after Skia rejects the remote image.
+   */
+  force?: boolean;
+}
+
+/**
+ * Returns a uri the reader / YOLO / OCR can actually decode. Normal images are
+ * returned untouched; AVIF pages are downloaded (through the extension client
+ * when one is supplied) and transcoded to a cached PNG.
+ */
+export async function ensureDecodablePageUri(
+  uri: string,
+  options: DecodablePageOptions = {},
+): Promise<string> {
+  const avif = isAvifUri(uri);
+  if (!avif && !options.force) return uri;
+  if (uri.startsWith("file://")) {
+    return transcodeAvifToPng(uri);
+  }
+  if (options.extensionSourceId) {
+    const image = await fetchExtensionPageImage(
+      options.extensionSourceId,
+      uri,
+      options.pageUrl ?? uri,
+    );
+    const localAvif = image.mime === "image/avif" || isAvifUri(image.path);
+    return localAvif ? transcodeAvifToPng(image.path) : image.path;
+  }
+  return downloadPageToCache(uri, options.headers);
 }
 
 /** Removes every cached page download (best effort). */
