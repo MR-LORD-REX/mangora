@@ -1,20 +1,13 @@
 {
-  "latest": "0.0.2",
+  "latest": "0.0.3",
   "versions": [
     {
-      "version": "0.0.2",
-      "date": "2026-10-10",
-      "title": "Sharing, in-app updates, Comix restored",
-      "file": "v0.0.2.md",
-      "type": "stable"
-    },
-    {
-      "version": "0.0.1",
-      "date": "2026-10-10",
-      "title": "First public beta",
-      "file": "v0.0.1.md",
+      "version": "0.0.3",
+      "date": "2026-10-18",
+      "title": "Extensions, AVIF pages, reader polish",
+      "file": "v0.0.3.md",
       "type": "stable"
     }
   ],
-  "general": { "file": "general.md", "updated": "2026-10-10" }
+  "general": { "file": "general.md", "updated": "2026-10-18" }
 }

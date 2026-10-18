@@ -2,190 +2,170 @@
   <img src="assets/icons/logoWname.png" alt="Mangora" width="340" />
 </p>
 
-<h3 align="center">One library. Any source. Any language.</h3>
+<h3 align="center">A reader and translator for Android</h3>
 
 <p align="center">
   <img alt="Expo SDK 54" src="https://img.shields.io/badge/Expo-SDK%2054-000020?logo=expo&logoColor=white">
   <img alt="React Native 0.81" src="https://img.shields.io/badge/React%20Native-0.81-61DAFB?logo=react&logoColor=white">
   <img alt="Platform Android" src="https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white">
-  <img alt="License" src="https://img.shields.io/badge/License-Pending-orange">
 </p>
 
 ---
 
-Mangora is an Android manga reader and on-device translator. It provides a unified library, a full-featured reader, and a real-time translation pipeline that detects text regions, runs OCR, and paints translated overlays directly over the original art — no external service required by default.
+Mangora is an Android application for reading material obtained through extensions that the user chooses to install. It provides a shared library and reader, optional offline chapter downloads, on-device text detection and OCR, and optional text translation overlays.
 
-Mangora contains no hosted content, no bundled catalogue, and no hardcoded source URLs. All reading material is accessed by the user through sources they configure themselves. The app is a presentation and translation layer only.
+**Mangora is not a manga publisher, content catalogue, or content-hosting service.** It does not ship a built-in list of reading providers. Users may add compatible extension repositories and install extensions; those extensions determine which catalogs and external services the app can contact. Mangora does not operate or endorse those independent repositories, extensions, websites, or services.
 
----
+> Reading, downloading, OCR, and translation can involve requests to third parties. See [Privacy](https://mangora-web.web.app/privacy), [Terms](https://mangora-web.web.app/terms), and [Copyright and DMCA Policy](https://mangora-web.web.app/copyright).
 
-## Features
+## What the app does
 
-### Library
+### Library and history
 
-- Unlimited named libraries with a system **Default** and a system **Downloads** library.
-- Grid and compact-list views with sorting by date added, unread count, or source.
-- Unread badges, in-progress chapter markers, and per-source filtering.
-- Multi-library membership — the same title can belong to any number of libraries simultaneously.
-- Title search, provider filter, and three sort orders (date added, unread count, source).
+- Stores a local library, reading history, and chapter progress.
+- Supports user-created libraries, search, filtering, and sorting.
+- Reopens reader positions and tracks completed and in-progress chapters.
 
 ### Reader
 
-- **Four reading modes:** vertical scroll, horizontal scroll, vertical paged, horizontal paged.
-- Fit and Original page sizing; tiled subsampling decoding for very long strip pages.
-- Configurable tap zones, page slider, orientation lock, keep-screen-awake, and auto-scroll.
-- Previous and next chapter navigation with progress restored to the exact page on every return.
-- Configurable reader background and chrome visibility.
+- Provides vertical scroll, horizontal scroll, vertical paged, and horizontal paged modes.
+- Offers fit/original sizing, zoom, rotation and orientation controls, tap zones, page navigation, and auto-scroll.
+- Loads pages through the installed extension that supplied the chapter, or from local downloaded files when available.
+- Uses native image support for formats such as AVIF and tiled decoding for very tall pages.
 
-### Downloads and Offline Reading
+### Downloads and offline reading
 
-- Chapters are stored as standard `.cbz` archives in a user-selected folder (Android SAF).
-- A single global queue with configurable per-source concurrency (1–5) and per-page concurrency (1–10).
-- Wi-Fi-only mode; the queue polls and resumes automatically when connectivity returns.
-- Foreground download service with a persistent notification carrying Pause, Resume, and Cancel actions.
-- Downloaded titles remain fully readable offline with all search, sort, and group filters intact.
-- A live download queue in Settings shows only active, failed, or paused jobs — completed jobs leave the queue automatically.
+- Saves chapters as `.cbz` archives to a folder the user selects through Android's system file picker.
+- Uses a persistent download queue with Wi-Fi-only operation, per-source and per-page concurrency settings, and pause/resume/cancel controls.
+- Keeps download metadata locally and reads completed archives without requiring the extension to be available.
+- Offline access applies to material already downloaded; live catalogs and searches require the relevant extension and network access.
 
-### OCR and Text Detection
+### Text recognition and translation
 
-- **YOLO-based region detection** locates speech bubbles and freeform text regions on any page.
-- **On-device OCR** via ExecuTorch — no account or API key needed for supported languages.
-- **Cloud OCR** via an optional self-hosted FastAPI bridge for additional language coverage.
-- Supported language families: English, Latin scripts (French, German, Spanish, Italian, Portuguese, Dutch, Polish, Turkish, Indonesian, Malay, Filipino, Vietnamese), Japanese, Korean, Simplified Chinese, Russian.
-- Language selection is automatic based on the source's declared language; no manual model selection required.
+1. The reader obtains a page from the installed extension or local archive.
+2. The on-device YOLO model detects text regions.
+3. The selected OCR backend reads those regions.
+4. If translation is enabled, Mangora translates recognized text and displays it as an overlay.
 
-### Translation
+Translation is **off by default**. OCR can use a local ExecuTorch model or the cloud OCR option. Translation modes are:
 
-- **Three translation modes:**
-  - **Off** — reader only, no OCR or translation performed.
-  - **Per-bubble** — each detected region is OCRed and translated independently; regions process concurrently.
-  - **AI (Gemini)** — the full page is OCRed in one pass, results are batched into Gemini requests, and previous pages can be attached as story context for coherent multi-page translation.
-- Translated overlays are drawn directly over the original art at the original region coordinates.
-- Completed translation results are cached in SQLite; revisiting a page restores results instantly without re-running detection or OCR.
-- Gemini model, batch size, context page count, and request frequency are all configurable.
-- Bring your own Gemini API key — validated before saving, never transmitted to any Mangora server.
+- **Off:** no OCR or translation pipeline is started.
+- **Free translation:** sends recognized text and language information to Google's public translation endpoints. It does not require an API key.
+- **AI translation:** sends recognized text, and optionally prior-page text context, to the Gemini API using the API key saved by the user.
 
-### Data and Storage
+OCR and translation are distinct. Selecting cloud OCR sends image crops to the cloud OCR endpoint; using Gemini sends recognized text to Google. Local OCR keeps the OCR step on-device, but free or AI translation still sends text to the respective translation service.
 
-- Library, chapters, reading progress, history, downloads, and translation cache stored locally in SQLite via Drizzle ORM.
-- One-tap database backup to a `.db` file in a user-chosen folder; restore from any prior backup with a full table rebuild.
-- Storage usage breakdown showing downloads, other app data, and free device space.
-- Translation cache can be cleared independently from the library.
+Translation results and OCR text used for overlays may be cached in the local SQLite database. The user can clear the translation cache from Settings.
 
----
+## Extension and content model
 
-## Install
+Mangora provides an extension host, not a curated content catalog:
 
-Mangora ships as an Android APK for **ARM64 (`arm64-v8a`)** devices running **Android 7.0 (API 24) or newer**.
+1. The user adds a compatible extension repository URL in Browse.
+2. Mangora retrieves that repository's catalog metadata and makes available extensions visible in the app.
+3. The user chooses an extension to download. Mangora checks the package name and version against the repository metadata and checks its signing certificate when a certificate fingerprint is supplied.
+4. Android's package installer handles installation. Installed extension software supplies its catalog/search behavior and makes requests to its own service endpoints.
+5. Mangora presents returned details and pages through shared library, reader, and download screens.
 
-| Channel | Link |
-|---|---|
-| GitHub Releases | [github.com/MR-LORD-REX/mangora/releases](https://github.com/MR-LORD-REX/mangora/releases) |
-| Telegram | [t.me/MangoraApp](https://t.me/MangoraApp) |
+These checks are consistency checks, **not** a security audit or certification. Repository metadata and extension APKs are supplied by third parties; signing-key checking is only possible when repository metadata includes a key. Only install software and use services you trust. Review the repository, extension, service terms, and privacy notices yourself.
 
-> **32-bit ARM (`armeabi-v7a`) is not supported.** The on-device OCR and object detection runtimes do not publish 32-bit native builds.
+Mangora cannot verify that third-party material is licensed or lawful, cannot change or remove material from third-party servers, and does not guarantee third-party availability or conduct. For a complaint about material, contact the service or hosting platform that controls it. See the [Copyright and DMCA Policy](https://mangora-web.web.app/copyright).
 
----
+## Data storage and network behavior
 
-## Community
+### Stored on your device
 
-| | |
-|---|---|
-| What's new | https://mangora-web.web.app/whats-new |
-| Privacy policy | https://mangora-web.web.app/privacy |
-| Telegram | https://t.me/MangoraApp |
-| Reddit | https://www.reddit.com/r/mangora |
-| GitHub | https://github.com/MR-LORD-REX/mangora |
-| Discord | https://discord.gg/ZWfMtkRTFR |
+The app keeps library records, metadata, progress, history, settings, extension repository settings, download records, and translation cache data in app-private SQLite and files. Settings include the Gemini API key when one is saved. Mangora does not claim that the API key or database backup is encrypted by the app.
 
----
+Downloaded `.cbz` files and backups are written to locations the user authorizes through Android's document picker. A whole-database backup may contain settings, keys, reading data, and cached OCR/translation text. Keep it in a secure location. Files saved outside app-private storage may remain after uninstalling Mangora or clearing app data.
 
-## Tech Stack
+### Requests that leave the device
 
-| Layer | Choice |
-|---|---|
-| Framework | Expo SDK 54, React Native 0.81, React 19 |
-| Navigation | Expo Router 6 — file-based, typed routes |
-| Language | TypeScript |
-| Styling | React Native StyleSheet + NativeWind |
-| Database | Expo SQLite + Drizzle ORM |
-| Graphics | React Native Skia, Reanimated, Gesture Handler |
-| Text detection | ONNX Runtime (YOLO) |
-| On-device OCR | react-native-executorch (ExecuTorch) |
-| Translation | Google Gemini — user-supplied API key |
-| Downloads | Native Kotlin foreground service + Android SAF |
+Depending on the feature being used, the device may communicate with:
 
----
+- The repository URL and APK/icon hosts selected through an extension repository.
+- The endpoints used by the installed extension for browsing, search, metadata, images, and downloads.
+- The cloud OCR endpoint currently configured in the app: `https://ilcapitano01-manga-tr-api.hf.space`. It receives page-image crops and language information when cloud OCR is selected.
+- Google's public translation endpoints when free translation is selected. They receive recognized text and source/target language information.
+- Google's Gemini API when AI translation or API-key validation is used. Gemini receives recognized text, optional prior-page text context, and the API key used for the request.
+- GitHub's release API and asset hosting when checking for or downloading updates.
+- Model distribution hosts when downloading an on-device OCR model for the first time.
 
-## Project Structure
+Requests originate in the app and are sent to the endpoints described above. Cloud OCR uses the endpoint configured in the app; this repository does not establish who operates it. Receiving services can ordinarily receive network metadata such as IP address, request time, URL, and client/request headers. Extension behavior can include cookies or other headers. Each service has its own policies and retention practices. The project does not operate a user account service or a central sync backend for your library, history, or settings.
 
-```text
-app/            Expo Router screens (tabs, manga viewer, reader)
-components/     Feature-grouped UI (reader, downloader, library, settings)
-services/       Database, downloader, OCR, translation, settings, updates
-utils/          Reader geometry, page identity, image headers, translation hook
-constants/      Theme and onboarding guide definitions
-plugins/        Expo config plugins (download service, app links, updater)
-android/        Generated Android project
-```
+The website is hosted on Firebase Hosting and fetches release information from GitHub from your browser. It may temporarily cache release responses in browser session storage. See the [Privacy Policy](https://mangora-web.web.app/privacy) for a fuller data-flow explanation and external service details.
 
----
+## Privacy controls
+
+- Leave translation off or choose local OCR to avoid the cloud OCR request.
+- Do not enable online translation unless you accept sending OCR text to that service.
+- Do not install repositories or extensions unless you trust their operators.
+- Remove app records and clear the translation cache using available in-app controls.
+- Clear Android app storage or uninstall to remove app-private data; manage files in user-selected folders separately.
+- Protect the device, saved API keys, backups, and downloaded files.
+
+Mangora's current application and website source do not include a Mangora analytics or advertising SDK. That does not make requests to extension, translation, OCR, hosting, or update services anonymous; those operators may process standard request information under their own policies.
+
+## Installation
+
+The published Android APK targets **ARM64 (`arm64-v8a`)** and Android 7.0 (API 24) or later. 32-bit ARM (`armeabi-v7a`) is not supported by the native OCR and image-processing runtime used in the app.
+
+Download the current release from the official [GitHub Releases](https://github.com/MR-LORD-REX/mangora/releases) page or an official Mangora channel. Android may ask you to allow installation from the browser or file manager that opened the APK. Only install builds from a channel you trust.
 
 ## Development
 
-**Requirements:** Node 20+, JDK 17, Android SDK, ARM64 emulator or physical device.
-Expo Go cannot run this project — a development build is required for the native OCR and detection runtimes.
+### Requirements
 
-```bash
+- Node.js 20 or newer
+- JDK 17
+- Android SDK and an Android ARM64 emulator or device
+
+Expo Go is not sufficient for native ExecuTorch and ONNX features. Use an Android development build.
+
+### Install, run, and check
+
+```powershell
 npm install
-npx expo run:android      # install and launch a development build
-npx expo start            # start Metro (once a dev build is on-device)
-npx tsc --noEmit          # type-check
-npx eslint .              # lint
+npx expo run:android
+npx expo start
+npx tsc --noEmit
+npx eslint .
 ```
 
-**Release APK:**
+### Build an Android release APK
 
-```bash
-cd android
-./gradlew clean :app:assembleRelease -PreactNativeArchitectures=arm64-v8a
+From the `android` directory:
+
+```powershell
+.\gradlew.bat :app:assembleRelease -PreactNativeArchitectures=arm64-v8a
 ```
 
-CI release builds run via `.github/workflows/android-release.yml` on any `v*` tag that matches `expo.version` in `app.json`.
+For a clean release build, run the clean task separately before assembling:
+
+```powershell
+.\gradlew.bat clean
+.\gradlew.bat :app:assembleRelease -PreactNativeArchitectures=arm64-v8a
+```
+
+The project uses Expo SDK 54, React Native 0.81, React 19, Expo Router, TypeScript, Expo SQLite with Drizzle, ONNX Runtime, ExecuTorch, and native Kotlin Android modules. Android release artifacts are large because they include native OCR and image-processing code.
+
+## Repository map
+
+- `app/` — Expo Router screens and navigation.
+- `components/` — reader, library, extension, downloader, and settings UI.
+- `services/extensions/` — repository catalog parsing, extension installation, and the native bridge.
+- `services/db/` — SQLite schema, migrations, backup/restore, and repositories.
+- `services/ocr/`, `services/yolo/`, `services/translation/` — detection, OCR, and translation pipeline.
+- `services/downloader/` — queue, page acquisition, archive creation, and storage.
+- `plugins/android/` — native Android modules and Expo config plugins.
+- `mangora-website/` — public website and its policy pages.
+
+## Legal and licensing
+
+The [Terms of Use](https://mangora-web.web.app/terms), [Privacy Policy](https://mangora-web.web.app/privacy), and [Copyright and DMCA Policy](https://mangora-web.web.app/copyright) describe the project's current position and data flows. They are not legal advice and do not guarantee immunity from claims. No disclaimer can remove a responsibility or right that applicable law does not allow to be waived.
+
+Mangora's code, native dependencies, OCR models, fonts, graphics, and other bundled materials may be governed by different licenses and notices. See `LICENSE.txt` and third-party notices distributed with the project. Do not assume that a software license grants permission to use, reproduce, or distribute content returned by an extension or any third-party service. Verify all relevant licenses before redistribution or commercial use.
 
 ---
 
-<!-- ## Optional: Cloud OCR Bridge
-
-`TR_API/` is a self-hostable FastAPI service that proxies one or more Gradio-based OCR models behind a single JSON API. It is entirely optional — the reader operates fully with on-device OCR. See `TR_API/server/main.py` for the endpoint contract. -->
-
----
-
-## Legal
-
-### Content
-
-Mangora does not host, store, distribute, index, or link to any manga, comic, or other copyrighted material. The app renders pages fetched by sources that the user installs and configures independently. Mangora has no knowledge of or control over the content those sources provide.
-
-If you are a rights holder and believe content accessible through a source configured by a user infringes your copyright, your claim is against that source, not against this application. Mangora cannot be used to serve DMCA notices on behalf of third-party source operators.
-
-### License
-
-> **License is currently being finalized.** The project incorporates a YOLO-based object detection model whose license terms are under review. A full open-source license will be applied once that review is complete. Until then, the source is made available for inspection only — redistribution and commercial use are not permitted without explicit written permission.
-
-Current dependency licenses of note:
-
-| Dependency | License |
-|---|---|
-| React Native | MIT |
-| Expo SDK | MIT |
-| Drizzle ORM | Apache 2.0 |
-| React Native Skia | MIT |
-| react-native-executorch | BSD-style (Meta) |
-| ONNX Runtime | MIT |
-
-A complete third-party license manifest is available in `android/app/src/main/assets/` after a build.
-
----
-
-*Mangora is a reader and translator. It contains no content.*
+Mangora is reader and translation software. The content and services accessed through user-installed extensions are independently operated and are not provided or controlled by Mangora.

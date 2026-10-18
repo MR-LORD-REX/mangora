@@ -297,7 +297,6 @@ export async function translateGeminiBatch(opts: {
     history,
     batch,
   });
-  console.log("userText", userText);
   const response = await requestGenerateContent({
     apiKey,
     model,

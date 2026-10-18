@@ -1,6 +1,6 @@
 # Planned & in progress
 
-**Updated 2026-10-10**
+**Updated 2026-10-18**
 
 Small changes and work in flight that has not shipped in a versioned release yet.
 
