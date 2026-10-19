@@ -34,6 +34,7 @@ import {
   Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Swipeable } from "react-native-gesture-handler";
 
 import AppHeader from "@/components/common/AppHeader";
 import SourceTabs from "@/components/sources/SourceTabs";
@@ -60,6 +61,7 @@ import {
   cachedInstalledExtensions,
   refreshExtensionRegistry,
 } from "@/services/extensions/registry";
+import { requestExtensionUninstall } from "@/services/extensions/native";
 import type {
   ExtensionCatalogEntry,
   ExtensionRepo,
@@ -107,6 +109,7 @@ function sourceLanguages(extension: ExtensionCatalogEntry): string[] {
 
 type InstalledSource = InstalledExtensionRecord["sources"][number];
 type SourceRow = { extension: InstalledExtensionRecord; source: InstalledSource };
+type UninstallTarget = { packageName: string; name: string };
 
 function sourceLanguageLabel(lang: string): string {
   if (lang === "en") return "English";
@@ -117,19 +120,27 @@ function sourceLanguageLabel(lang: string): string {
 const SourceListRow = React.memo(function SourceListRow({
   source,
   extensionName,
+  packageName,
   nsfw,
   pinned,
   onOpen,
   onTogglePin,
+  onRemoveFromRecent,
+  onRequestUninstall,
+  recentlyUsed,
 }: {
   source: InstalledSource;
   extensionName: string;
+  packageName: string;
   nsfw: boolean;
   pinned: boolean;
+  recentlyUsed: boolean;
   onOpen: (sourceId: string) => void;
   onTogglePin: (sourceId: string) => void;
+  onRemoveFromRecent: (sourceId: string) => void;
+  onRequestUninstall: (packageName: string, extensionName: string) => void;
 }) {
-  return (
+  const row = (
     <Pressable
       onPress={() => onOpen(source.id)}
       style={({ pressed }) => [styles.sourceRow, pressed && styles.pressed]}
@@ -167,6 +178,44 @@ const SourceListRow = React.memo(function SourceListRow({
       </Pressable>
     </Pressable>
   );
+  return (
+    <Swipeable
+      overshootRight={false}
+      rightThreshold={50}
+      renderRightActions={() => (
+        <View style={styles.sourceSwipeActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Uninstall ${extensionName}`}
+            onPress={() => onRequestUninstall(packageName, extensionName)}
+            style={({ pressed }) => [
+              styles.sourceUninstallAction,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Trash2 color={colors.onAccent} size={18} />
+            <Text style={styles.recentDeleteText}>Uninstall</Text>
+          </Pressable>
+          {recentlyUsed ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${source.name} from last used sources`}
+              onPress={() => onRemoveFromRecent(source.id)}
+              style={({ pressed }) => [
+                styles.recentDeleteAction,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Trash2 color={colors.onAccent} size={18} />
+              <Text style={styles.recentDeleteText}>Remove</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      )}
+    >
+      {row}
+    </Swipeable>
+  );
 });
 
 const ExtensionCatalogRow = React.memo(function ExtensionCatalogRow({
@@ -176,6 +225,7 @@ const ExtensionCatalogRow = React.memo(function ExtensionCatalogRow({
   busy,
   percent,
   onInstall,
+  onRequestUninstall,
 }: {
   item: ExtensionCatalogEntry;
   record?: InstalledExtensionRecord;
@@ -183,8 +233,10 @@ const ExtensionCatalogRow = React.memo(function ExtensionCatalogRow({
   busy: boolean;
   percent: number;
   onInstall: (extension: ExtensionCatalogEntry) => void;
+  onRequestUninstall: (packageName: string, extensionName: string) => void;
 }) {
   const installedNow = label === "Installed";
+  const hasInstalledRecord = record != null;
   const nsfw =
     record?.nsfw || item.contentWarning?.toUpperCase().includes("NSFW");
   return (
@@ -231,26 +283,53 @@ const ExtensionCatalogRow = React.memo(function ExtensionCatalogRow({
             )}
           </View>
           <Pressable
-            disabled={busy || installedNow}
-            onPress={() => onInstall(item)}
+            disabled={busy}
+            onPress={() =>
+              installedNow
+                ? onRequestUninstall(item.packageName, item.name)
+                : onInstall(item)
+            }
             style={({ pressed }) => [
               styles.installButton,
-              installedNow && styles.installedButton,
+              installedNow && styles.uninstallButton,
               busy && styles.busyButton,
-              pressed && !installedNow && !busy && styles.pressed,
+              pressed && !busy && styles.pressed,
             ]}
           >
             {busy ? (
               <ActivityIndicator color={colors.onAccent} size="small" />
             ) : installedNow ? (
-              <Check color={colors.success} size={16} />
+              <Trash2 color={colors.danger} size={16} />
             ) : (
               <Download color={colors.onAccent} size={16} />
             )}
-            <Text style={[styles.installLabel, installedNow && styles.installedLabel]}>
-              {busy ? `${percent}%` : label}
+            <Text
+              style={[
+                styles.installLabel,
+                installedNow && styles.uninstallLabel,
+              ]}
+            >
+              {busy ? `${percent}%` : installedNow ? "Uninstall" : label}
             </Text>
           </Pressable>
+          {hasInstalledRecord && !installedNow ? (
+            <Pressable
+              accessibilityLabel={`Uninstall ${item.name}`}
+              disabled={busy}
+              onPress={() => onRequestUninstall(item.packageName, item.name)}
+              style={({ pressed }) => [
+                styles.installButton,
+                styles.uninstallButton,
+                busy && styles.busyButton,
+                pressed && !busy && styles.pressed,
+              ]}
+            >
+              <Trash2 color={colors.danger} size={16} />
+              <Text style={[styles.installLabel, styles.uninstallLabel]}>
+                Uninstall
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
     </View>
@@ -279,6 +358,9 @@ export default function BrowseScreen() {
     useState<ExtensionCatalogEntry | null>(null);
   const [permissionOpen, setPermissionOpen] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
+  const [uninstallTarget, setUninstallTarget] =
+    useState<UninstallTarget | null>(null);
+  const [uninstallBusy, setUninstallBusy] = useState(false);
   const [progressPackage, setProgressPackage] = useState<string | null>(null);
   const [progressPercent, setProgressPercent] = useState(0);
 
@@ -481,6 +563,32 @@ export default function BrowseScreen() {
   const handleInstall = useCallback((extension: ExtensionCatalogEntry) => {
     void installRef.current(extension);
   }, []);
+  const handleRequestUninstall = useCallback(
+    (packageName: string, name: string) => {
+      setUninstallTarget({ packageName, name });
+    },
+    [],
+  );
+  const confirmUninstall = useCallback(async () => {
+    if (!uninstallTarget || uninstallBusy) return;
+    setUninstallBusy(true);
+    try {
+      await requestExtensionUninstall(uninstallTarget.packageName);
+      setUninstallTarget(null);
+      setBanner(
+        `Android uninstall confirmation opened for ${uninstallTarget.name}. The extension stays installed unless you approve it.`,
+      );
+    } catch (error) {
+      setUninstallTarget(null);
+      setBanner(
+        error instanceof Error
+          ? error.message
+          : `Could not open Android uninstall for ${uninstallTarget.name}.`,
+      );
+    } finally {
+      setUninstallBusy(false);
+    }
+  }, [uninstallBusy, uninstallTarget]);
   const handleOpenSource = useCallback(
     (sourceId: string) => {
       const current = settings?.sourceLastUsedAt ?? {};
@@ -499,6 +607,14 @@ export default function BrowseScreen() {
       void updateSettings({ pinnedSourceIds: [...current] }).catch(console.error);
     },
     [settings?.pinnedSourceIds],
+  );
+  const handleRemoveFromRecent = useCallback(
+    (sourceId: string) => {
+      const next = { ...(settings?.sourceLastUsedAt ?? {}) };
+      delete next[sourceId];
+      void updateSettings({ sourceLastUsedAt: next }).catch(console.error);
+    },
+    [settings?.sourceLastUsedAt],
   );
 
   async function beginInstall(extension: ExtensionCatalogEntry) {
@@ -734,14 +850,18 @@ export default function BrowseScreen() {
           renderSectionHeader={({ section }) => (
             <Text style={styles.sectionHeader}>{section.title}</Text>
           )}
-          renderItem={({ item }) => (
+          renderItem={({ item, section }) => (
             <SourceListRow
               source={item.source}
               extensionName={item.extension.name}
+              packageName={item.extension.packageName}
               nsfw={item.extension.nsfw}
               pinned={pinnedIds.has(item.source.id)}
+              recentlyUsed={section.title === "Last used"}
               onOpen={handleOpenSource}
               onTogglePin={handleTogglePin}
+              onRemoveFromRecent={handleRemoveFromRecent}
+              onRequestUninstall={handleRequestUninstall}
             />
           )}
           ListEmptyComponent={
@@ -776,6 +896,7 @@ export default function BrowseScreen() {
               busy={progressPackage === item.packageName}
               percent={progressPercent}
               onInstall={handleInstall}
+              onRequestUninstall={handleRequestUninstall}
             />
           )}
           ListEmptyComponent={
@@ -1033,6 +1154,64 @@ export default function BrowseScreen() {
         </Pressable>
       </Modal>
 
+      <Modal
+        visible={uninstallTarget !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!uninstallBusy) setUninstallTarget(null);
+        }}
+      >
+        <Pressable
+          style={styles.scrim}
+          onPress={() => {
+            if (!uninstallBusy) setUninstallTarget(null);
+          }}
+        >
+          <Pressable style={styles.sheet} onPress={() => {}}>
+            <Text style={styles.sheetTitle}>
+              Uninstall {uninstallTarget?.name ?? "extension"}?
+            </Text>
+            <Text style={styles.sheetBody}>
+              Mangora will open Android’s uninstall confirmation. The
+              extension and its sources are removed only if you approve there.
+              Your manga library and reading data are not deleted.
+            </Text>
+            <View style={styles.sheetActions}>
+              <Pressable
+                disabled={uninstallBusy}
+                onPress={() => setUninstallTarget(null)}
+                style={({ pressed }) => [
+                  styles.secondaryButton,
+                  uninstallBusy && styles.disabled,
+                  pressed && !uninstallBusy && styles.pressed,
+                ]}
+              >
+                <Text style={styles.secondaryLabel}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                disabled={uninstallBusy}
+                onPress={() => void confirmUninstall()}
+                style={({ pressed }) => [
+                  styles.destructiveButton,
+                  uninstallBusy && styles.disabled,
+                  pressed && !uninstallBusy && styles.pressed,
+                ]}
+              >
+                {uninstallBusy ? (
+                  <ActivityIndicator color={colors.onAccent} size="small" />
+                ) : (
+                  <Trash2 color={colors.onAccent} size={16} />
+                )}
+                <Text style={styles.primaryLabel}>
+                  {uninstallBusy ? "Opening..." : "Continue"}
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <TermsModal
         visible={termsOpen}
         extensionName={pendingInstall?.name ?? "this extension"}
@@ -1181,6 +1360,32 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
+  recentDeleteAction: {
+    width: 80,
+    borderRadius: radius.md,
+    backgroundColor: colors.danger,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  sourceSwipeActions: {
+    flexDirection: "row",
+    gap: 6,
+    marginLeft: 8,
+  },
+  sourceUninstallAction: {
+    width: 88,
+    borderRadius: radius.md,
+    backgroundColor: colors.danger,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  recentDeleteText: {
+    color: colors.onAccent,
+    fontSize: 11,
+    fontWeight: "800",
+  },
   sourceIcon: {
     width: 44,
     height: 44,
@@ -1249,8 +1454,10 @@ const styles = StyleSheet.create({
   },
   busyButton: { backgroundColor: colors.accentSoft },
   installedButton: { backgroundColor: colors.surfaceHigh, minWidth: 104 },
+  uninstallButton: { backgroundColor: colors.dangerSoft, minWidth: 104 },
   installLabel: { color: colors.onAccent, fontSize: 12, fontWeight: "800" },
   installedLabel: { color: colors.success },
+  uninstallLabel: { color: colors.danger },
 
   migrateCard: {
     backgroundColor: colors.surface,
@@ -1298,6 +1505,16 @@ const styles = StyleSheet.create({
   sheetTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
   sheetBody: { color: colors.textMuted, fontSize: 13, lineHeight: 19 },
   sheetActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10, marginTop: 20 },
+  destructiveButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    minHeight: 42,
+    paddingHorizontal: 14,
+    borderRadius: radius.full,
+    backgroundColor: colors.danger,
+  },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",

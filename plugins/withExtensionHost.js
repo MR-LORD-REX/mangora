@@ -130,6 +130,15 @@ function withExtensionManifest(config) {
     if (!present) {
       manifest["uses-permission"].push({ $: { "android:name": permission } });
     }
+    const uninstallPermission = "android.permission.REQUEST_DELETE_PACKAGES";
+    const uninstallPermissionPresent = manifest["uses-permission"].some(
+      (entry) => entry.$ && entry.$["android:name"] === uninstallPermission,
+    );
+    if (!uninstallPermissionPresent) {
+      manifest["uses-permission"].push({
+        $: { "android:name": uninstallPermission },
+      });
+    }
     return config;
   });
 }

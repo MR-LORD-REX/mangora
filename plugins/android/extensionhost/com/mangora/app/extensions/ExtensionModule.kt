@@ -1,6 +1,7 @@
 package com.mangora.app.extensions
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -72,6 +73,35 @@ class ExtensionModule(private val reactContext: ReactApplicationContext) :
             extension.sources.forEach { source -> array.put(source.toJson()) }
         }
         array.toString()
+    }
+
+    @ReactMethod
+    fun requestUninstall(packageName: String, promise: Promise) {
+        if (!packageName.matches(Regex("[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)+"))) {
+            promise.reject("mangora_uninstall", "Invalid package name.")
+            return
+        }
+        val activity = reactContext.currentActivity
+        if (activity == null) {
+            promise.reject("mangora_uninstall", "No active activity to open Android uninstall.")
+            return
+        }
+        val intent = Intent(
+            Intent.ACTION_UNINSTALL_PACKAGE,
+            Uri.parse("package:$packageName"),
+        ).putExtra(Intent.EXTRA_RETURN_RESULT, true)
+        activity.runOnUiThread {
+            try {
+                activity.startActivity(intent)
+                promise.resolve(null)
+            } catch (error: Exception) {
+                promise.reject(
+                    "mangora_uninstall",
+                    error.message ?: "Could not open Android uninstall.",
+                    error,
+                )
+            }
+        }
     }
 
     @ReactMethod

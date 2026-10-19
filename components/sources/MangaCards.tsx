@@ -37,18 +37,34 @@ const CoverImage = ({
     </View>
   );
 
-/** Tall two-column grid card used by source browse screens. */
-export function MangaGridCard({ entry }: { entry: SourceEntry }) {
+/** Grid card used by source browse screens. */
+export function MangaGridCard({
+  entry,
+  compact = false,
+}: {
+  entry: SourceEntry;
+  compact?: boolean;
+}) {
   return (
     <Pressable
       onPress={entry.onOpen}
-      style={({ pressed }) => [styles.gridCard, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.gridCard,
+        compact && styles.gridCardCompact,
+        pressed && styles.pressed,
+      ]}
     >
       <View style={styles.coverWrap}>
-        <CoverImage entry={entry} style={styles.gridCover} />
+        <CoverImage
+          entry={entry}
+          style={[styles.gridCover, compact && styles.gridCoverCompact]}
+        />
         <View style={styles.gridGlow} pointerEvents="none" />
       </View>
-      <Text numberOfLines={2} style={styles.gridTitle}>
+      <Text
+        numberOfLines={2}
+        style={[styles.gridTitle, compact && styles.gridTitleCompact]}
+      >
         {entry.title}
       </Text>
     </Pressable>
@@ -88,6 +104,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 18,
   },
+  gridCardCompact: { marginBottom: 12 },
   coverWrap: {
     aspectRatio: 0.7,
     borderRadius: radius.md,
@@ -96,6 +113,7 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   gridCover: { width: "100%", height: "100%" },
+  gridCoverCompact: { borderRadius: radius.sm },
   gridGlow: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "transparent",
@@ -106,6 +124,11 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 18,
     marginTop: 8,
+  },
+  gridTitleCompact: {
+    fontSize: 10,
+    lineHeight: 13,
+    marginTop: 5,
   },
   placeholder: {
     backgroundColor: colors.surfaceHigh,

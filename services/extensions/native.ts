@@ -21,6 +21,7 @@ import type {
 interface MangoraExtensionsModule {
   listInstalled(): Promise<string>;
   listSources(): Promise<string>;
+  requestUninstall(packageName: string): Promise<void>;
   inspectApk(path: string): Promise<string>;
   getPopular(sourceId: string, page: number): Promise<string>;
   getLatest(sourceId: string, page: number): Promise<string>;
@@ -90,6 +91,12 @@ export async function listInstalledExtensions(): Promise<
 > {
   if (!native) return [];
   return parse<InstalledExtensionRecord[]>(await native.listInstalled());
+}
+
+export async function requestExtensionUninstall(
+  packageName: string,
+): Promise<void> {
+  await requireNative().requestUninstall(packageName);
 }
 
 export async function listNativeSources() {

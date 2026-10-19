@@ -3,16 +3,24 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { SlidersHorizontal } from "lucide-react-native";
+import {
+  Check,
+  Grid2X2,
+  Grid3X3,
+  List,
+  SlidersHorizontal,
+} from "lucide-react-native";
 
 import AppHeader from "@/components/common/AppHeader";
 import ExtensionFilterSheet from "@/components/extensions/ExtensionFilterSheet";
-import { MangaGridCard } from "@/components/sources/MangaCards";
+import { MangaGridCard, MangaListRow } from "@/components/sources/MangaCards";
 import SourceTabs from "@/components/sources/SourceTabs";
 import { openMangaInfo } from "@/components/manga/openMangaInfo";
 import { colors } from "@/constants/theme";
@@ -33,6 +41,17 @@ import type {
 } from "@/services/extensions/types";
 
 type FeedMode = "popular" | "latest";
+type CardLayout = "grid2" | "grid4" | "list";
+
+const CARD_LAYOUT_OPTIONS: {
+  key: CardLayout;
+  label: string;
+  icon: typeof Grid2X2;
+}[] = [
+  { key: "grid2", label: "Grid · 2 columns", icon: Grid2X2 },
+  { key: "grid4", label: "Grid · 4 columns", icon: Grid3X3 },
+  { key: "list", label: "List", icon: List },
+];
 
 function paramString(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -41,26 +60,26 @@ function paramString(value: string | string[] | undefined): string {
 const MangaCell = React.memo(function MangaCell({
   item,
   sourceId,
+  layout,
 }: {
   item: NativeManga;
   sourceId: string;
+  layout: CardLayout;
 }) {
-  return (
-    <MangaGridCard
-      entry={{
-        key: item.url,
-        title: item.title,
-        coverUrl: item.thumbnailUrl,
-        meta: item.author ?? undefined,
-        onOpen: () =>
-          openMangaInfo({
-            provider: extensionProviderFor(sourceId),
-            id: item.url,
-            thumbnailUrl: item.thumbnailUrl,
-          }),
-      }}
-    />
-  );
+  const entry = {
+    key: item.url,
+    title: item.title,
+    coverUrl: item.thumbnailUrl,
+    meta: item.author ?? undefined,
+    onOpen: () =>
+      openMangaInfo({
+        provider: extensionProviderFor(sourceId),
+        id: item.url,
+        thumbnailUrl: item.thumbnailUrl,
+      }),
+  };
+  if (layout === "list") return <MangaListRow entry={entry} />;
+  return <MangaGridCard entry={entry} compact={layout === "grid4"} />;
 });
 
 export default function ExtensionSourceScreen() {
@@ -74,6 +93,8 @@ export default function ExtensionSourceScreen() {
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [filters, setFilters] = useState<ExtensionFilterPatch[]>([]);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [cardLayout, setCardLayout] = useState<CardLayout>("grid2");
+  const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
   const [items, setItems] = useState<NativeManga[]>([]);
   const [page, setPage] = useState(1);
   const [hasNext, setHasNext] = useState(false);
@@ -144,10 +165,16 @@ export default function ExtensionSourceScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: NativeManga }) => (
-      <MangaCell item={item} sourceId={sourceId} />
+      <MangaCell item={item} sourceId={sourceId} layout={cardLayout} />
     ),
-    [sourceId],
+    [cardLayout, sourceId],
   );
+
+  const layoutOption = CARD_LAYOUT_OPTIONS.find(
+    (option) => option.key === cardLayout,
+  )!;
+  const LayoutIcon = layoutOption.icon;
+  const columns = cardLayout === "grid4" ? 4 : cardLayout === "grid2" ? 2 : 1;
 
   const keyExtractor = useCallback((item: NativeManga) => item.url, []);
 
@@ -184,6 +211,12 @@ export default function ExtensionSourceScreen() {
         onSearchSubmit={() => setSubmittedQuery(query)}
         searchPlaceholder="Search this source"
         actions={[
+          {
+            key: "card-layout",
+            icon: LayoutIcon,
+            active: layoutMenuOpen,
+            onPress: () => setLayoutMenuOpen(true),
+          },
           {
             key: "filters",
             icon: SlidersHorizontal,
@@ -231,11 +264,15 @@ export default function ExtensionSourceScreen() {
         </View>
       ) : (
         <FlatList
+          key={cardLayout}
           data={items}
           keyExtractor={keyExtractor}
-          numColumns={2}
-          columnWrapperStyle={styles.columns}
-          contentContainerStyle={styles.list}
+          numColumns={columns}
+          columnWrapperStyle={columns > 1 ? styles.columns : undefined}
+          contentContainerStyle={[
+            styles.list,
+            columns === 4 && styles.compactGrid,
+          ]}
           renderItem={renderItem}
           onEndReached={loadMore}
           onEndReachedThreshold={0.6}
@@ -270,6 +307,55 @@ export default function ExtensionSourceScreen() {
           setPage(1);
         }}
       />
+      <Modal
+        visible={layoutMenuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLayoutMenuOpen(false)}
+      >
+        <Pressable
+          style={styles.layoutBackdrop}
+          onPress={() => setLayoutMenuOpen(false)}
+        >
+          <View style={styles.layoutMenu}>
+            <Text style={styles.layoutTitle}>Display manga as</Text>
+            {CARD_LAYOUT_OPTIONS.map((option) => {
+              const Icon = option.icon;
+              const selected = cardLayout === option.key;
+              return (
+                <Pressable
+                  key={option.key}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  onPress={() => {
+                    setCardLayout(option.key);
+                    setLayoutMenuOpen(false);
+                  }}
+                  style={({ pressed }) => [
+                    styles.layoutOption,
+                    selected && styles.layoutOptionSelected,
+                    pressed && styles.layoutOptionPressed,
+                  ]}
+                >
+                  <Icon
+                    color={selected ? colors.accent : colors.textMuted}
+                    size={20}
+                  />
+                  <Text
+                    style={[
+                      styles.layoutOptionText,
+                      selected && styles.layoutOptionTextSelected,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                  {selected ? <Check color={colors.accent} size={18} /> : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -277,7 +363,43 @@ export default function ExtensionSourceScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   list: { padding: 14, paddingBottom: 80 },
-  columns: { gap: 12 },
+  compactGrid: { paddingHorizontal: 10 },
+  columns: { gap: 8 },
+  layoutBackdrop: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 28,
+    backgroundColor: colors.scrim,
+  },
+  layoutMenu: {
+    width: "100%",
+    maxWidth: 340,
+    padding: 10,
+    borderRadius: 18,
+    backgroundColor: colors.surfaceHigh,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  layoutTitle: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: "700",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  layoutOption: {
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  layoutOptionSelected: { backgroundColor: colors.accentSoft },
+  layoutOptionPressed: { opacity: 0.7 },
+  layoutOptionText: { flex: 1, color: colors.text, fontSize: 15, fontWeight: "600" },
+  layoutOptionTextSelected: { color: colors.accent },
   center: {
     flex: 1,
     alignItems: "center",
