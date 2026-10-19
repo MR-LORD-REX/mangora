@@ -283,6 +283,51 @@ export async function clearTranslationCache(): Promise<number> {
   return removed;
 }
 
+/** Cached page count for one manga, shown by TR settings. */
+export async function countTranslationCachePagesForManga(
+  mangaId: string,
+): Promise<number> {
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(translationPages)
+    .where(eq(translationPages.mangaId, mangaId));
+  return rows[0]?.count ?? 0;
+}
+
+/** Drops every cached page of one manga. Regions cascade with the page. */
+export async function clearTranslationCacheForManga(
+  mangaId: string,
+): Promise<number> {
+  const removed = await countTranslationCachePagesForManga(mangaId);
+  await db
+    .delete(translationPages)
+    .where(eq(translationPages.mangaId, mangaId));
+  return removed;
+}
+
+/** Drops one cached page so the retry action can force a fresh run. */
+export async function deleteTranslationPage(input: {
+  mangaId: string;
+  pageUrl: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+}): Promise<void> {
+  await db
+    .delete(translationPages)
+    .where(
+      and(
+        eq(translationPages.mangaId, input.mangaId),
+        eq(translationPages.pageKey, input.pageUrl),
+        eq(translationPages.sourceLanguage, input.sourceLanguage),
+        eq(translationPages.targetLanguage, input.targetLanguage),
+        eq(
+          translationPages.promptVersion,
+          TRANSLATION_CACHE_PROMPT_VERSION,
+        ),
+      ),
+    );
+}
+
 export interface InsertTranslationUsageInput {
   model: GeminiModelId;
   occurredAt: number;

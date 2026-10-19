@@ -5,19 +5,16 @@
  *
  * Request model
  * -------------
- * The reader YOLO-scans pages, OCRs each one once (cached in RAM per manga)
- * and dispatches its bubbles to ONE generateContent call after N freshly
- * OCRed pages have accumulated (the reader's "request frequency", 1-10 pages,
- * default 3; a trailing remainder is flushed when the scanned area drains).
- * Each call carries the manga's OCR history (last N pages of ORIGINAL text,
- * RAM only, each entry tagged with its page index) as background context; the
- * prompt explicitly asks the model to translate only the current batch and
- * reply with strict JSON so the reader can map results back onto overlays.
+ * The reader scans pages, OCRs each one once (RAM cache per manga) and pushes
+ * every ready page into an AI worker queue. One worker is pinned to one model;
+ * two workers use both catalogue models. Each generateContent call carries the
+ * last N OCRed pages of ORIGINAL text (RAM only, tagged with page indexes) as
+ * background context. The prompt translates only the current page batch and
+ * replies with strict JSON so results map back onto overlays.
  *
  * Quotas
  * ------
- * Every attempt is persisted through services/translation/geminiUsage.ts and
- * shown as RPM / TPM / RPD meters in the translation options panel.
+ * Every attempt is persisted through services/translation/geminiUsage.ts.
  * ---------------------------------------------------------------------------
  */
 

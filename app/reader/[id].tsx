@@ -41,7 +41,6 @@ import ReaderHeader from "@/components/reader/ReaderHeader";
 import {
   autoLanguageForReader,
   canonicalChineseForReader,
-  languageLabel,
 } from "@/components/reader/readerLanguages";
 import ReaderPage from "@/components/reader/ReaderPage";
 import ReaderReadingModeSheet from "@/components/reader/ReaderReadingModeSheet";
@@ -67,12 +66,8 @@ import {
   markChapterGroupCompleted,
   updateProgress,
 } from "@/services/db/repositories/progressRepository";
-import type { LocalModelId } from "@/services/ocr/executorchModels";
-import { suggestLocalModelIdForLanguage } from "@/services/ocr/executorchModels";
-import {
-  isLocalModelDownloaded,
-  loadLocalModel,
-} from "@/services/ocr/executorchOcr";
+import { clearTranslationCacheForManga } from "@/services/db/repositories/translationRepository";
+import { modelIdForLanguage } from "@/services/ocr/ocrModels";
 import type { AppSettings } from "@/services/settings/settingsStore";
 import {
   getSettings,
@@ -250,9 +245,6 @@ export default function GenericReader() {
   const [pendingOrientation, setPendingOrientation] =
     useState<ReaderOrientation>("default");
 
-  const [ocrBackend, setOcrBackend] =
-    useState<AppSettings["ocrBackend"]>("local");
-  const [localModelId, setLocalModelId] = useState<LocalModelId | null>(null);
   const [readerLanguage, setReaderLanguage] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("en");
   const [translateMode, setTranslateMode] =
@@ -271,22 +263,18 @@ export default function GenericReader() {
   const [geminiApiKey, setGeminiApiKey] = useState("");
   const [geminiModelId, setGeminiModelId] =
     useState<GeminiModelId>(GEMINI_DEFAULT_MODEL);
-  const [aiRequestPageInterval, setAiRequestPageInterval] = useState(3);
-  const [aiRequestFrequency, setAiRequestFrequency] = useState(1);
+  const [ocrPageWorkers, setOcrPageWorkers] = useState(2);
+  const [ocrBubbleWorkers, setOcrBubbleWorkers] = useState(1);
+  const [ocrLookahead, setOcrLookahead] = useState(2);
+  const [freeRequestConcurrency, setFreeRequestConcurrency] = useState(2);
+  const [aiWorkerCount, setAiWorkerCount] = useState(1);
   const [aiMaxContextPages, setAiMaxContextPages] = useState(10);
   const [translationOpen, setTranslationOpen] = useState(false);
   const [translationTab, setTranslationTab] =
-    useState<ReaderTranslationTab>("mode");
+    useState<ReaderTranslationTab>("trMode");
 
   const [configOpen, setConfigOpen] = useState(false);
   const [configTab, setConfigTab] = useState<ReaderConfigTab>("reading");
-  const [downloadingModel, setDownloadingModel] = useState<LocalModelId | null>(
-    null,
-  );
-  const [downloadedModels, setDownloadedModels] = useState<Set<LocalModelId>>(
-    () => new Set(),
-  );
-
   const [prevChapterId, setPrevChapterId] = useState<string | null>(null);
   const [nextChapterId, setNextChapterId] = useState<string | null>(null);
   const readerRecordRef = useRef<{
@@ -299,19 +287,21 @@ export default function GenericReader() {
   const openTranslationSetup = () => {
     setConfigOpen(false);
     setTranslationOpen(true);
-    setTranslationTab("mode");
+    setTranslationTab("trMode");
   };
 
-  // Owns YOLO/OCR/translation state, caching and the auto-translation scheduler.
+  // Owns the scan -> OCR -> translation queues, RAM cache and metrics.
   const {
     translationPages,
     pipelineError,
-    setPipelineError,
     autoTranslation,
     activeTranslationJobs,
+    metrics,
     resetTranslationPipeline,
     stopTranslationRun,
     toggleAutoTranslation,
+    retryPage,
+    clearRamCache,
   } = useReaderTranslation({
     source,
     providerLanguage: language,
@@ -320,15 +310,15 @@ export default function GenericReader() {
     pages,
     currentPageIndex,
     identity: readerIdentity,
-    ocrBackend,
-    localModelId,
-    downloadedModels,
     translateMode,
     targetLanguage,
     geminiApiKey,
     geminiModelId,
-    aiRequestPageInterval,
-    aiRequestFrequency,
+    ocrPageWorkers,
+    ocrBubbleWorkers,
+    ocrLookahead,
+    freeRequestConcurrency,
+    aiWorkerCount,
     aiMaxContextPages,
     onTranslationSetupRequired: openTranslationSetup,
   });
@@ -715,14 +705,9 @@ export default function GenericReader() {
   }, [pagedMode]);
 
   // ---- Settings ----------------------------------------------------------
-  // Keeps this screen in sync with the persisted settings store (the home
-  // screen owns the OCR.space API key, the reader owns backend/model picks).
+  // Keeps this screen in sync with the persisted settings store.
   useEffect(() => {
-    let active = true;
-
     const apply = (settings: AppSettings) => {
-      setOcrBackend(settings.ocrBackend);
-      setLocalModelId(settings.localModelId);
       setReaderLanguage(
         settings.readerLanguage
           ? canonicalChineseForReader(settings.readerLanguage)
@@ -732,8 +717,11 @@ export default function GenericReader() {
       setTranslateMode(settings.readerTranslateMode);
       setGeminiApiKey(settings.geminiApiKey || "");
       setGeminiModelId(settings.geminiModelId || GEMINI_DEFAULT_MODEL);
-      setAiRequestPageInterval(settings.aiRequestPageInterval);
-      setAiRequestFrequency(settings.aiRequestFrequency);
+      setOcrPageWorkers(settings.ocrPageWorkers);
+      setOcrBubbleWorkers(settings.ocrBubbleWorkers);
+      setOcrLookahead(settings.ocrLookahead);
+      setFreeRequestConcurrency(settings.freeRequestConcurrency);
+      setAiWorkerCount(settings.aiWorkerCount);
       setAiMaxContextPages(settings.aiMaxContextPages);
       setOverlayFont(settings.readerOverlayFont);
       setOverlayFontWeight(settings.readerOverlayFontWeight);
@@ -742,33 +730,15 @@ export default function GenericReader() {
       setChrome(chromeFromSettings(settings));
       setDefaultZoomScale(settings.readerDefaultZoomScale);
       setScrollSpeed(settings.readerScrollSpeed || 1);
-      const modelId = settings.localModelId;
-      if (modelId) {
-        isLocalModelDownloaded(modelId)
-          .then((downloaded) => {
-            if (downloaded && active) {
-              setDownloadedModels((prev) => {
-                if (prev.has(modelId)) return prev;
-                const next = new Set(prev);
-                next.add(modelId);
-                return next;
-              });
-            }
-          })
-          .catch(() => {});
-      }
     };
 
     getSettings()
       .then((settings) => {
-        if (active) apply(settings);
+        apply(settings);
       })
       .catch(() => {});
     const unsubscribe = subscribeSettings(apply);
-    return () => {
-      active = false;
-      unsubscribe();
-    };
+    return unsubscribe;
   }, []);
 
   const handleSelectReaderLanguage = (code: string) => {
@@ -776,33 +746,16 @@ export default function GenericReader() {
     setReaderLanguage(nextLanguage);
 
     const languageToBind = nextLanguage || autoLanguage;
-    const baseLanguage = languageToBind.toLowerCase().split("-")[0];
-    if (baseLanguage === "ja" || baseLanguage === "zh") {
-      console.log("[reader][ocr] automatic model selection", {
-        language: languageToBind,
-        backend: "cloud",
-        model: null,
-      });
-      setOcrBackend("cloud");
-      updateSettings({
-        readerLanguage: nextLanguage,
-        ocrBackend: "cloud",
-      }).catch(console.error);
-      return;
-    }
-
-    const modelId = suggestLocalModelIdForLanguage(languageToBind);
-    console.log("[reader][ocr] automatic model selection", {
+    console.log("[reader][ocr] provider selection", {
       language: languageToBind,
-      backend: "local",
-      model: modelId,
+      model: modelIdForLanguage(languageToBind),
     });
     updateSettings({ readerLanguage: nextLanguage }).catch(console.error);
-    handleSelectLocalModel(modelId);
   };
   const handleSelectTargetLanguage = (code: string) => {
     setTargetLanguage(code);
     updateSettings({ readerTargetLanguage: code }).catch(console.error);
+    console.log("[reader][settings] target language", code);
   };
   const handleSelectTranslateMode = (
     mode: AppSettings["readerTranslateMode"],
@@ -811,19 +764,56 @@ export default function GenericReader() {
       stopTranslationRun();
     }
     updateSettings({ readerTranslateMode: mode }).catch(console.error);
+    console.log("[reader][settings] TR mode", mode);
   };
-  const handleSelectGeminiModel = (id: GeminiModelId) => {
-    setGeminiModelId(id);
-    updateSettings({ geminiModelId: id }).catch(console.error);
+  const handleSelectFreeConcurrency = (value: number) => {
+    const next = Math.min(5, Math.max(1, Math.round(value)));
+    setFreeRequestConcurrency(next);
+    updateSettings({ freeRequestConcurrency: next }).catch(console.error);
+    console.log("[reader][settings] free TR concurrency", next);
   };
-  const handleSelectRequestInterval = (interval: number) => {
-    updateSettings({ aiRequestPageInterval: interval }).catch(console.error);
-  };
-  const handleSelectRequestFrequency = (frequency: number) => {
-    updateSettings({ aiRequestFrequency: frequency }).catch(console.error);
+  const handleSelectAiWorkerCount = (value: number) => {
+    const next = Math.min(2, Math.max(1, Math.round(value)));
+    setAiWorkerCount(next);
+    updateSettings({ aiWorkerCount: next }).catch(console.error);
+    console.log("[reader][settings] AI TR workers", next);
   };
   const handleSelectMaxContextPages = (pages: number) => {
-    updateSettings({ aiMaxContextPages: pages }).catch(console.error);
+    const next = Math.min(50, Math.max(1, Math.round(pages)));
+    setAiMaxContextPages(next);
+    updateSettings({ aiMaxContextPages: next }).catch(console.error);
+    console.log("[reader][settings] AI max context pages", next);
+  };
+  const handleApplyOcrSettings = (patch: {
+    pageWorkers: number;
+    bubbleWorkers: number;
+    lookahead: number;
+  }) => {
+    const nextPageWorkers = Math.min(2, Math.max(1, patch.pageWorkers));
+    const nextBubbleWorkers = Math.min(3, Math.max(1, patch.bubbleWorkers));
+    const nextLookahead = Math.min(3, Math.max(1, patch.lookahead));
+    setOcrPageWorkers(nextPageWorkers);
+    setOcrBubbleWorkers(nextBubbleWorkers);
+    setOcrLookahead(nextLookahead);
+    updateSettings({
+      ocrPageWorkers: nextPageWorkers,
+      ocrBubbleWorkers: nextBubbleWorkers,
+      ocrLookahead: nextLookahead,
+    }).catch(console.error);
+    console.log("[reader][settings] OCR applied", {
+      pageWorkers: nextPageWorkers,
+      bubbleWorkers: nextBubbleWorkers,
+      lookahead: nextLookahead,
+    });
+  };
+  const handleClearTrCache = async (): Promise<number> => {
+    const removed = await clearTranslationCacheForManga(readerIdentity.mangaId);
+    clearRamCache();
+    console.log("[reader][tr] cache cleared for manga", {
+      mangaId: readerIdentity.mangaId,
+      removed,
+    });
+    return removed;
   };
   const handleValidateAndSaveGeminiKey = async (apiKey: string) => {
     const trimmed = apiKey.trim();
@@ -831,6 +821,7 @@ export default function GenericReader() {
     await validateGeminiApiKey(trimmed, geminiModelId);
     setGeminiApiKey(trimmed);
     await updateSettings({ geminiApiKey: trimmed });
+    console.log("[reader][settings] Gemini key validated and saved");
   };
   const handleSelectOverlayFont = (font: ReaderOverlayFont) => {
     setOverlayFont(font);
@@ -1052,38 +1043,6 @@ export default function GenericReader() {
     return () => animation.stop();
   }, [zoneFlashNonce, flashOpacity]);
 
-  const handleSelectLocalModel = async (id: LocalModelId) => {
-    if (downloadingModel) return;
-    console.log("[reader][ocr] local model set", { model: id });
-    await updateSettings({ ocrBackend: "local", localModelId: id }).catch(
-      console.error,
-    );
-    setDownloadingModel(id);
-    try {
-      // Downloads (first time) and caches the model as app data, then
-      // keeps the native module loaded for later scans.
-      await loadLocalModel(id);
-      setDownloadedModels((prev) => {
-        if (prev.has(id)) return prev;
-        const next = new Set(prev);
-        next.add(id);
-        return next;
-      });
-      setPipelineError(null);
-    } catch (error) {
-      console.error("Failed to download/load the local OCR model:", error);
-      setPipelineError(
-        error instanceof Error
-          ? error.message
-          : "Failed to download the OCR model.",
-      );
-    } finally {
-      setDownloadingModel(null);
-    }
-  };
-  // ---- Derived labels ----------------------------------------------------
-  const targetLanguageLabel = languageLabel(targetLanguage || "en");
-
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 50,
   }).current;
@@ -1282,9 +1241,19 @@ export default function GenericReader() {
             translateMode={translateMode}
             onSelectTranslateMode={handleSelectTranslateMode}
             geminiApiKey={geminiApiKey}
-            geminiModelId={geminiModelId}
-            onSelectGeminiModel={handleSelectGeminiModel}
             onValidateAndSaveKey={handleValidateAndSaveGeminiKey}
+            freeRequestConcurrency={freeRequestConcurrency}
+            onChangeFreeConcurrency={handleSelectFreeConcurrency}
+            aiWorkerCount={aiWorkerCount}
+            onChangeAiWorkerCount={handleSelectAiWorkerCount}
+            aiMaxContextPages={aiMaxContextPages}
+            onChangeMaxContextPages={handleSelectMaxContextPages}
+            metrics={metrics}
+            onClearTrCache={handleClearTrCache}
+            ocrPageWorkers={ocrPageWorkers}
+            ocrBubbleWorkers={ocrBubbleWorkers}
+            ocrLookahead={ocrLookahead}
+            onApplyOcrSettings={handleApplyOcrSettings}
             overlayFont={overlayFont}
             onChangeOverlayFont={handleSelectOverlayFont}
             overlayFontWeight={overlayFontWeight}
@@ -1293,14 +1262,6 @@ export default function GenericReader() {
             onChangeOverlayFontScale={handleSelectOverlayFontScale}
             overlayTextColor={overlayTextColor}
             onChangeOverlayTextColor={handleSelectOverlayTextColor}
-            targetLanguageLabel={targetLanguageLabel}
-            pageCount={pages.length}
-            aiRequestPageInterval={aiRequestPageInterval}
-            aiRequestFrequency={aiRequestFrequency}
-            aiMaxContextPages={aiMaxContextPages}
-            onChangeRequestInterval={handleSelectRequestInterval}
-            onChangeRequestFrequency={handleSelectRequestFrequency}
-            onChangeMaxContextPages={handleSelectMaxContextPages}
           />
         )}
 
@@ -1434,6 +1395,7 @@ export default function GenericReader() {
               defaultZoomScale={defaultZoomScale}
               pagedMode={pagedMode}
               translation={translationPages[item]}
+              translationActive={autoTranslation}
               overlayFont={
                 overlayFontSupportsLanguage(targetLanguage)
                   ? overlayFont
@@ -1445,6 +1407,7 @@ export default function GenericReader() {
               onLoadDims={rememberPageDims}
               onToggleChrome={toggleChrome}
               onTapAt={handlePagedTap}
+              onRetryTranslation={retryPage}
             />
           )}
         />

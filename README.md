@@ -44,16 +44,16 @@ Mangora is an Android application for reading material obtained through extensio
 
 1. The reader obtains a page from the installed extension or local archive.
 2. The on-device YOLO model detects text regions.
-3. The selected OCR backend reads those regions.
+3. The on-device OCR model for the selected language reads those regions.
 4. If translation is enabled, Mangora translates recognized text and displays it as an overlay.
 
-Translation is **off by default**. OCR can use a local ExecuTorch model or the cloud OCR option. Translation modes are:
+Translation is **off by default**. OCR runs on-device with one of two downloadable models, chosen from the chapter language: **Baberu OCR** for Japanese, Chinese and English, or **PP-OCRv5 Korean** for Korean and Latin scripts. Download either pack from **Settings > OCR models**. Translation modes are:
 
 - **Off:** no OCR or translation pipeline is started.
 - **Free translation:** sends recognized text and language information to Google's public translation endpoints. It does not require an API key.
 - **AI translation:** sends recognized text, and optionally prior-page text context, to the Gemini API using the API key saved by the user.
 
-OCR and translation are distinct. Selecting cloud OCR sends image crops to the cloud OCR endpoint; using Gemini sends recognized text to Google. Local OCR keeps the OCR step on-device, but free or AI translation still sends text to the respective translation service.
+OCR and translation are distinct. Text recognition never leaves the device. Free or AI translation still sends recognized text to the respective translation service.
 
 Translation results and OCR text used for overlays may be cached in the local SQLite database. The user can clear the translation cache from Settings.
 
@@ -85,19 +85,18 @@ Depending on the feature being used, the device may communicate with:
 
 - The repository URL and APK/icon hosts selected through an extension repository.
 - The endpoints used by the installed extension for browsing, search, metadata, images, and downloads.
-- The cloud OCR endpoint currently configured in the app: `https://ilcapitano01-manga-tr-api.hf.space`. It receives page-image crops and language information when cloud OCR is selected.
 - Google's public translation endpoints when free translation is selected. They receive recognized text and source/target language information.
 - Google's Gemini API when AI translation or API-key validation is used. Gemini receives recognized text, optional prior-page text context, and the API key used for the request.
 - GitHub's release API and asset hosting when checking for or downloading updates.
-- Model distribution hosts when downloading an on-device OCR model for the first time.
+- Hugging Face model distribution hosts when downloading an on-device OCR model from Settings.
 
-Requests originate in the app and are sent to the endpoints described above. Cloud OCR uses the endpoint configured in the app; this repository does not establish who operates it. Receiving services can ordinarily receive network metadata such as IP address, request time, URL, and client/request headers. Extension behavior can include cookies or other headers. Each service has its own policies and retention practices. The project does not operate a user account service or a central sync backend for your library, history, or settings.
+Requests originate in the app and are sent to the endpoints described above. Receiving services can ordinarily receive network metadata such as IP address, request time, URL, and client/request headers. Extension behavior can include cookies or other headers. Each service has its own policies and retention practices. The project does not operate a user account service or a central sync backend for your library, history, or settings.
 
 The website is hosted on Firebase Hosting and fetches release information from GitHub from your browser. It may temporarily cache release responses in browser session storage. See the [Privacy Policy](https://mangora-web.web.app/privacy) for a fuller data-flow explanation and external service details.
 
 ## Privacy controls
 
-- Leave translation off or choose local OCR to avoid the cloud OCR request.
+- Leave translation off to avoid sending recognized text to a translation service.
 - Do not enable online translation unless you accept sending OCR text to that service.
 - Do not install repositories or extensions unless you trust their operators.
 - Remove app records and clear the translation cache using available in-app controls.
@@ -120,7 +119,7 @@ Download the current release from the official [GitHub Releases](https://github.
 - JDK 17
 - Android SDK and an Android ARM64 emulator or device
 
-Expo Go is not sufficient for native ExecuTorch and ONNX features. Use an Android development build.
+Expo Go is not sufficient for native ONNX Runtime, Skia and image features. Use an Android development build.
 
 ### Install, run, and check
 
@@ -147,7 +146,7 @@ For a clean release build, run the clean task separately before assembling:
 .\gradlew.bat :app:assembleRelease -PreactNativeArchitectures=arm64-v8a
 ```
 
-The project uses Expo SDK 54, React Native 0.81, React 19, Expo Router, TypeScript, Expo SQLite with Drizzle, ONNX Runtime, ExecuTorch, and native Kotlin Android modules. Android release artifacts are large because they include native OCR and image-processing code.
+The project uses Expo SDK 54, React Native 0.81, React 19, Expo Router, TypeScript, Expo SQLite with Drizzle, ONNX Runtime, Skia, and native Kotlin Android modules. Android release artifacts are large because they include native OCR and image-processing code.
 
 ## Repository map
 

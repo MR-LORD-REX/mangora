@@ -8,12 +8,12 @@
 
 import { Link, type Href } from "expo-router";
 import {
-  ArrowRight,
   Download,
   HardDrive,
   Info,
   Languages,
   ListChecks,
+  ScanText,
 } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
@@ -64,6 +64,14 @@ const ENTRIES: SettingsEntry[] = [
     icon: Languages,
     accent: "#c084fc",
     href: "/settings/translation",
+  },
+  {
+    key: "ocr-models",
+    title: "OCR models",
+    tagline: "Download on-device recognition for your languages",
+    icon: ScanText,
+    accent: "#7dd3fc",
+    href: "/settings/ocr-models",
   },
   {
     key: "about",

@@ -1,8 +1,7 @@
 /**
  * pageOcr.ts
  * ---------------------------------------------------------------------------
- * Backend-agnostic helpers + types shared by the ExecuTorch (local) and
- * OCR.space (cloud) OCR services.
+ * Backend-agnostic helpers + types shared by the on-device OCR engines.
  *
  * Every backend gets the same input: a YOLO `DetectionResult` + the page URL.
  * The shared pipeline here downloads the page once, crops each text region

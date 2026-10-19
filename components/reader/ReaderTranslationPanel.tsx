@@ -2,13 +2,13 @@
  * ReaderTranslationPanel.tsx
  * ---------------------------------------------------------------------------
  * Translation options sheet opened from the reader header's sliders icon.
- * Four tabs ("AI settings" is only listed while AI translation mode is on):
+ * Tabs are always visible and follow TR mode:
  *
- *   Language          - source (OCR) + target language pickers
- *   Translation mode  - off / free / AI descriptions, Gemini API key entry,
- *                       model picker and live RPM / TPM / RPD meters
- *   AI settings       - pages per request, request frequency + max context sliders
- *   Overlay settings  - paste text size + overlay behaviour notes
+ *   Language       - source (OCR) + target language pickers
+ *   TR mode        - off / free / AI descriptions
+ *   TR settings    - mode-specific sliders, Gemini key, metrics, cache clear
+ *   OCR settings   - staged page / bubble worker and look-ahead sliders
+ *   Overlay        - paste text size, font and color
  *
  * The general reader config (reading / general / filter) stays behind the
  * bottom bar's settings button in ReaderConfigPanel.
@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronUp,
   KeyRound,
+  Trash2,
   X,
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
@@ -36,16 +37,7 @@ import {
 } from "react-native";
 
 import type { ReaderTranslateMode } from "@/services/settings/settingsStore";
-import {
-  GEMINI_MODELS,
-  geminiModelInfo,
-  type GeminiModelId,
-} from "@/services/translation/geminiModels";
-import {
-  getGeminiUsageSnapshot,
-  subscribeGeminiUsage,
-  type GeminiUsageSnapshot,
-} from "@/services/translation/geminiUsage";
+import type { ReaderPipelineMetrics } from "@/utils/reader/useReaderTranslation";
 import { READER_TARGET_OPTIONS } from "@/services/translation/translationLang";
 import DotSlider from "./DotSlider";
 import {
@@ -61,28 +53,22 @@ import { READER_PANEL_BG, READER_PILL_BORDER } from "./readerTheme";
 
 export type ReaderTranslationTab =
   | "language"
-  | "mode"
-  | "aiSettings"
+  | "trMode"
+  | "trSettings"
+  | "ocrSettings"
   | "overlay";
 
-/** Full tab list; "AI settings" is dropped unless AI mode is selected. */
+/** Full tab list; every tab stays visible regardless of TR mode. */
 export const READER_TRANSLATION_TABS: {
   key: ReaderTranslationTab;
   label: string;
 }[] = [
   { key: "language", label: "Language" },
-  { key: "mode", label: "Translation mode" },
-  { key: "aiSettings", label: "AI settings" },
+  { key: "trMode", label: "Mode" },
+  { key: "trSettings", label: "Translation" },
+  { key: "ocrSettings", label: "OCR" },
   { key: "overlay", label: "Overlay" },
 ];
-
-/** Tabs shown for the current translation mode. */
-function tabsForMode(
-  translateMode: ReaderTranslateMode,
-): { key: ReaderTranslationTab; label: string }[] {
-  if (translateMode === "ai") return READER_TRANSLATION_TABS;
-  return READER_TRANSLATION_TABS.filter((tab) => tab.key !== "aiSettings");
-}
 
 const TRANSLATION_MODE_OPTIONS: {
   value: ReaderTranslateMode;
@@ -128,27 +114,32 @@ export interface ReaderTranslationPanelProps {
   onSelectReaderLanguage: (code: string) => void;
   onSelectTargetLanguage: (code: string) => void;
 
-  // Translation mode tab.
+  // TR mode tab.
   translateMode: ReaderTranslateMode;
   onSelectTranslateMode: (mode: ReaderTranslateMode) => void;
+
+  // TR settings tab.
   geminiApiKey: string;
-  geminiModelId: GeminiModelId;
-  onSelectGeminiModel: (id: GeminiModelId) => void;
   /** Validates the key with one Gemini request, then persists it. Throws on failure. */
   onValidateAndSaveKey: (apiKey: string) => Promise<void>;
-
-  // AI settings tab (only reachable while translateMode === "ai").
-  /** Number of pages in the current chapter (drives request estimates). */
-  pageCount: number;
-  /** Fresh pages of OCR to wait for before one Gemini request (1-10). */
-  aiRequestPageInterval: number;
-  /** Maximum Gemini requests allowed in flight at once (1-5). */
-  aiRequestFrequency: number;
-  /** Past pages of OCR history attached to each request (0-50). */
+  freeRequestConcurrency: number;
+  onChangeFreeConcurrency: (value: number) => void;
+  aiWorkerCount: number;
+  onChangeAiWorkerCount: (value: number) => void;
   aiMaxContextPages: number;
-  onChangeRequestInterval: (pages: number) => void;
-  onChangeRequestFrequency: (frequency: number) => void;
   onChangeMaxContextPages: (pages: number) => void;
+  metrics: ReaderPipelineMetrics;
+  onClearTrCache: () => Promise<number>;
+
+  // OCR settings tab.
+  ocrPageWorkers: number;
+  ocrBubbleWorkers: number;
+  ocrLookahead: number;
+  onApplyOcrSettings: (patch: {
+    pageWorkers: number;
+    bubbleWorkers: number;
+    lookahead: number;
+  }) => void;
 
   // Overlay tab.
   overlayFont: ReaderOverlayFont;
@@ -159,29 +150,21 @@ export interface ReaderTranslationPanelProps {
   onChangeOverlayFontScale: (scale: number) => void;
   overlayTextColor: string;
   onChangeOverlayTextColor: (color: string) => void;
-  targetLanguageLabel: string;
 }
 
 export default function ReaderTranslationPanel(
   props: ReaderTranslationPanelProps,
 ) {
-  const { tab, onTabChange, onClose, translateMode } = props;
-
-  // "AI settings" only exists while AI translation mode is selected. When the
-  // mode is switched away while that tab is open, fall back to the mode tab.
-  const activeTab =
-    translateMode !== "ai" && tab === "aiSettings" ? "mode" : tab;
-  useEffect(() => {
-    if (translateMode !== "ai" && tab === "aiSettings") {
-      onTabChange("mode");
-    }
-  }, [translateMode, tab, onTabChange]);
-  const tabs = tabsForMode(translateMode);
+  const { tab, onTabChange, onClose } = props;
   return (
     <View style={styles.panel}>
       <View style={styles.handle} />
       <View style={styles.header}>
-        <TabBar tabs={tabs} active={activeTab} onChange={onTabChange} />
+        <TabBar
+          tabs={READER_TRANSLATION_TABS}
+          active={tab}
+          onChange={onTabChange}
+        />
         <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={10}>
           <X color="#fff" size={20} />
         </Pressable>
@@ -192,10 +175,11 @@ export default function ReaderTranslationPanel(
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
       >
-        {activeTab === "language" && <LanguageTab {...props} />}
-        {activeTab === "mode" && <ModeTab {...props} />}
-        {activeTab === "aiSettings" && <AiSettingsTab {...props} />}
-        {activeTab === "overlay" && <OverlayTab {...props} />}
+        {tab === "language" && <LanguageTab {...props} />}
+        {tab === "trMode" && <ModeTab {...props} />}
+        {tab === "trSettings" && <TrSettingsTab {...props} />}
+        {tab === "ocrSettings" && <OcrSettingsTab {...props} />}
+        {tab === "overlay" && <OverlayTab {...props} />}
       </ScrollView>
     </View>
   );
@@ -351,19 +335,11 @@ function LanguageTab(props: ReaderTranslationPanelProps) {
 
 
 function ModeTab(props: ReaderTranslationPanelProps) {
-  const {
-    translateMode,
-    onSelectTranslateMode,
-    geminiApiKey,
-    geminiModelId,
-    onSelectGeminiModel,
-    onValidateAndSaveKey,
-  } = props;
-  const [keyModalOpen, setKeyModalOpen] = useState(false);
+  const { translateMode, onSelectTranslateMode } = props;
 
   return (
     <View>
-      <SectionLabel>Translation mode</SectionLabel>
+      <SectionLabel>TR mode</SectionLabel>
       {TRANSLATION_MODE_OPTIONS.map((option) => {
         const active = translateMode === option.value;
         return (
@@ -390,8 +366,126 @@ function ModeTab(props: ReaderTranslationPanelProps) {
           </Pressable>
         );
       })}
+    </View>
+  );
+}
 
-      {translateMode === "ai" && (
+function TrSettingsTab(props: ReaderTranslationPanelProps) {
+  const {
+    translateMode,
+    geminiApiKey,
+    onValidateAndSaveKey,
+    freeRequestConcurrency,
+    onChangeFreeConcurrency,
+    aiWorkerCount,
+    onChangeAiWorkerCount,
+    aiMaxContextPages,
+    onChangeMaxContextPages,
+    metrics,
+    onClearTrCache,
+  } = props;
+  const [keyModalOpen, setKeyModalOpen] = useState(false);
+  const [clearState, setClearState] = useState<
+    "idle" | "confirm" | "clearing" | "done"
+  >("idle");
+  const [clearedPages, setClearedPages] = useState(0);
+  const [clearError, setClearError] = useState<string | null>(null);
+
+  const clearCache = async () => {
+    setClearState("clearing");
+    setClearError(null);
+    try {
+      const removed = await onClearTrCache();
+      setClearedPages(removed);
+      setClearState("done");
+      console.log("[reader][tr settings] cache cleared", { removed });
+    } catch (error) {
+      setClearState("idle");
+      setClearError(
+        error instanceof Error ? error.message : "Could not clear TR cache.",
+      );
+      console.warn("[reader][tr settings] cache clear failed", error);
+    }
+  };
+
+  return (
+    <View>
+      <SectionLabel>TR cache</SectionLabel>
+      <HelperText>
+        Cached translations for this manga are stored in the database. Clearing
+        also drops the in-memory OCR records for this session.
+      </HelperText>
+      {clearState === "confirm" ? (
+        <View style={styles.confirmRow}>
+          <Text style={styles.confirmText}>
+            {"Delete this manga's TR cache?"}
+          </Text>
+          <View style={styles.confirmActions}>
+            <Pressable
+              onPress={() => setClearState("idle")}
+              style={styles.smallButton}
+            >
+              <Text style={styles.smallButtonText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={clearCache}
+              style={[styles.smallButton, styles.dangerButton]}
+            >
+              <Text style={styles.dangerButtonText}>Clear</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <Pressable
+          onPress={() => setClearState("confirm")}
+          disabled={clearState === "clearing"}
+          style={[
+            styles.clearCacheButton,
+            clearState === "clearing" && { opacity: 0.6 },
+          ]}
+        >
+          {clearState === "clearing" ? (
+            <ActivityIndicator color="#fda4af" size="small" />
+          ) : (
+            <Trash2 color="#fda4af" size={16} />
+          )}
+          <Text style={styles.clearCacheText}>
+            {clearState === "clearing" ? "Clearing\u2026" : "Clear TR cache"}
+          </Text>
+        </Pressable>
+      )}
+      {clearState === "done" ? (
+        <Text style={styles.clearCacheSuccess}>
+          Cleared {clearedPages} cached page{clearedPages === 1 ? "" : "s"}.
+        </Text>
+      ) : null}
+      {clearError ? <Text style={styles.modalError}>{clearError}</Text> : null}
+
+      {translateMode === "free" ? (
+        <>
+          <SectionLabel>Concurrent requests</SectionLabel>
+          <View style={styles.sliderValueRow}>
+            <Text style={styles.sliderValueLabel}>Free TR workers</Text>
+            <Text style={styles.sliderValue}>{freeRequestConcurrency}</Text>
+          </View>
+          <DotSlider
+            value={freeRequestConcurrency}
+            min={1}
+            max={5}
+            step={1}
+            dotCount={5}
+            leftLabel="1 request"
+            rightLabel="5 requests"
+            onChange={onChangeFreeConcurrency}
+          />
+          <HelperText>
+            Number of bubbles translated concurrently through the free Google
+            endpoint.
+          </HelperText>
+        </>
+      ) : null}
+
+      {translateMode === "ai" ? (
         <>
           <SectionLabel>Gemini API key</SectionLabel>
           {geminiApiKey.trim() ? (
@@ -410,9 +504,8 @@ function ModeTab(props: ReaderTranslationPanelProps) {
           ) : (
             <View style={styles.keyNeededRow}>
               <Text style={styles.rowDetail}>
-                AI translation needs a Gemini API key (free at Google AI
-                Studio). The key is validated with one request before it is
-                saved.
+                AI translation needs a Gemini API key. The key is validated with
+                one request before it is saved.
               </Text>
               <Pressable
                 onPress={() => setKeyModalOpen(true)}
@@ -424,32 +517,51 @@ function ModeTab(props: ReaderTranslationPanelProps) {
             </View>
           )}
 
-          <SectionLabel>AI model</SectionLabel>
-          <View style={styles.modelGroup}>
-            {GEMINI_MODELS.map((model) => {
-              const active = geminiModelId === model.id;
-              return (
-                <Pressable
-                  key={model.id}
-                  onPress={() => onSelectGeminiModel(model.id)}
-                  style={[styles.modelCard, active && styles.modelCardActive]}
-                >
-                  <View style={styles.rowText}>
-                    <Text style={styles.modelCardLabel}>{model.label}</Text>
-                    <Text style={styles.rowDetail}>
-                      {model.rpm} RPM · {model.tpm.toLocaleString()} TPM ·{" "}
-                      {model.rpd} RPD
-                    </Text>
-                  </View>
-                  {active && <Check size={18} color="#34d399" />}
-                </Pressable>
-              );
-            })}
+          <SectionLabel>Translation workers</SectionLabel>
+          <View style={styles.sliderValueRow}>
+            <Text style={styles.sliderValueLabel}>AI workers</Text>
+            <Text style={styles.sliderValue}>{aiWorkerCount}</Text>
           </View>
+          <DotSlider
+            value={aiWorkerCount}
+            min={1}
+            max={2}
+            step={1}
+            dotCount={2}
+            leftLabel="1 model"
+            rightLabel="2 models"
+            onChange={onChangeAiWorkerCount}
+          />
+          <HelperText>
+            One worker uses one Gemini model. Two workers run both catalogue
+            models concurrently, one per queue slot.
+          </HelperText>
 
-          <UsageMeters model={geminiModelId} />
+          <SectionLabel>Max context</SectionLabel>
+          <View style={styles.sliderValueRow}>
+            <Text style={styles.sliderValueLabel}>Pages sent as context</Text>
+            <Text style={styles.sliderValue}>{aiMaxContextPages}</Text>
+          </View>
+          <DotSlider
+            value={aiMaxContextPages}
+            min={1}
+            max={50}
+            step={1}
+            dotCount={25}
+            leftLabel="1 page"
+            rightLabel="50 pages"
+            onChange={onChangeMaxContextPages}
+          />
+          <HelperText>
+            The request gets the last N OCRed pages before the current page,
+            capped by the pages already available in RAM.
+          </HelperText>
         </>
-      )}
+      ) : null}
+
+      {translateMode !== "off" ? (
+        <PipelineMetrics metrics={metrics} mode={translateMode} />
+      ) : null}
 
       <ApiKeyModal
         visible={keyModalOpen}
@@ -464,101 +576,143 @@ function ModeTab(props: ReaderTranslationPanelProps) {
   );
 }
 
-/** Live RPM / TPM / RPD meters for the selected model (used / limit). */
-function UsageMeters({ model }: { model: GeminiModelId }) {
-  const [usage, setUsage] = useState<GeminiUsageSnapshot | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    const refresh = () => {
-      getGeminiUsageSnapshot(model)
-        .then((snapshot) => {
-          if (active) setUsage(snapshot);
-        })
-        .catch(() => {});
-    };
-    refresh();
-    const unsubscribe = subscribeGeminiUsage(refresh);
-    const timer = setInterval(refresh, 1500);
-    return () => {
-      active = false;
-      unsubscribe();
-      clearInterval(timer);
-    };
-  }, [model]);
-
-  if (!usage) {
-    return (
-      <View style={styles.meterWrap}>
-        <ActivityIndicator color="#fbbf24" size="small" />
-      </View>
-    );
-  }
-
-  const meters: {
-    label: string;
-    used: number;
-    limit: number;
-    suffix: string;
-  }[] = [
-    {
-      label: "RPM",
-      used: usage.rpmUsed,
-      limit: usage.rpmLimit,
-      suffix: "requests / min",
-    },
-    {
-      label: "TPM",
-      used: usage.tpmUsed,
-      limit: usage.tpmLimit,
-      suffix: "input tokens / min",
-    },
-    {
-      label: "RPD",
-      used: usage.rpdUsed,
-      limit: usage.rpdLimit,
-      suffix: "requests / day (resets midnight Pacific)",
-    },
+function PipelineMetrics({
+  metrics,
+  mode,
+}: {
+  metrics: ReaderPipelineMetrics;
+  mode: ReaderTranslateMode;
+}) {
+  const chips = [
+    { label: "Scan queue", value: metrics.scanPending },
+    { label: "OCR queue", value: metrics.ocrPending },
+    { label: "TR queue", value: metrics.trPending },
+    { label: "Scan active", value: metrics.scanActive },
+    { label: "OCR active", value: metrics.ocrActive },
+    { label: "TR active", value: metrics.trActive },
+    { label: "Pages done", value: metrics.pagesDone },
+    { label: "Pages error", value: metrics.pagesError },
+    { label: "Bubbles", value: metrics.bubblesTotal },
+    { label: "Translated", value: metrics.bubblesTranslated },
+    { label: "Failed", value: metrics.bubblesFailed },
+    { label: "Active jobs", value: metrics.activeJobs },
   ];
-
   return (
-    <View style={styles.meterWrap}>
-      <SectionLabel>Your usage - {usage.label}</SectionLabel>
-      {meters.map((meter) => {
-        const pct = Math.min(
-          100,
-          (meter.used / Math.max(meter.limit, 1)) * 100,
-        );
-        const over = meter.used >= meter.limit;
-        return (
-          <View key={meter.label} style={styles.meterRow}>
-            <View style={styles.meterHeader}>
-              <Text style={styles.meterLabel}>{meter.label}</Text>
-              <Text style={[styles.meterValue, over && { color: "#fda4af" }]}>
-                {meter.used.toLocaleString()} / {meter.limit.toLocaleString()}{" "}
-                {meter.suffix}
-              </Text>
-            </View>
-            <View style={styles.barTrack}>
-              <View
-                style={[
-                  styles.barFill,
-                  { width: `${pct}%` },
-                  over && { backgroundColor: "#f87171" },
-                ]}
-              />
-            </View>
+    <View>
+      <SectionLabel>Pipeline metrics - {mode}</SectionLabel>
+      <View style={styles.metricsGrid}>
+        {chips.map((chip) => (
+          <View key={chip.label} style={styles.metricChip}>
+            <Text style={styles.metricValue}>{chip.value}</Text>
+            <Text style={styles.metricLabel}>{chip.label}</Text>
           </View>
-        );
-      })}
-      <HelperText>
-        Usage reflects Gemini requests made from this app; the Google AI Studio
-        dashboard may show different numbers.
-      </HelperText>
+        ))}
+      </View>
     </View>
   );
 }
 
+function OcrSettingsTab(props: ReaderTranslationPanelProps) {
+  const {
+    ocrPageWorkers,
+    ocrBubbleWorkers,
+    ocrLookahead,
+    onApplyOcrSettings,
+  } = props;
+  const [pageWorkers, setPageWorkers] = useState(ocrPageWorkers);
+  const [bubbleWorkers, setBubbleWorkers] = useState(ocrBubbleWorkers);
+  const [lookahead, setLookahead] = useState(ocrLookahead);
+
+  useEffect(() => {
+    setPageWorkers(ocrPageWorkers);
+    setBubbleWorkers(ocrBubbleWorkers);
+    setLookahead(ocrLookahead);
+  }, [ocrPageWorkers, ocrBubbleWorkers, ocrLookahead]);
+
+  const dirty =
+    pageWorkers !== ocrPageWorkers ||
+    bubbleWorkers !== ocrBubbleWorkers ||
+    lookahead !== ocrLookahead;
+
+  const apply = () => {
+    console.log("[reader][ocr settings] apply", {
+      pageWorkers,
+      bubbleWorkers,
+      lookahead,
+    });
+    onApplyOcrSettings({ pageWorkers, bubbleWorkers, lookahead });
+  };
+
+  return (
+    <View>
+      <SectionLabel>Page workers</SectionLabel>
+      <View style={styles.sliderValueRow}>
+        <Text style={styles.sliderValueLabel}>Pages scanned at once</Text>
+        <Text style={styles.sliderValue}>{pageWorkers}</Text>
+      </View>
+      <DotSlider
+        value={pageWorkers}
+        min={1}
+        max={2}
+        step={1}
+        dotCount={2}
+        leftLabel="1 page"
+        rightLabel="2 pages"
+        onChange={setPageWorkers}
+      />
+
+      <SectionLabel>Bubble workers</SectionLabel>
+      <View style={styles.sliderValueRow}>
+        <Text style={styles.sliderValueLabel}>Bubbles OCRed at once</Text>
+        <Text style={styles.sliderValue}>{bubbleWorkers}</Text>
+      </View>
+      <DotSlider
+        value={bubbleWorkers}
+        min={1}
+        max={3}
+        step={1}
+        dotCount={3}
+        leftLabel="1 bubble"
+        rightLabel="3 bubbles"
+        onChange={setBubbleWorkers}
+      />
+
+      <SectionLabel>Look ahead</SectionLabel>
+      <View style={styles.sliderValueRow}>
+        <Text style={styles.sliderValueLabel}>Pages in the scan window</Text>
+        <Text style={styles.sliderValue}>{lookahead}</Text>
+      </View>
+      <DotSlider
+        value={lookahead}
+        min={1}
+        max={3}
+        step={1}
+        dotCount={3}
+        leftLabel="Visible page"
+        rightLabel="Visible + 2"
+        onChange={setLookahead}
+      />
+      <HelperText>
+        1 scans only the visible page. 2 adds the next page. 3 adds the next
+        two. Scanned pages are pushed into the OCR queue immediately.
+      </HelperText>
+
+      <Pressable
+        onPress={apply}
+        disabled={!dirty}
+        style={[styles.primaryButton, !dirty && styles.primaryButtonDisabled]}
+      >
+        <Text style={styles.primaryButtonText}>
+          {dirty ? "Apply changes" : "Applied"}
+        </Text>
+      </Pressable>
+      <HelperText>
+        OCR settings are staged until applied. Loading and unloading models is
+        expensive, so slider changes do not take effect immediately.
+      </HelperText>
+    </View>
+  );
+}
 
 function ApiKeyModal(props: {
   visible: boolean;
@@ -655,118 +809,6 @@ function ApiKeyModal(props: {
 }
 
 
-function AiSettingsTab(props: ReaderTranslationPanelProps) {
-  const {
-    pageCount,
-    aiRequestPageInterval,
-    aiRequestFrequency,
-    aiMaxContextPages,
-    onChangeRequestInterval,
-    onChangeRequestFrequency,
-    onChangeMaxContextPages,
-    geminiModelId,
-  } = props;
-  const info = geminiModelInfo(geminiModelId);
-  const pagesPerRequest = Math.min(
-    10,
-    Math.max(1, Math.round(aiRequestPageInterval)),
-  );
-  const requestFrequency = Math.min(
-    5,
-    Math.max(1, Math.round(aiRequestFrequency)),
-  );
-  const maxContext = Math.min(50, Math.max(0, Math.round(aiMaxContextPages)));
-  const requests =
-    pageCount > 0 ? Math.max(1, Math.ceil(pageCount / pagesPerRequest)) : null;
-
-  return (
-    <View>
-      <SectionLabel>Pages per request</SectionLabel>
-      <DotSlider
-        value={pagesPerRequest}
-        min={1}
-        max={10}
-        step={1}
-        dotCount={10}
-        leftLabel="1 page per request"
-        rightLabel="10 pages per request"
-        onChange={onChangeRequestInterval}
-      />
-      {/* <HelperText>
-        Send this many freshly OCRed pages in each Gemini request - higher means
-        fewer, bigger requests.{" "}
-        {requests !== null
-          ? "\u2248 " +
-            requests +
-            " requests for this " +
-            pageCount +
-            "-page chapter; a trailing partial batch still flushes once the scanned area is done."
-          : "Request estimates appear once the chapter loads."}
-      </HelperText> */}
-
-      <SectionLabel>Request frequency</SectionLabel>
-      <DotSlider
-        value={requestFrequency}
-        min={1}
-        max={5}
-        step={1}
-        dotCount={5}
-        leftLabel="1 request at a time"
-        rightLabel="5 requests at a time"
-        onChange={onChangeRequestFrequency}
-      />
-      <HelperText>
-        Maximum number of Gemini requests that can process batches concurrently.
-      </HelperText>
-
-      <SectionLabel>Max context</SectionLabel>
-      <DotSlider
-        value={maxContext}
-        min={0}
-        max={50}
-        step={1}
-        dotCount={50}
-        leftLabel="No history"
-        rightLabel="50 pages"
-        onChange={onChangeMaxContextPages}
-      />
-      {/* <HelperText>
-        {maxContext === 0
-          ? "No history is attached - each request only sees its own batch."
-          : "Sends the last " +
-            maxContext +
-            " OCRed page" +
-            (maxContext === 1 ? "" : "s") +
-            " of the manga, with their page numbers, so the model follows the story. History is RAM-only and never translated."}
-      </HelperText> */}
-
-      <SectionLabel>Model limits - {info.label}</SectionLabel>
-      <View style={styles.limitsRow}>
-        <View style={styles.limitChip}>
-          <Text style={styles.limitChipValue}>{info.rpm}</Text>
-          <Text style={styles.limitChipLabel}>RPM</Text>
-        </View>
-        <View style={styles.limitChip}>
-          <Text style={styles.limitChipValue}>
-            {(info.tpm / 1000).toFixed(0)}K
-          </Text>
-          <Text style={styles.limitChipLabel}>TPM</Text>
-        </View>
-        <View style={styles.limitChip}>
-          <Text style={styles.limitChipValue}>{info.rpd}</Text>
-          <Text style={styles.limitChipLabel}>RPD</Text>
-        </View>
-      </View>
-      <HelperText>
-        Free-tier caps as shown in Google AI Studio. RPD resets at midnight
-        Pacific; RPM is also enforced in-app before every request.
-      </HelperText>
-    </View>
-  );
-}
-
-
-
 function OverlayTab(props: ReaderTranslationPanelProps) {
   const {
     overlayFont,
@@ -778,7 +820,6 @@ function OverlayTab(props: ReaderTranslationPanelProps) {
     overlayTextColor,
     onChangeOverlayTextColor,
     targetLanguage,
-    targetLanguageLabel,
   } = props;
   const fontsLoaded = useOverlayFonts();
   const supported = overlayFontSupportsLanguage(targetLanguage);
@@ -1113,6 +1154,71 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
   },
   primaryButtonText: { color: "#0b1120", fontSize: 14, fontWeight: "800" },
+  primaryButtonDisabled: { opacity: 0.45 },
+
+  clearCacheButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#7f1d1d",
+    backgroundColor: "#2a1518",
+    paddingVertical: 11,
+    marginBottom: 10,
+  },
+  clearCacheText: { color: "#fda4af", fontSize: 13.5, fontWeight: "800" },
+  clearCacheSuccess: {
+    color: "#6ee7b7",
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 10,
+  },
+  confirmRow: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#7f1d1d",
+    backgroundColor: "#2a1518",
+    padding: 12,
+    gap: 10,
+    marginBottom: 10,
+  },
+  confirmText: { color: "#fecdd3", fontSize: 13, fontWeight: "600" },
+  confirmActions: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
+  dangerButton: { borderColor: "#7f1d1d", backgroundColor: "#7f1d1d" },
+  dangerButtonText: { color: "#fff", fontSize: 12, fontWeight: "800" },
+
+  sliderValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 2,
+  },
+  sliderValueLabel: { color: "#cbd5e1", fontSize: 12, fontWeight: "700" },
+  sliderValue: { color: "#fbbf24", fontSize: 13, fontWeight: "800" },
+
+  metricsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  metricChip: {
+    minWidth: "30%",
+    flexGrow: 1,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#33354a",
+    backgroundColor: "#1c1e2b",
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    gap: 2,
+  },
+  metricValue: { color: "#38bdf8", fontSize: 15, fontWeight: "800" },
+  metricLabel: { color: "#94a3b8", fontSize: 10, fontWeight: "700" },
 
   modelGroup: { gap: 8, marginBottom: 14 },
   modelCard: {

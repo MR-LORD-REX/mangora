@@ -20,6 +20,7 @@ import {
 } from "react-native";
 
 import PageTranslationOverlay from "@/components/reader/PageTranslationOverlay";
+import PageTrStatusBadge from "@/components/reader/PageTrStatusBadge";
 import type {
   ReaderChromeSettings,
   ReaderOverlayFont,
@@ -42,6 +43,7 @@ export interface ReaderPageProps {
   defaultZoomScale: number;
   pagedMode: boolean;
   translation: PageTranslationState | undefined;
+  translationActive: boolean;
   overlayFont: ReaderOverlayFont;
   overlayFontWeight: number;
   overlayFontScale: number;
@@ -49,6 +51,7 @@ export interface ReaderPageProps {
   onLoadDims: (url: string, width: number, height: number) => void;
   onToggleChrome: () => void;
   onTapAt: (x: number, y: number) => void;
+  onRetryTranslation: (url: string) => void;
 }
 
 function ReaderPage({
@@ -62,6 +65,7 @@ function ReaderPage({
   defaultZoomScale,
   pagedMode,
   translation,
+  translationActive,
   overlayFont,
   overlayFontWeight,
   overlayFontScale,
@@ -69,6 +73,7 @@ function ReaderPage({
   onLoadDims,
   onToggleChrome,
   onTapAt,
+  onRetryTranslation,
 }: ReaderPageProps) {
   const filters: ({ brightness: number } | { grayscale: number } | { invert: number })[] = [];
   if (chrome.customBrightnessEnabled) {
@@ -88,6 +93,17 @@ function ReaderPage({
   const colorTint = chrome.customColorFilterEnabled
     ? chrome.customColorFilter
     : null;
+
+  const statusBadge = (
+    <PageTrStatusBadge
+      stage={translation?.stage}
+      active={translationActive}
+      onRetry={() => {
+        console.log("[reader][page status] retry requested", { url });
+        onRetryTranslation(url);
+      }}
+    />
+  );
 
   const translationOverlay = () => {
     if (
@@ -122,6 +138,7 @@ function ReaderPage({
           backgroundColor: pageBackground,
         }}
       >
+        {statusBadge}
         <ActivityIndicator color="#fbbf24" />
       </View>
     );
@@ -139,6 +156,7 @@ function ReaderPage({
           alignItems: "center",
         }}
       >
+        {statusBadge}
         <ZoomablePage
           width={geometry.itemW}
           height={geometry.itemH}
@@ -242,6 +260,7 @@ function ReaderPage({
           backgroundColor: pageBackground,
         }}
       >
+        {statusBadge}
         {renderPageImage()}
       </View>
     );
@@ -257,6 +276,7 @@ function ReaderPage({
         backgroundColor: pageBackground,
       }}
     >
+      {statusBadge}
       <View style={{ width: geometry.imgW, height: geometry.itemH }}>
         {renderPageImage()}
       </View>
@@ -289,11 +309,13 @@ export default memo(
     prev.defaultZoomScale === next.defaultZoomScale &&
     prev.pagedMode === next.pagedMode &&
     prev.translation === next.translation &&
+    prev.translationActive === next.translationActive &&
     prev.overlayFont === next.overlayFont &&
     prev.overlayFontWeight === next.overlayFontWeight &&
     prev.overlayFontScale === next.overlayFontScale &&
     prev.overlayTextColor === next.overlayTextColor &&
     prev.onLoadDims === next.onLoadDims &&
     prev.onToggleChrome === next.onToggleChrome &&
-    prev.onTapAt === next.onTapAt,
+    prev.onTapAt === next.onTapAt &&
+    prev.onRetryTranslation === next.onRetryTranslation,
 );

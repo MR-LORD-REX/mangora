@@ -21,15 +21,11 @@ import {
   getStoredSettingsJson,
   upsertStoredSettingsJson,
 } from "@/services/db/repositories/settingsRepository";
-import type { LocalModelId } from "@/services/ocr/executorchModels";
 import {
   GEMINI_DEFAULT_MODEL,
   isGeminiModelId,
   type GeminiModelId,
 } from "@/services/translation/geminiModels";
-
-/** OCR backend used by the reader. */
-export type OcrBackend = "local" | "cloud";
 
 /**
  * How the reader translates a page.
@@ -74,31 +70,31 @@ export interface ExtensionRepoSetting {
 }
 
 export interface AppSettings {
-  /** OCR.space API key (entered on the home screen). */
-  ocrApiKey: string;
-  /** Which OCR backend the reader should use. */
-  ocrBackend: OcrBackend;
-  /** Local ExecuTorch model selected in the reader dropdown. */
-  localModelId: LocalModelId | null;
   /**
    * Source language override chosen in Reader Config -> Language.
    * Empty string means "auto" (derive from the chapter's language param).
    */
   readerLanguage: string;
-  /** Reader Config -> Translation mode: off / free / AI. */
+  /** TR mode: off / free / AI. */
   readerTranslateMode: ReaderTranslateMode;
   /** Gemini API key used by AI translation ("" = not set). */
   geminiApiKey: string;
   /** Gemini model used by AI translation. */
   geminiModelId: GeminiModelId;
   /**
-   * AI translation: how many freshly OCRed pages to wait for before sending
-   * one Gemini request (1..10, default 3).
+   * OCR pipeline: concurrent page scanner workers (1..2, default 2).
+   * Applied from Translation options -> OCR settings.
    */
-  aiRequestPageInterval: number;
-  /** AI translation: maximum concurrent Gemini requests (1..5, default 1). */
-  aiRequestFrequency: number;
-  /** AI translation: past pages of OCR history attached per request (0..50, default 10). */
+  ocrPageWorkers: number;
+  /** OCR pipeline: concurrent bubble OCR workers (1..2, default 1). */
+  ocrBubbleWorkers: number;
+  /** OCR pipeline: pages queued ahead of the visible page (1..3, default 2). */
+  ocrLookahead: number;
+  /** Free TR: concurrent Google Translate requests (1..5, default 2). */
+  freeRequestConcurrency: number;
+  /** AI TR: Gemini worker count; 2 uses both catalogue models (1..2, default 1). */
+  aiWorkerCount: number;
+  /** AI TR: past OCRed pages attached to each request (1..50, default 10). */
   aiMaxContextPages: number;
   /** Reader Config -> Language -> Target: translate-into language code. */
   readerTargetLanguage: string;
@@ -178,15 +174,15 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  ocrApiKey: "",
-  ocrBackend: "local",
-  localModelId: null,
   readerLanguage: "",
   readerTranslateMode: "off",
   geminiApiKey: "",
   geminiModelId: GEMINI_DEFAULT_MODEL,
-  aiRequestPageInterval: 3,
-  aiRequestFrequency: 1,
+  ocrPageWorkers: 2,
+  ocrBubbleWorkers: 2,
+  ocrLookahead: 2,
+  freeRequestConcurrency: 2,
+  aiWorkerCount: 1,
   aiMaxContextPages: 10,
   readerTargetLanguage: "en",
   readerReadingMode: "scrollVertical",
@@ -294,7 +290,6 @@ function num(value: unknown, fallback: number, min: number, max: number): number
 
 function sanitize(raw: unknown): AppSettings {
   const value = (raw ?? {}) as Partial<AppSettings>;
-  const backend: OcrBackend = value.ocrBackend === "cloud" ? "cloud" : "local";
   // Legacy perBubble/perPage both collapse into "free": the free engine
   // keeps the per-bubble pipeline and never needs an API key, so no saved
   // preference is ever silently upgraded into key-requiring AI translation.
@@ -310,14 +305,11 @@ function sanitize(raw: unknown): AppSettings {
         ? "free"
         : "off";
   return {
-    ocrApiKey: typeof value.ocrApiKey === "string" ? value.ocrApiKey : "",
-    ocrBackend: backend,
-    localModelId:
-      typeof value.localModelId === "string"
-        ? (value.localModelId as LocalModelId)
-        : null,
     readerLanguage:
-      typeof value.readerLanguage === "string" ? value.readerLanguage : "",
+      typeof value.readerLanguage === "string" &&
+      value.readerLanguage.trim().toLowerCase() !== "ru"
+        ? value.readerLanguage
+        : "",
     readerTranslateMode: mode,
     readerTargetLanguage:
       typeof value.readerTargetLanguage === "string"
@@ -328,13 +320,14 @@ function sanitize(raw: unknown): AppSettings {
     geminiModelId: isGeminiModelId(value.geminiModelId)
       ? value.geminiModelId
       : GEMINI_DEFAULT_MODEL,
-    aiRequestPageInterval: Math.round(
-      num(value.aiRequestPageInterval, 3, 1, 10),
+    ocrPageWorkers: Math.round(num(value.ocrPageWorkers, 2, 1, 2)),
+    ocrBubbleWorkers: Math.round(num(value.ocrBubbleWorkers, 1, 1, 3)),
+    ocrLookahead: Math.round(num(value.ocrLookahead, 2, 1, 3)),
+    freeRequestConcurrency: Math.round(
+      num(value.freeRequestConcurrency, 2, 1, 5),
     ),
-    aiRequestFrequency: Math.round(
-      num(value.aiRequestFrequency, 1, 1, 5),
-    ),
-    aiMaxContextPages: Math.round(num(value.aiMaxContextPages, 10, 0, 50)),
+    aiWorkerCount: Math.round(num(value.aiWorkerCount, 1, 1, 2)),
+    aiMaxContextPages: Math.round(num(value.aiMaxContextPages, 10, 1, 50)),
     readerReadingMode: oneOf(value.readerReadingMode, READING_MODES, "scrollVertical"),
     readerPagedDirection:
       value.readerPagedDirection === "rtl" ? "rtl" : "ltr",

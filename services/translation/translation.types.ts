@@ -19,8 +19,8 @@ export interface Box {
  * How a translation run is performed for one page.
  *   off  - no translation
  *   free - free Google endpoint; each bubble is OCRed and translated alone
- *   ai   - Gemini API; whole pages are dispatched after N fresh OCRs (the
- *          reader's request frequency) with past OCR pages as context
+ *   ai   - Gemini API; each OCRed page is pushed to the AI worker queue with
+ *          the last N OCRed pages attached as context
  */
 export type ReaderTranslateMode = "off" | "free" | "ai";
 
@@ -58,7 +58,7 @@ export interface PageTranslationState {
   busy: boolean;
   visible: boolean;
   /** Coarse pipeline stage for the progress chip. */
-  stage: "detect" | "ocr" | "translate" | "done" | "skipped" | "error";
+  stage: "queued" | "detect" | "ocr" | "translate" | "done" | "skipped" | "error";
   /** Human readable progress / status line. */
   message: string | null;
   regions: TranslationRegionState[];
