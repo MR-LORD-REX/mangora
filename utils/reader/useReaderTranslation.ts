@@ -34,7 +34,10 @@ import {
   type OcrRegion,
   type OcrTextItem,
 } from "@/services/ocr/pageOcr";
-import type { AppSettings } from "@/services/settings/settingsStore";
+import type {
+  ReaderTranslationEngine,
+  ReaderTranslationMode,
+} from "@/services/settings/settingsStore";
 import { GEMINI_DEFAULT_MODEL, GEMINI_MODELS } from "@/services/translation/geminiModels";
 import type { GeminiModelId } from "@/services/translation/geminiModels";
 import {
@@ -63,6 +66,11 @@ import {
   isSameEngineLanguage,
 } from "@/services/translation/translationLang";
 import { WorkQueue, type WorkQueueMetrics } from "@/services/translation/workQueue";
+import {
+  getTranslationLockOwner,
+  releaseTranslationLock,
+  tryAcquireTranslationLock,
+} from "@/services/translation/translationRuntimeLock";
 import { yoloDetector } from "@/services/yolo/yolo";
 import type { DetectionResult } from "@/services/yolo/yolo.types";
 import { imageHeadersForPage } from "@/utils/reader/imageHeaders";
@@ -131,7 +139,8 @@ interface AiTranslationTask {
 }
 
 interface PipelineConfig {
-  mode: AppSettings["readerTranslateMode"];
+  engine: ReaderTranslationEngine;
+  translationMode: ReaderTranslationMode;
   sourceLanguage: string;
   targetLanguage: string;
   geminiApiKey: string;
@@ -187,7 +196,8 @@ export interface UseReaderTranslationOptions {
   pages: string[];
   currentPageIndex: number;
   identity: ReaderIdentity;
-  translateMode: AppSettings["readerTranslateMode"];
+  translationEngine: ReaderTranslationEngine;
+  translationMode: ReaderTranslationMode;
   targetLanguage: string;
   geminiApiKey: string;
   geminiModelId: GeminiModelId;
@@ -205,11 +215,15 @@ export interface ReaderTranslationController {
   pipelineError: string | null;
   setPipelineError: (message: string | null) => void;
   autoTranslation: boolean;
+  translationActive: boolean;
+  singlePageBusy: boolean;
+  singlePageIndex: number | null;
   activeTranslationJobs: number;
   metrics: ReaderPipelineMetrics;
   resetTranslationPipeline: () => void;
   stopTranslationRun: () => void;
   toggleAutoTranslation: () => void;
+  translateSinglePage: (url: string) => void;
   retryPage: (url: string) => void;
   clearRamCache: () => void;
 }
@@ -221,7 +235,8 @@ export function useReaderTranslation({
   pages,
   currentPageIndex,
   identity,
-  translateMode,
+  translationEngine,
+  translationMode,
   targetLanguage,
   geminiApiKey,
   geminiModelId,
@@ -240,12 +255,18 @@ export function useReaderTranslation({
   >({});
   const [pipelineError, setPipelineError] = useState<string | null>(null);
   const [autoTranslation, setAutoTranslation] = useState(false);
+  const [singlePageBusy, setSinglePageBusy] = useState(false);
+  const [singlePageIndex, setSinglePageIndex] = useState<number | null>(null);
   const [metrics, setMetrics] = useState<ReaderPipelineMetrics>(EMPTY_METRICS);
 
   const pagesStateRef = useRef<Record<string, PageTranslationState>>({});
   const pagesRef = useRef(pages);
   const generationRef = useRef(0);
   const autoRef = useRef(false);
+  const singleRef = useRef(false);
+  const singlePageIndexRef = useRef<number | null>(null);
+  const singleLockKeyRef = useRef('reader-single:' + identity.chapterId);
+  const autoLockKeyRef = useRef('reader-auto:' + identity.chapterId);
   const currentPageIndexRef = useRef(currentPageIndex);
   const detectionRef = useRef(new Map<string, DetectionResult>());
   const ocrStoreRef = useRef(new Map<string, OcrPageRecord>());
@@ -277,7 +298,8 @@ export function useReaderTranslation({
   autoRef.current = autoTranslation;
 
   const configRef = useRef<PipelineConfig>({
-    mode: translateMode,
+    engine: translationEngine,
+    translationMode,
     sourceLanguage: ocrLanguage,
     targetLanguage: targetLanguage || "en",
     geminiApiKey,
@@ -287,7 +309,8 @@ export function useReaderTranslation({
     freeRequestConcurrency,
   });
   configRef.current = {
-    mode: translateMode,
+    engine: translationEngine,
+    translationMode,
     sourceLanguage: ocrLanguage,
     targetLanguage: targetLanguage || "en",
     geminiApiKey,
@@ -298,13 +321,14 @@ export function useReaderTranslation({
   };
 
   const isCurrentRun = (generation: number) =>
-    generation === generationRef.current && autoRef.current;
+    generation === generationRef.current &&
+    (autoRef.current || singleRef.current);
 
   const pageDefaults = (url: string): PageTranslationState => ({
     url,
     imageWidth: 0,
     imageHeight: 0,
-    mode: configRef.current.mode,
+    mode: configRef.current.engine,
     busy: false,
     visible: false,
     stage: "queued",
@@ -389,6 +413,7 @@ export function useReaderTranslation({
       ),
     });
     showTranslationError(message);
+    finishSinglePage(url);
   };
 
   const savePageRecord = async (page: OcrPageRecord) => {
@@ -493,7 +518,7 @@ export function useReaderTranslation({
       modelId: cached.model,
     });
     updatePage(url, {
-      mode: configRef.current.mode,
+      mode: configRef.current.engine,
       imageWidth: cached.imageWidth,
       imageHeight: cached.imageHeight,
       busy: false,
@@ -561,7 +586,7 @@ export function useReaderTranslation({
       message: `Translating ${bubbles.size} bubble${bubbles.size === 1 ? "" : "s"}\u2026`,
       regions,
     });
-    if (configRef.current.mode === "free") {
+    if (configRef.current.engine === "free") {
       for (const bubble of bubbles.values()) {
         queuesRef.current?.free.push(
           {
@@ -573,7 +598,7 @@ export function useReaderTranslation({
           `${page.url}:${bubble.id}`,
         );
       }
-    } else if (configRef.current.mode === "ai") {
+    } else if (configRef.current.engine === "ai") {
       queuesRef.current?.ai.push(
         { url: page.url, pageIndex: page.pageIndex, generation },
         page.url,
@@ -630,6 +655,7 @@ export function useReaderTranslation({
           `Translation failed for page ${page.pageIndex + 1}. Use the retry button on the page.`,
         );
       }
+      finishSinglePage(page.url);
     }
   };
   const scanWorker = async (task: ScanTask) => {
@@ -637,7 +663,11 @@ export function useReaderTranslation({
     if (!isCurrentRun(generation)) return;
     console.log("[reader][scan] start", { pageIndex });
     const restored = await restoreCachedPage(url, pageIndex, generation);
-    if (restored || !isCurrentRun(generation)) return;
+    if (restored) {
+      finishSinglePage(url);
+      return;
+    }
+    if (!isCurrentRun(generation)) return;
     const modelId = modelIdForLanguage(configRef.current.sourceLanguage);
     if (!(await isModelDownloaded(modelId))) {
       if (!isCurrentRun(generation)) return;
@@ -654,7 +684,7 @@ export function useReaderTranslation({
     }
 
     updatePage(url, {
-      mode: configRef.current.mode,
+      mode: configRef.current.engine,
       busy: true,
       visible: false,
       stage: "detect",
@@ -1045,14 +1075,37 @@ export function useReaderTranslation({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoTranslation, currentPageIndex, pages, ocrLookahead]);
 
+  const releaseRunLocks = () => {
+    releaseTranslationLock(autoLockKeyRef.current);
+    releaseTranslationLock(singleLockKeyRef.current);
+  };
+
+  const finishSinglePage = (url: string) => {
+    if (!singleRef.current) return;
+    const pageIndex = singlePageIndexRef.current;
+    console.log("[reader][tr][single] page finished", {
+      pageIndex,
+      url,
+      stage: pagesStateRef.current[url]?.stage,
+    });
+    singleRef.current = false;
+    releaseTranslationLock(singleLockKeyRef.current);
+    setSinglePageBusy(false);
+  };
+
   const stopTranslationRun = () => {
     generationRef.current += 1;
     autoRef.current = false;
+    singleRef.current = false;
     queues.scan.clearPending();
     queues.ocr.clearPending();
     queues.free.clearPending();
     queues.ai.clearPending();
+    releaseRunLocks();
     setAutoTranslation(false);
+    setSinglePageBusy(false);
+    setSinglePageIndex(null);
+    singlePageIndexRef.current = null;
     const kept = Object.fromEntries(
       Object.entries(pagesStateRef.current).filter(
         ([, page]) => page.stage === "done",
@@ -1069,10 +1122,15 @@ export function useReaderTranslation({
   const resetTranslationPipeline = () => {
     generationRef.current += 1;
     autoRef.current = false;
+    singleRef.current = false;
     queues.scan.clearPending();
     queues.ocr.clearPending();
     queues.free.clearPending();
     queues.ai.clearPending();
+    releaseRunLocks();
+    setSinglePageBusy(false);
+    setSinglePageIndex(null);
+    singlePageIndexRef.current = null;
     detectionRef.current.clear();
     pagesStateRef.current = {};
     setTranslationPages({});
@@ -1092,17 +1150,9 @@ export function useReaderTranslation({
     });
   };
 
-  const toggleAutoTranslation = () => {
-    if (autoTranslation) {
-      stopTranslationRun();
-      return;
-    }
-    if (translateMode === "off") {
-      showTranslationError(
-        "TR mode is Off - pick Free or AI translation first.",
-      );
-      onTranslationSetupRequired();
-      return;
+  const validateRun = (): string | null => {
+    if (configRef.current.translationMode === "off") {
+      return "Translation mode is Off - choose Single page or Auto first.";
     }
     if (
       isSameEngineLanguage(
@@ -1110,35 +1160,114 @@ export function useReaderTranslation({
         configRef.current.targetLanguage,
       )
     ) {
+      return `Target language (${languageLabel(
+        configRef.current.targetLanguage,
+      )}) matches the page language (${languageLabel(
+        configRef.current.sourceLanguage,
+      )}) - nothing to translate.`;
+    }
+    if (configRef.current.engine === "ai" && !geminiApiKey.trim()) {
+      return "AI translation needs a Gemini API key - set it in TR settings.";
+    }
+    return null;
+  };
+
+  const lockMessage = (): string => {
+    const lock = getTranslationLockOwner();
+    if (lock && lock.key.startsWith("pretranslate:")) {
+      return "A translation job is running. Pause or cancel it in Settings > Translation queue.";
+    }
+    return lock ? `Translation is already running (${lock.label}).` : "";
+  };
+
+  const toggleAutoTranslation = () => {
+    if (autoTranslation) {
+      stopTranslationRun();
+      return;
+    }
+    if (configRef.current.translationMode !== "auto") {
       showTranslationError(
-        `Target language (${languageLabel(
-          configRef.current.targetLanguage,
-        )}) matches the page language (${languageLabel(
-          configRef.current.sourceLanguage,
-        )}) - nothing to translate.`,
+        "Auto translation is not selected - switch Translation mode to Auto.",
       );
       onTranslationSetupRequired();
       return;
     }
-    if (translateMode === "ai" && !geminiApiKey.trim()) {
-      showTranslationError(
-        "AI translation needs a Gemini API key - set it in TR settings.",
-      );
+    const validationError = validateRun();
+    if (validationError) {
+      showTranslationError(validationError);
       onTranslationSetupRequired();
+      return;
+    }
+    if (
+      !tryAcquireTranslationLock(
+        autoLockKeyRef.current,
+        "Reader auto translation",
+      )
+    ) {
+      showTranslationError(lockMessage());
       return;
     }
     const generation = generationRef.current + 1;
     generationRef.current = generation;
     autoRef.current = true;
+    singleRef.current = false;
     setPipelineError(null);
     setAutoTranslation(true);
     console.log("[reader][tr] run started", {
-      mode: translateMode,
+      engine: configRef.current.engine,
+      mode: configRef.current.translationMode,
       generation,
       lookahead: ocrLookahead,
     });
   };
 
+  const translateSinglePage = (url: string) => {
+    if (configRef.current.translationMode !== "single") {
+      console.log("[reader][tr][single] ignored - mode is not single");
+      return;
+    }
+    if (singleRef.current) {
+      const page = (singlePageIndexRef.current ?? 0) + 1;
+      showTranslationError(`Processing page ${page}.`);
+      return;
+    }
+    const pageIndex = pagesRef.current.indexOf(url);
+    if (pageIndex < 0) return;
+    const validationError = validateRun();
+    if (validationError) {
+      showTranslationError(validationError);
+      onTranslationSetupRequired();
+      return;
+    }
+    if (
+      !tryAcquireTranslationLock(
+        singleLockKeyRef.current,
+        `Reader page ${pageIndex + 1}`,
+      )
+    ) {
+      showTranslationError(lockMessage());
+      return;
+    }
+    const generation = generationRef.current + 1;
+    generationRef.current = generation;
+    autoRef.current = false;
+    singleRef.current = true;
+    singlePageIndexRef.current = pageIndex;
+    queues.scan.clearPending();
+    queues.ocr.clearPending();
+    queues.free.clearPending();
+    queues.ai.clearPending();
+    delete pagesStateRef.current[url];
+    detectionRef.current.delete(url);
+    ocrStoreRef.current.delete(url);
+    setSinglePageBusy(true);
+    setSinglePageIndex(pageIndex);
+    setPipelineError(null);
+    setTranslationPages({ ...pagesStateRef.current });
+    queues.scan.push({ url, pageIndex, generation }, url);
+    publishMetrics();
+    console.log("[reader][tr][single] page queued", { pageIndex, url });
+  };
   const retryPage = (url: string) => {
     const pageIndex = pagesRef.current.indexOf(url);
     if (pageIndex < 0) return;
@@ -1163,6 +1292,32 @@ export function useReaderTranslation({
     }).catch((error) => {
       console.warn("[reader][tr] retry cache delete failed", error);
     });
+    if (configRef.current.translationMode === "single") {
+      if (singleRef.current) {
+        showTranslationError(
+          `Processing page ${(singlePageIndexRef.current ?? 0) + 1}.`,
+        );
+        return;
+      }
+      if (!tryAcquireTranslationLock(
+        singleLockKeyRef.current,
+        `Reader page ${pageIndex + 1}`,
+      )) {
+        showTranslationError(lockMessage());
+        return;
+      }
+      const generation = generationRef.current + 1;
+      generationRef.current = generation;
+      singleRef.current = true;
+      singlePageIndexRef.current = pageIndex;
+      setSinglePageBusy(true);
+      setSinglePageIndex(pageIndex);
+      queues.scan.push({ url, pageIndex, generation }, url);
+      console.log("[reader][tr][single] retry queued", { pageIndex });
+      publishMetrics();
+      return;
+    }
+    if (!autoRef.current) return;
     queues.scan.push(
       { url, pageIndex, generation: generationRef.current },
       url,
@@ -1190,6 +1345,7 @@ export function useReaderTranslation({
       queues.ocr.stop();
       queues.free.stop();
       queues.ai.stop();
+      releaseRunLocks();
       void releaseLocalOcrEngines();
       console.log("[reader][tr] pipeline unmounted", {
         source,
@@ -1201,16 +1357,23 @@ export function useReaderTranslation({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const translationActive =
+    autoTranslation || singlePageBusy || singlePageIndex !== null;
+
   return {
     translationPages,
     pipelineError,
     setPipelineError,
     autoTranslation,
+    translationActive,
+    singlePageBusy,
+    singlePageIndex,
     activeTranslationJobs: metrics.activeJobs,
     metrics,
     resetTranslationPipeline,
     stopTranslationRun,
     toggleAutoTranslation,
+    translateSinglePage,
     retryPage,
     clearRamCache,
   };

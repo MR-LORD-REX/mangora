@@ -43,6 +43,7 @@ import {
   canonicalChineseForReader,
 } from "@/components/reader/readerLanguages";
 import ReaderPage from "@/components/reader/ReaderPage";
+import SingleTranslateFab from "@/components/reader/SingleTranslateFab";
 import ReaderReadingModeSheet from "@/components/reader/ReaderReadingModeSheet";
 import ReaderRotationSheet from "@/components/reader/ReaderRotationSheet";
 import ReaderTranslationPanel, {
@@ -247,8 +248,12 @@ export default function GenericReader() {
 
   const [readerLanguage, setReaderLanguage] = useState("");
   const [targetLanguage, setTargetLanguage] = useState("en");
-  const [translateMode, setTranslateMode] =
-    useState<AppSettings["readerTranslateMode"]>("off");
+  const [translationEngine, setTranslationEngine] =
+    useState<AppSettings["readerTranslationEngine"]>("free");
+  const [translationMode, setTranslationMode] =
+    useState<AppSettings["readerTranslationMode"]>("off");
+  const [showPageStatus, setShowPageStatus] = useState(true);
+  const [hideTranslated, setHideTranslated] = useState(false);
   const [overlayFont, setOverlayFont] =
     useState<ReaderOverlayFont>("default");
   const [overlayFontWeight, setOverlayFontWeight] = useState(600);
@@ -295,11 +300,14 @@ export default function GenericReader() {
     translationPages,
     pipelineError,
     autoTranslation,
+    translationActive,
+    singlePageBusy,
     activeTranslationJobs,
     metrics,
     resetTranslationPipeline,
     stopTranslationRun,
     toggleAutoTranslation,
+    translateSinglePage,
     retryPage,
     clearRamCache,
   } = useReaderTranslation({
@@ -310,7 +318,8 @@ export default function GenericReader() {
     pages,
     currentPageIndex,
     identity: readerIdentity,
-    translateMode,
+    translationEngine,
+    translationMode,
     targetLanguage,
     geminiApiKey,
     geminiModelId,
@@ -714,7 +723,10 @@ export default function GenericReader() {
           : "",
       );
       setTargetLanguage(settings.readerTargetLanguage || "en");
-      setTranslateMode(settings.readerTranslateMode);
+      setTranslationEngine(settings.readerTranslationEngine);
+      setTranslationMode(settings.readerTranslationMode);
+      setShowPageStatus(settings.readerShowPageStatus);
+      setHideTranslated(settings.readerHideTranslated);
       setGeminiApiKey(settings.geminiApiKey || "");
       setGeminiModelId(settings.geminiModelId || GEMINI_DEFAULT_MODEL);
       setOcrPageWorkers(settings.ocrPageWorkers);
@@ -757,14 +769,31 @@ export default function GenericReader() {
     updateSettings({ readerTargetLanguage: code }).catch(console.error);
     console.log("[reader][settings] target language", code);
   };
-  const handleSelectTranslateMode = (
-    mode: AppSettings["readerTranslateMode"],
+  const handleSelectTranslationEngine = (
+    engine: AppSettings["readerTranslationEngine"],
   ) => {
-    if (mode !== translateMode && autoTranslation) {
-      stopTranslationRun();
-    }
-    updateSettings({ readerTranslateMode: mode }).catch(console.error);
-    console.log("[reader][settings] TR mode", mode);
+    if (engine !== translationEngine) stopTranslationRun();
+    setTranslationEngine(engine);
+    updateSettings({ readerTranslationEngine: engine }).catch(console.error);
+    console.log("[reader][settings] translation engine", engine);
+  };
+  const handleSelectTranslationMode = (
+    mode: AppSettings["readerTranslationMode"],
+  ) => {
+    if (mode !== translationMode) stopTranslationRun();
+    setTranslationMode(mode);
+    updateSettings({ readerTranslationMode: mode }).catch(console.error);
+    console.log("[reader][settings] translation mode", mode);
+  };
+  const handleChangeShowPageStatus = (value: boolean) => {
+    setShowPageStatus(value);
+    updateSettings({ readerShowPageStatus: value }).catch(console.error);
+    console.log("[reader][settings] show page status", value);
+  };
+  const handleChangeHideTranslated = (value: boolean) => {
+    setHideTranslated(value);
+    updateSettings({ readerHideTranslated: value }).catch(console.error);
+    console.log("[reader][settings] hide translated", value);
   };
   const handleSelectFreeConcurrency = (value: number) => {
     const next = Math.min(5, Math.max(1, Math.round(value)));
@@ -1175,6 +1204,10 @@ export default function GenericReader() {
     setTranslationOpen(true);
   };
 
+  const singlePageUrl = pages[currentPageIndex] ?? "";
+  const singlePageState = translationPages[singlePageUrl];
+  const singleStage = singlePageState?.stage;
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: pageBackground }]}
@@ -1193,6 +1226,7 @@ export default function GenericReader() {
             chapterLabel={chapterLabel}
             translateActive={autoTranslation}
             translationBusy={activeTranslationJobs > 0}
+            showTranslateToggle={translationMode !== "single"}
             onToggleTranslate={toggleAutoTranslation}
             onOpenTranslation={openTranslationOptions}
             onBack={goBack}
@@ -1238,8 +1272,10 @@ export default function GenericReader() {
             targetLanguage={targetLanguage}
             onSelectReaderLanguage={handleSelectReaderLanguage}
             onSelectTargetLanguage={handleSelectTargetLanguage}
-            translateMode={translateMode}
-            onSelectTranslateMode={handleSelectTranslateMode}
+            translationEngine={translationEngine}
+            onSelectTranslationEngine={handleSelectTranslationEngine}
+            translationMode={translationMode}
+            onSelectTranslationMode={handleSelectTranslationMode}
             geminiApiKey={geminiApiKey}
             onValidateAndSaveKey={handleValidateAndSaveGeminiKey}
             freeRequestConcurrency={freeRequestConcurrency}
@@ -1262,6 +1298,10 @@ export default function GenericReader() {
             onChangeOverlayFontScale={handleSelectOverlayFontScale}
             overlayTextColor={overlayTextColor}
             onChangeOverlayTextColor={handleSelectOverlayTextColor}
+            showPageStatus={showPageStatus}
+            onChangeShowPageStatus={handleChangeShowPageStatus}
+            hideTranslated={hideTranslated}
+            onChangeHideTranslated={handleChangeHideTranslated}
           />
         )}
 
@@ -1346,6 +1386,13 @@ export default function GenericReader() {
           </View>
         )}
 
+        {translationMode === "single" && singlePageUrl ? (
+          <SingleTranslateFab
+            stage={singleStage}
+            busy={singlePageBusy}
+            onPress={() => translateSinglePage(singlePageUrl)}
+          />
+        ) : null}
         <FlatList
           ref={listRef}
           data={pages}
@@ -1395,7 +1442,9 @@ export default function GenericReader() {
               defaultZoomScale={defaultZoomScale}
               pagedMode={pagedMode}
               translation={translationPages[item]}
-              translationActive={autoTranslation}
+              translationActive={translationActive}
+              showPageStatus={showPageStatus}
+              hideTranslated={hideTranslated}
               overlayFont={
                 overlayFontSupportsLanguage(targetLanguage)
                   ? overlayFont
@@ -1443,6 +1492,26 @@ export default function GenericReader() {
 }
 
 const styles = StyleSheet.create({
+  singleTrFab: {
+    position: "absolute",
+    right: 18,
+    bottom: 118,
+    zIndex: 30,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(14,165,233,0.92)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,0.25)",
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  singleTrFabBusy: { backgroundColor: "rgba(14,116,144,0.95)" },
   safeArea: { flex: 1, backgroundColor: "#000" },
   container: {
     flex: 1,

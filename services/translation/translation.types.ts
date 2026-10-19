@@ -15,14 +15,10 @@ export interface Box {
   y2: number;
 }
 
-/**
- * How a translation run is performed for one page.
- *   off  - no translation
- *   free - free Google endpoint; each bubble is OCRed and translated alone
- *   ai   - Gemini API; each OCRed page is pushed to the AI worker queue with
- *          the last N OCRed pages attached as context
- */
-export type ReaderTranslateMode = "off" | "free" | "ai";
+import type { ReaderTranslationEngine } from "@/services/settings/settingsStore";
+
+/** Engine used for one translated page. */
+export type ReaderTranslateMode = ReaderTranslationEngine;
 
 /** Paste target kind - decides inset (bubble ~90%) vs full box (messy). */
 export type TranslationSlotKind = "bubble" | "messy";

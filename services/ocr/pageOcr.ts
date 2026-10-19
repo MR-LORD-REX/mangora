@@ -124,6 +124,9 @@ export async function downloadPageToCache(
   pageUrl: string,
   headers?: Record<string, string>
 ): Promise<string> {
+  if (pageUrl.startsWith("file://")) {
+    return isAvifUri(pageUrl) ? transcodeAvifToPng(pageUrl) : pageUrl;
+  }
   const pending = pageFileCache.get(pageUrl);
   if (pending) return pending;
 

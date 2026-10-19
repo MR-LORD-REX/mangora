@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors, radius, shadows } from "@/constants/theme";
 import { getDownloadSnapshot, subscribeDownloads } from "@/services/downloader";
+import { subscribePretranslate } from "@/services/translation/pretranslateQueue";
 
 interface SettingsEntry {
   key: string;
@@ -58,6 +59,14 @@ const ENTRIES: SettingsEntry[] = [
     href: "/settings/queue",
   },
   {
+    key: "translation-queue",
+    title: "Translation queue",
+    tagline: "Pre-translated chapters, pause and cancel",
+    icon: Languages,
+    accent: "#38bdf8",
+    href: "/settings/translation-queue",
+  },
+  {
     key: "translation",
     title: "Translation",
     tagline: "Gemini key and the translated-page cache",
@@ -86,6 +95,7 @@ const ENTRIES: SettingsEntry[] = [
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const [queueCount, setQueueCount] = useState(0);
+  const [trQueueCount, setTrQueueCount] = useState(0);
 
   useEffect(() => {
     const update = () => {
@@ -93,7 +103,14 @@ export default function SettingsScreen() {
       setQueueCount(snapshot.runningCount + snapshot.pendingCount);
     };
     update();
-    return subscribeDownloads(update);
+    const unsubscribeDownloads = subscribeDownloads(update);
+    const unsubscribeTranslation = subscribePretranslate((snapshot) => {
+      setTrQueueCount(snapshot.runningCount + snapshot.pendingCount);
+    });
+    return () => {
+      unsubscribeDownloads();
+      unsubscribeTranslation();
+    };
   }, []);
 
   return (
@@ -115,7 +132,9 @@ export default function SettingsScreen() {
           const badge =
             entry.key === "queue" && queueCount > 0
               ? `${queueCount} active`
-              : null;
+              : entry.key === "translation-queue" && trQueueCount > 0
+                ? `${trQueueCount} active`
+                : null;
           return (
             <Link key={entry.key} href={entry.href as Href} asChild>
               <Pressable

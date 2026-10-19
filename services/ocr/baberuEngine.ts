@@ -113,16 +113,27 @@ function presentFeeds(
   return feeds;
 }
 
+const SESSION_OPTIONS = {
+  graphOptimizationLevel: "all",
+  intraOpNumThreads: 4,
+  interOpNumThreads: 1,
+  enableCpuMemArena: true,
+  enableMemPattern: true,
+} as never;
+
 async function loadSessions(dirUri: string, runtime: OcrRuntime): Promise<BaberuSessions> {
   const { ort } = runtime;
   const vision = await ort.InferenceSession.create(
     `${dirUri}onnx/vision_int4.onnx`,
+    SESSION_OPTIONS,
   );
   const prefill = await ort.InferenceSession.create(
     `${dirUri}onnx/decoder_prefill_int8.onnx`,
+    SESSION_OPTIONS,
   );
   const step = await ort.InferenceSession.create(
     `${dirUri}onnx/decoder_step_int8.onnx`,
+    SESSION_OPTIONS,
   );
   const rawVocab = await FileSystem.readAsStringAsync(`${dirUri}tokenizer/vocab.json`);
   const vocab = JSON.parse(rawVocab) as string[];

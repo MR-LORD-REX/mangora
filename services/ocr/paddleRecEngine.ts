@@ -148,6 +148,13 @@ export async function createCtcEngine(
   const { ort } = runtime;
   const session: OrtSession = await ort.InferenceSession.create(
     `${dirUri}inference.onnx`,
+    {
+      graphOptimizationLevel: "all",
+      intraOpNumThreads: 4,
+      interOpNumThreads: 1,
+      enableCpuMemArena: true,
+      enableMemPattern: true,
+    } as never,
   );
   const yaml = await FileSystem.readAsStringAsync(`${dirUri}inference.yml`);
   const chars = parseCharacterDict(yaml);

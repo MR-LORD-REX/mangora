@@ -5,8 +5,9 @@
  * Tabs are always visible and follow TR mode:
  *
  *   Language       - source (OCR) + target language pickers
- *   TR mode        - off / free / AI descriptions
- *   TR settings    - mode-specific sliders, Gemini key, metrics, cache clear
+ *   Translation engine - free / AI picker
+ *   Translation mode   - off / single page / auto picker
+ *   TR settings    - engine sliders, Gemini key, metrics, cache clear
  *   OCR settings   - staged page / bubble worker and look-ahead sliders
  *   Overlay        - paste text size, font and color
  *
@@ -30,13 +31,17 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
   type TextStyle,
 } from "react-native";
 
-import type { ReaderTranslateMode } from "@/services/settings/settingsStore";
+import type {
+  ReaderTranslationEngine,
+  ReaderTranslationMode,
+} from "@/services/settings/settingsStore";
 import type { ReaderPipelineMetrics } from "@/utils/reader/useReaderTranslation";
 import { READER_TARGET_OPTIONS } from "@/services/translation/translationLang";
 import DotSlider from "./DotSlider";
@@ -64,23 +69,17 @@ export const READER_TRANSLATION_TABS: {
   label: string;
 }[] = [
   { key: "language", label: "Language" },
-  { key: "trMode", label: "Mode" },
+  { key: "trMode", label: "Modes" },
   { key: "trSettings", label: "Translation" },
   { key: "ocrSettings", label: "OCR" },
   { key: "overlay", label: "Overlay" },
 ];
 
-const TRANSLATION_MODE_OPTIONS: {
-  value: ReaderTranslateMode;
+const ENGINE_OPTIONS: {
+  value: ReaderTranslationEngine;
   label: string;
   description: string;
 }[] = [
-  {
-    value: "off",
-    label: "Off",
-    description:
-      "Translation is disabled - pages are shown in their original language.",
-  },
   {
     value: "free",
     label: "Free translation",
@@ -91,10 +90,34 @@ const TRANSLATION_MODE_OPTIONS: {
     value: "ai",
     label: "AI translation",
     description:
-      "Context-aware Gemini translation.  Revisiting an already translated page restores it from the saved cache. Requires a Gemini API key.",
+      "Context-aware Gemini translation. Revisiting an already translated page restores it from the saved cache. Requires a Gemini API key.",
   },
 ];
 
+const MODE_OPTIONS: {
+  value: ReaderTranslationMode;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "off",
+    label: "Off",
+    description:
+      "Translation is disabled - pages are shown in their original language.",
+  },
+  {
+    value: "single",
+    label: "Single page",
+    description:
+      "A floating TR button translates only the current page. One page is processed at a time.",
+  },
+  {
+    value: "auto",
+    label: "Auto",
+    description:
+      "The current page and look-ahead pages are translated automatically as you read.",
+  },
+];
 function maskKey(key: string): string {
   const trimmed = key.trim();
   if (trimmed.length <= 8) return "\u2022\u2022\u2022\u2022";
@@ -115,8 +138,10 @@ export interface ReaderTranslationPanelProps {
   onSelectTargetLanguage: (code: string) => void;
 
   // TR mode tab.
-  translateMode: ReaderTranslateMode;
-  onSelectTranslateMode: (mode: ReaderTranslateMode) => void;
+  translationEngine: ReaderTranslationEngine;
+  onSelectTranslationEngine: (engine: ReaderTranslationEngine) => void;
+  translationMode: ReaderTranslationMode;
+  onSelectTranslationMode: (mode: ReaderTranslationMode) => void;
 
   // TR settings tab.
   geminiApiKey: string;
@@ -150,6 +175,10 @@ export interface ReaderTranslationPanelProps {
   onChangeOverlayFontScale: (scale: number) => void;
   overlayTextColor: string;
   onChangeOverlayTextColor: (color: string) => void;
+  showPageStatus: boolean;
+  onChangeShowPageStatus: (value: boolean) => void;
+  hideTranslated: boolean;
+  onChangeHideTranslated: (value: boolean) => void;
 }
 
 export default function ReaderTranslationPanel(
@@ -335,17 +364,51 @@ function LanguageTab(props: ReaderTranslationPanelProps) {
 
 
 function ModeTab(props: ReaderTranslationPanelProps) {
-  const { translateMode, onSelectTranslateMode } = props;
+  const {
+    translationEngine,
+    onSelectTranslationEngine,
+    translationMode,
+    onSelectTranslationMode,
+  } = props;
 
   return (
     <View>
-      <SectionLabel>TR mode</SectionLabel>
-      {TRANSLATION_MODE_OPTIONS.map((option) => {
-        const active = translateMode === option.value;
+      <SectionLabel>Translation engine</SectionLabel>
+      {ENGINE_OPTIONS.map((option) => {
+        const active = translationEngine === option.value;
         return (
           <Pressable
             key={option.value}
-            onPress={() => onSelectTranslateMode(option.value)}
+            onPress={() => onSelectTranslationEngine(option.value)}
+            style={[styles.modeCard, active && styles.modeCardActive]}
+          >
+            <View style={styles.modeCardHeader}>
+              <Text
+                style={[styles.modeCardTitle, active && { color: "#0ea5e9" }]}
+              >
+                {option.label}
+              </Text>
+              <View style={[styles.radio, active && styles.radioActive]}>
+                {active && <View style={styles.radioDot} />}
+              </View>
+            </View>
+            {active && (
+              <Text style={styles.modeCardDescription}>
+                {option.description}
+              </Text>
+            )}
+          </Pressable>
+        );
+      })}
+
+      <View style={{ height: 16 }} />
+      <SectionLabel>Translation mode</SectionLabel>
+      {MODE_OPTIONS.map((option) => {
+        const active = translationMode === option.value;
+        return (
+          <Pressable
+            key={option.value}
+            onPress={() => onSelectTranslationMode(option.value)}
             style={[styles.modeCard, active && styles.modeCardActive]}
           >
             <View style={styles.modeCardHeader}>
@@ -369,10 +432,10 @@ function ModeTab(props: ReaderTranslationPanelProps) {
     </View>
   );
 }
-
 function TrSettingsTab(props: ReaderTranslationPanelProps) {
   const {
-    translateMode,
+    translationEngine,
+    translationMode,
     geminiApiKey,
     onValidateAndSaveKey,
     freeRequestConcurrency,
@@ -461,7 +524,7 @@ function TrSettingsTab(props: ReaderTranslationPanelProps) {
       ) : null}
       {clearError ? <Text style={styles.modalError}>{clearError}</Text> : null}
 
-      {translateMode === "free" ? (
+      {translationEngine === "free" && translationMode !== "off" ? (
         <>
           <SectionLabel>Concurrent requests</SectionLabel>
           <View style={styles.sliderValueRow}>
@@ -485,7 +548,7 @@ function TrSettingsTab(props: ReaderTranslationPanelProps) {
         </>
       ) : null}
 
-      {translateMode === "ai" ? (
+      {translationEngine === "ai" && translationMode !== "off" ? (
         <>
           <SectionLabel>Gemini API key</SectionLabel>
           {geminiApiKey.trim() ? (
@@ -559,8 +622,8 @@ function TrSettingsTab(props: ReaderTranslationPanelProps) {
         </>
       ) : null}
 
-      {translateMode !== "off" ? (
-        <PipelineMetrics metrics={metrics} mode={translateMode} />
+      {translationMode !== "off" ? (
+        <PipelineMetrics metrics={metrics} mode={translationEngine} />
       ) : null}
 
       <ApiKeyModal
@@ -581,7 +644,7 @@ function PipelineMetrics({
   mode,
 }: {
   metrics: ReaderPipelineMetrics;
-  mode: ReaderTranslateMode;
+  mode: ReaderTranslationEngine;
 }) {
   const chips = [
     { label: "Scan queue", value: metrics.scanPending },
@@ -819,6 +882,10 @@ function OverlayTab(props: ReaderTranslationPanelProps) {
     onChangeOverlayFontScale,
     overlayTextColor,
     onChangeOverlayTextColor,
+    showPageStatus,
+    onChangeShowPageStatus,
+    hideTranslated,
+    onChangeHideTranslated,
     targetLanguage,
   } = props;
   const fontsLoaded = useOverlayFonts();
@@ -833,6 +900,36 @@ function OverlayTab(props: ReaderTranslationPanelProps) {
 
   return (
     <View>
+      <SectionLabel>Visibility</SectionLabel>
+      <View style={styles.toggleRow}>
+        <View style={styles.toggleTextWrap}>
+          <Text style={styles.toggleLabel}>Show page status</Text>
+          <Text style={styles.toggleDetail}>
+            Animated OCR / translation status on each page.
+          </Text>
+        </View>
+        <Switch
+          value={showPageStatus}
+          onValueChange={onChangeShowPageStatus}
+          trackColor={{ false: "#33354a", true: "#0ea5e9" }}
+          thumbColor="#f8fafc"
+        />
+      </View>
+      <View style={styles.toggleRow}>
+        <View style={styles.toggleTextWrap}>
+          <Text style={styles.toggleLabel}>Hide translated</Text>
+          <Text style={styles.toggleDetail}>
+            Hide overlays on pages that already finished translating.
+          </Text>
+        </View>
+        <Switch
+          value={hideTranslated}
+          onValueChange={onChangeHideTranslated}
+          trackColor={{ false: "#33354a", true: "#0ea5e9" }}
+          thumbColor="#f8fafc"
+        />
+      </View>
+
       <SectionLabel>Preview</SectionLabel>
       <View style={styles.overlayPreviewCard}>
         <Text
@@ -1351,6 +1448,16 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 4,
   },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 8,
+    marginBottom: 4,
+  },
+  toggleTextWrap: { flex: 1, gap: 2 },
+  toggleLabel: { color: "#e2e8f0", fontSize: 14, fontWeight: "700" },
+  toggleDetail: { color: "#94a3b8", fontSize: 11.5, lineHeight: 16 },
   fontRadioGroup: { gap: 2, marginBottom: 4 },
   fontRadioRow: {
     flexDirection: "row",

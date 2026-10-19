@@ -16,6 +16,9 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
 const EVENT_CHANNEL_ID = "mangora-events";
+const TRANSLATION_CATEGORY = "translation-queue";
+let translationNotificationId: string | null = null;
+let responseListenerInstalled = false;
 
 let permissionGranted = false;
 
@@ -51,8 +54,41 @@ export async function initializeNotifications(): Promise<boolean> {
         showBadge: false,
       });
     }
+    await Notifications.setNotificationCategoryAsync(TRANSLATION_CATEGORY, [
+      {
+        identifier: "translation-pause",
+        buttonTitle: "Pause",
+      },
+      {
+        identifier: "translation-resume",
+        buttonTitle: "Resume",
+      },
+      {
+        identifier: "translation-cancel",
+        buttonTitle: "Cancel",
+        options: { isDestructive: true },
+      },
+    ]);
+    if (!responseListenerInstalled) {
+      responseListenerInstalled = true;
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        const action = response.actionIdentifier;
+        if (
+          action !== "translation-pause" &&
+          action !== "translation-resume" &&
+          action !== "translation-cancel"
+        ) {
+          return;
+        }
+        void import("@/services/translation/pretranslateQueue").then((queue) => {
+          if (action === "translation-pause") queue.pauseTranslationQueue();
+          else if (action === "translation-resume") queue.resumeTranslationQueue();
+          else queue.cancelTranslationQueue();
+        });
+      });
+    }
   } catch {
-    // Channel setup is best effort.
+    // Channel / category setup is best effort.
   }
 
   try {
@@ -89,5 +125,59 @@ export async function notifyDownloadsFinished(chapterCount: number): Promise<voi
     });
   } catch {
     // A missed summary notification never affects the download queue.
+  }
+}
+
+interface TranslationNotificationJob {
+  chapterTitle: string;
+  mangaTitle: string;
+  status: string;
+  pagesFailed: number;
+}
+
+/** Live pre-translate progress notification (one at a time). */
+export async function notifyTranslationProgress(
+  job: TranslationNotificationJob,
+  current: number,
+  total: number,
+): Promise<void> {
+  if (!permissionGranted) return;
+  try {
+    if (translationNotificationId) {
+      await Notifications.dismissNotificationAsync(translationNotificationId);
+    }
+    translationNotificationId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `Pre-translating ${job.chapterTitle}`,
+        body: `${current}/${total} pages \u00b7 ${job.mangaTitle}${
+          job.pagesFailed > 0 ? ` \u00b7 ${job.pagesFailed} failed` : ""
+        }`,
+        data: { kind: "translation-queue" },
+        categoryIdentifier: TRANSLATION_CATEGORY,
+        autoDismiss: job.status === "completed",
+        sound: false,
+      },
+      trigger: null,
+    });
+  } catch {
+    // Progress notifications never affect the job.
+  }
+}
+
+/** Reminder when the JS queue pauses because the app left the foreground. */
+export async function notifyTranslationBackground(): Promise<void> {
+  if (!permissionGranted) return;
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Translation paused",
+        body: "Return to Mangora to continue pre-translating the chapter.",
+        data: { kind: "translation-background" },
+        sound: false,
+      },
+      trigger: null,
+    });
+  } catch {
+    // Best effort.
   }
 }

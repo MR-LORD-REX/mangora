@@ -44,6 +44,8 @@ export interface ReaderPageProps {
   pagedMode: boolean;
   translation: PageTranslationState | undefined;
   translationActive: boolean;
+  showPageStatus: boolean;
+  hideTranslated: boolean;
   overlayFont: ReaderOverlayFont;
   overlayFontWeight: number;
   overlayFontScale: number;
@@ -66,6 +68,8 @@ function ReaderPage({
   pagedMode,
   translation,
   translationActive,
+  showPageStatus,
+  hideTranslated,
   overlayFont,
   overlayFontWeight,
   overlayFontScale,
@@ -94,7 +98,7 @@ function ReaderPage({
     ? chrome.customColorFilter
     : null;
 
-  const statusBadge = (
+  const statusBadge = showPageStatus ? (
     <PageTrStatusBadge
       stage={translation?.stage}
       active={translationActive}
@@ -103,12 +107,13 @@ function ReaderPage({
         onRetryTranslation(url);
       }}
     />
-  );
+  ) : null;
 
   const translationOverlay = () => {
     if (
       !translation ||
       !translation.visible ||
+      (hideTranslated && translation.stage === "done") ||
       translation.imageWidth <= 0 ||
       translation.regions.length === 0
     ) {

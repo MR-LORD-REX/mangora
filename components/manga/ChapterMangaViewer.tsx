@@ -9,6 +9,7 @@ import {
   ChevronUp,
   ExternalLink,
   ListFilter,
+  Languages,
   Rocket,
   RotateCcw,
   Search,
@@ -50,6 +51,8 @@ import {
   SeriesDownloadButton,
 } from "@/components/downloader/DownloadButtons";
 import { candidateFromRow, candidatesFromRows } from "@/components/downloader/candidates";
+import { requestChapterDownload } from "@/components/downloader/actions";
+import PretranslateDialog from "@/components/translation/PretranslateDialog";
 import {
   loadOfflineChapterViewer,
   offlineRowDownload,
@@ -153,6 +156,8 @@ export default function ChapterMangaViewer({
   const [menuVisible, setMenuVisible] = useState(false);
   const [updatingRead, setUpdatingRead] = useState(false);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const [pretranslateCandidate, setPretranslateCandidate] =
+    useState<DownloadCandidate | null>(null);
 
   const listRef = useRef<FlatList<ViewerChapterRow>>(null);
   const searchInputRef = useRef<TextInput>(null);
@@ -990,12 +995,28 @@ export default function ChapterMangaViewer({
               </View>
             ) : null}
             {downloadCandidate ? (
-              <ChapterDownloadButton
-                candidate={downloadCandidate}
-                context={downloadContext}
-                status={downloadStatus}
-                accent={accent}
-              />
+              <View style={styles.chapterDownloadGroup}>
+                <Pressable
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    console.log("[manga][pretranslate] button pressed", {
+                      chapterId: downloadCandidate.target.chapterId,
+                    });
+                    setPretranslateCandidate(downloadCandidate);
+                  }}
+                  hitSlop={8}
+                  style={styles.pretranslateBtn}
+                  accessibilityLabel="Pre-translate chapter"
+                >
+                  <Languages color={accent} size={18} />
+                </Pressable>
+                <ChapterDownloadButton
+                  candidate={downloadCandidate}
+                  context={downloadContext}
+                  status={downloadStatus}
+                  accent={accent}
+                />
+              </View>
             ) : null}
             {row.pageCount != null ? (
               <Text style={styles.pageCountLabel}>{row.pageCount} pages</Text>
@@ -1141,6 +1162,19 @@ export default function ChapterMangaViewer({
         onToggleGroup={toggleGroup}
         onSelectAllGroups={() => setSelectedGroups(null)}
         onReset={resetFilters}
+      />
+      <PretranslateDialog
+        visible={pretranslateCandidate != null}
+        candidate={pretranslateCandidate}
+        mangaTitle={meta.title}
+        chapterLanguage={pretranslateCandidate?.languageCode ?? null}
+        onClose={() => setPretranslateCandidate(null)}
+        onDownload={(candidate) => {
+          console.log("[manga][pretranslate] download requested", {
+            chapterId: candidate.target.chapterId,
+          });
+          void requestChapterDownload(candidate, downloadContext);
+        }}
       />
     </SafeAreaView>
   );
@@ -1342,6 +1376,18 @@ function BottomFade({ height }: { height: number }) {
   );
 }
 const styles = StyleSheet.create({
+  chapterDownloadGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  pretranslateBtn: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+  },
   safeArea: { flex: 1, backgroundColor: colors.bg },
   container: { flex: 1, backgroundColor: colors.bg },
   center: {

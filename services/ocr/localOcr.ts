@@ -40,6 +40,7 @@ import { loadOcrRuntime } from "./onnxRuntime";
 
 const CROP_UPSCALE_MIN = 48;
 const MAX_CROP_DIMENSION = 1400;
+const BABERU_CROP_DIMENSION = 256;
 
 /**
  * CTC recognizers read one text line at a time. YOLO's clean_text boxes are
@@ -223,7 +224,10 @@ export async function recognizePageRegions(
         imageHeight,
         {
           upscaleMinDim: CROP_UPSCALE_MIN,
-          maxDimension: MAX_CROP_DIMENSION,
+          maxDimension:
+            model?.engine === "baberu"
+              ? BABERU_CROP_DIMENSION
+              : MAX_CROP_DIMENSION,
         },
       );
       const result = await withEngineLock(modelId, () =>

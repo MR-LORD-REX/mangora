@@ -27,14 +27,11 @@ import {
   type GeminiModelId,
 } from "@/services/translation/geminiModels";
 
-/**
- * How the reader translates a page.
- *   off  - no translation
- *   free - free Google endpoint, per-bubble pipeline
- *   ai   - Gemini API; OCRed pages dispatched in groups with past-page
- *          context (RAM per-manga OCR history)
- */
-export type ReaderTranslateMode = "off" | "free" | "ai";
+/** Translation backend used when a reader page is translated. */
+export type ReaderTranslationEngine = "free" | "ai";
+
+/** When translation runs in the reader. */
+export type ReaderTranslationMode = "off" | "single" | "auto";
 
 export type ReaderReadingMode =
   | "scrollVertical"
@@ -75,8 +72,10 @@ export interface AppSettings {
    * Empty string means "auto" (derive from the chapter's language param).
    */
   readerLanguage: string;
-  /** TR mode: off / free / AI. */
-  readerTranslateMode: ReaderTranslateMode;
+  /** Translation engine: free Google endpoint or Gemini. */
+  readerTranslationEngine: ReaderTranslationEngine;
+  /** Translation mode: off / single page / auto. */
+  readerTranslationMode: ReaderTranslationMode;
   /** Gemini API key used by AI translation ("" = not set). */
   geminiApiKey: string;
   /** Gemini model used by AI translation. */
@@ -152,6 +151,10 @@ export interface AppSettings {
   /** Multiplier applied to the auto-fitted overlay font size (0.5-1.5). */
   readerOverlayFontScale: number;
   readerOverlayTextColor: string; // #rrggbb
+  /** Show the per-page TR status badge while translation is active. */
+  readerShowPageStatus: boolean;
+  /** Hide translated overlays while keeping page status visible. */
+  readerHideTranslated: boolean;
   /** Auto-scroll speed multiplier (1..5). */
   readerScrollSpeed: number;
   /**
@@ -175,7 +178,8 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   readerLanguage: "",
-  readerTranslateMode: "off",
+  readerTranslationEngine: "free",
+  readerTranslationMode: "off",
   geminiApiKey: "",
   geminiModelId: GEMINI_DEFAULT_MODEL,
   ocrPageWorkers: 2,
@@ -225,6 +229,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   readerOverlayFontWeight: 600,
   readerOverlayFontScale: 1,
   readerOverlayTextColor: "#000000",
+  readerShowPageStatus: true,
+  readerHideTranslated: false,
   readerScrollSpeed: 1,
   onboardingSeenGuideIds: [],
   onboardingDismissedForever: false,
@@ -290,19 +296,25 @@ function num(value: unknown, fallback: number, min: number, max: number): number
 
 function sanitize(raw: unknown): AppSettings {
   const value = (raw ?? {}) as Partial<AppSettings>;
-  // Legacy perBubble/perPage both collapse into "free": the free engine
-  // keeps the per-bubble pipeline and never needs an API key, so no saved
-  // preference is ever silently upgraded into key-requiring AI translation.
-  // Legacy persisted values are compared as strings because perBubble /
-  // perPage are no longer part of the ReaderTranslateMode union.
-  const rawMode = value.readerTranslateMode as string | undefined;
-  const mode: ReaderTranslateMode =
-    rawMode === "ai"
+  // Legacy `readerTranslateMode` bundled engine + off state. Split it into
+  // an engine preference and an explicit flow mode during migration.
+  const legacy = value as Partial<AppSettings> & {
+    readerTranslateMode?: string;
+  };
+  const rawLegacy = legacy.readerTranslateMode;
+  const engine: ReaderTranslationEngine =
+    value.readerTranslationEngine === "ai" || rawLegacy === "ai"
       ? "ai"
-      : rawMode === "perBubble" ||
-          rawMode === "perPage" ||
-          rawMode === "free"
-        ? "free"
+      : "free";
+  const rawMode = value.readerTranslationMode as string | undefined;
+  const mode: ReaderTranslationMode =
+    rawMode === "single" || rawMode === "auto" || rawMode === "off"
+      ? rawMode
+      : rawLegacy === "free" ||
+          rawLegacy === "ai" ||
+          rawLegacy === "perBubble" ||
+          rawLegacy === "perPage"
+        ? "auto"
         : "off";
   return {
     readerLanguage:
@@ -310,7 +322,8 @@ function sanitize(raw: unknown): AppSettings {
       value.readerLanguage.trim().toLowerCase() !== "ru"
         ? value.readerLanguage
         : "",
-    readerTranslateMode: mode,
+    readerTranslationEngine: engine,
+    readerTranslationMode: mode,
     readerTargetLanguage:
       typeof value.readerTargetLanguage === "string"
         ? value.readerTargetLanguage
@@ -415,6 +428,8 @@ function sanitize(raw: unknown): AppSettings {
       /^#[0-9a-f]{6}$/i.test(value.readerOverlayTextColor)
         ? value.readerOverlayTextColor
         : "#000000",
+    readerShowPageStatus: bool(value.readerShowPageStatus, true),
+    readerHideTranslated: bool(value.readerHideTranslated, false),
     readerScrollSpeed: Math.round(num(value.readerScrollSpeed, 1, 1, 5)),
     onboardingSeenGuideIds: Array.isArray(value.onboardingSeenGuideIds)
       ? value.onboardingSeenGuideIds.filter(

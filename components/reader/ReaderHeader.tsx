@@ -23,6 +23,8 @@ export interface ReaderHeaderProps {
   chapterLabel: string;
   translateActive: boolean;
   translationBusy?: boolean;
+  /** Hidden in single-page mode, where the floating TR button owns the action. */
+  showTranslateToggle?: boolean;
   onToggleTranslate: () => void;
   onOpenTranslation: () => void;
   onBack: () => void;
@@ -37,6 +39,7 @@ export default function ReaderHeader({
   chapterLabel,
   translateActive,
   translationBusy = false,
+  showTranslateToggle = true,
   onToggleTranslate,
   onOpenTranslation,
   onBack,
@@ -69,14 +72,16 @@ export default function ReaderHeader({
 
       {downloadSlot}
 
-      <Pressable
-        hitSlop={12}
-        onPress={onToggleTranslate}
-        style={styles.headerIconBtn}
-      >
-        <Languages color={translateActive ? READER_ACCENT : "#fff"} size={22} />
-        {translationBusy ? <View style={styles.headerBusyDot} /> : null}
-      </Pressable>
+      {showTranslateToggle ? (
+        <Pressable
+          hitSlop={12}
+          onPress={onToggleTranslate}
+          style={styles.headerIconBtn}
+        >
+          <Languages color={translateActive ? READER_ACCENT : "#fff"} size={22} />
+          {translationBusy ? <View style={styles.headerBusyDot} /> : null}
+        </Pressable>
+      ) : null}
 
       <Pressable
         hitSlop={12}

@@ -9,6 +9,7 @@ import DownloadSheetHost from "@/components/downloader/DownloadSheetHost";
 import { colors } from "@/constants/theme";
 import { initializeDatabase } from "@/services/db/bootstrap";
 import { initializeNotifications } from "@/services/notifications/notifications";
+import { initPretranslateQueue } from "@/services/translation/pretranslateQueue";
 import {
   initDownloadScheduler,
   refreshDownloadedMetadata,
@@ -71,6 +72,9 @@ export default function RootLayout() {
   useEffect(() => {
     if (databaseState !== "ready") return;
     void initializeNotifications();
+    void initPretranslateQueue().catch((error) => {
+      console.warn("Translation queue failed to start:", error);
+    });
   }, [databaseState]);
 
   // Re-sync downloaded-manga metadata when the app comes back to the front,
