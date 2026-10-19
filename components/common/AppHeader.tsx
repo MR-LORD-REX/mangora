@@ -26,6 +26,8 @@ if (
 
 export interface HeaderIconAction {
   key: string;
+  label?: string;
+  badge?: number;
   icon: LucideIcon;
   active?: boolean;
   onPress: () => void;
@@ -160,6 +162,9 @@ export default function AppHeader({
           return (
             <Pressable
               key={action.key}
+              accessibilityRole="button"
+              accessibilityLabel={action.label ?? action.key}
+              accessibilityState={{ selected: Boolean(action.active) }}
               onPress={action.onPress}
               hitSlop={8}
               style={({ pressed }) => [
@@ -172,6 +177,11 @@ export default function AppHeader({
                 color={action.active ? accent : colors.textMuted}
                 size={22}
               />
+              {action.badge && action.badge > 0 ? (
+                <View pointerEvents="none" style={[styles.actionBadge, { backgroundColor: accent }]}>
+                  <Text style={styles.actionBadgeText}>{action.badge > 99 ? "99+" : action.badge}</Text>
+                </View>
+              ) : null}
             </Pressable>
           );
         })}
@@ -253,5 +263,17 @@ const styles = StyleSheet.create({
   iconBtnActive: {
     backgroundColor: colors.accentSoft,
   },
+  actionBadge: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    minWidth: 17,
+    minHeight: 17,
+    paddingHorizontal: 3,
+    borderRadius: radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionBadgeText: { color: colors.onAccent, fontSize: 10, fontWeight: "800" },
   pressed: { opacity: 0.6 },
 });

@@ -1,4 +1,8 @@
-import { router, type Href } from "expo-router";
+import {
+  router,
+  useLocalSearchParams,
+  type Href,
+} from "expo-router";
 import {
   AlertTriangle,
   ArrowRightLeft,
@@ -337,6 +341,10 @@ const ExtensionCatalogRow = React.memo(function ExtensionCatalogRow({
 });
 
 export default function BrowseScreen() {
+  const routeParams = useLocalSearchParams<{
+    tab?: string | string[];
+    query?: string | string[];
+  }>();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [tab, setTab] = useState<TabKey>("sources");
   const [query, setQuery] = useState("");
@@ -363,6 +371,18 @@ export default function BrowseScreen() {
   const [uninstallBusy, setUninstallBusy] = useState(false);
   const [progressPackage, setProgressPackage] = useState<string | null>(null);
   const [progressPercent, setProgressPercent] = useState(0);
+
+  useEffect(() => {
+    const requestedTab = Array.isArray(routeParams.tab)
+      ? routeParams.tab[0]
+      : routeParams.tab;
+    const requestedQuery = Array.isArray(routeParams.query)
+      ? routeParams.query[0]
+      : routeParams.query;
+    if (requestedTab !== "extensions") return;
+    setTab("extensions");
+    if (requestedQuery != null) setQuery(requestedQuery);
+  }, [routeParams.query, routeParams.tab]);
 
   useEffect(() => {
     let active = true;

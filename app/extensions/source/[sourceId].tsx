@@ -16,6 +16,7 @@ import {
   Grid3X3,
   List,
   SlidersHorizontal,
+  X,
 } from "lucide-react-native";
 
 import AppHeader from "@/components/common/AppHeader";
@@ -24,6 +25,10 @@ import { MangaGridCard, MangaListRow } from "@/components/sources/MangaCards";
 import SourceTabs from "@/components/sources/SourceTabs";
 import { openMangaInfo } from "@/components/manga/openMangaInfo";
 import { colors } from "@/constants/theme";
+import {
+  removeFilterPath,
+  type ExtensionFilterSelection,
+} from "@/services/extensions/filters";
 import {
   getExtensionLatest,
   getExtensionPopular,
@@ -42,6 +47,8 @@ import type {
 
 type FeedMode = "popular" | "latest";
 type CardLayout = "grid2" | "grid4" | "list";
+
+const EMPTY_FILTER_PATCHES: ExtensionFilterPatch[] = [];
 
 const CARD_LAYOUT_OPTIONS: {
   key: CardLayout;
@@ -91,8 +98,11 @@ export default function ExtensionSourceScreen() {
   const [mode, setMode] = useState<FeedMode>("popular");
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
-  const [filters, setFilters] = useState<ExtensionFilterPatch[]>([]);
+  const [filterSelections, setFilterSelections] = useState<
+    Record<string, ExtensionFilterSelection | undefined>
+  >({});
   const [filterOpen, setFilterOpen] = useState(false);
+  const [filterView, setFilterView] = useState<"overview" | "active">("overview");
   const [cardLayout, setCardLayout] = useState<CardLayout>("grid2");
   const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
   const [items, setItems] = useState<NativeManga[]>([]);
@@ -102,6 +112,19 @@ export default function ExtensionSourceScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestId = useRef(0);
+  const filterSelection = filterSelections[sourceId];
+  const filters = filterSelection?.patches ?? EMPTY_FILTER_PATCHES;
+
+  const clearFilters = () =>
+    setFilterSelections((current) => ({ ...current, [sourceId]: undefined }));
+
+  const removeFilter = (path: string) =>
+    setFilterSelections((current) => {
+      const selection = current[sourceId];
+      return selection
+        ? { ...current, [sourceId]: removeFilterPath(selection, path) }
+        : current;
+    });
 
   useEffect(
     () => subscribeExtensionRegistry(() => refreshTick((value) => value + 1)),
@@ -213,15 +236,21 @@ export default function ExtensionSourceScreen() {
         actions={[
           {
             key: "card-layout",
+            label: "Change manga layout",
             icon: LayoutIcon,
             active: layoutMenuOpen,
             onPress: () => setLayoutMenuOpen(true),
           },
           {
             key: "filters",
+            label: `Filters, ${filterSelection?.summaries.length ?? 0} active categories`,
             icon: SlidersHorizontal,
             active: filters.length > 0,
-            onPress: () => setFilterOpen(true),
+            badge: filterSelection?.summaries.length,
+            onPress: () => {
+              setFilterView("overview");
+              setFilterOpen(true);
+            },
           },
         ]}
       />
@@ -233,22 +262,40 @@ export default function ExtensionSourceScreen() {
         activeKey={searching ? "" : mode}
         onSelect={(key) => {
           setSubmittedQuery("");
-          setFilters([]);
+          clearFilters();
           setMode(key as FeedMode);
         }}
       />
       {filters.length > 0 ? (
         <View style={styles.filterBanner}>
-          <Text style={styles.filterBannerText} numberOfLines={1}>
-            {filters.length} filter{filters.length === 1 ? "" : "s"} applied
-          </Text>
-          <Text
-            style={styles.filterClear}
-            onPress={() => setFilters([])}
-            suppressHighlighting
-          >
-            Clear
-          </Text>
+          {filterSelection?.chips.slice(0, 2).map((chip) => (
+            <Pressable
+              key={chip.path}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${chip.label}`}
+              onPress={() => removeFilter(chip.path)}
+              style={({ pressed }) => [styles.filterChip, pressed && styles.layoutOptionPressed]}
+            >
+              <Text style={styles.filterBannerText} numberOfLines={1}>{chip.label}</Text>
+              <X size={15} color={colors.accent} />
+            </Pressable>
+          ))}
+          {(filterSelection?.chips.length ?? 0) > 2 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="View all active filters"
+              onPress={() => {
+                setFilterView("active");
+                setFilterOpen(true);
+              }}
+              style={styles.filterClearButton}
+            >
+              <Text style={styles.filterClear}>+{(filterSelection?.chips.length ?? 0) - 2} more</Text>
+            </Pressable>
+          ) : null}
+          <Pressable accessibilityRole="button" accessibilityLabel="Clear all filters" onPress={clearFilters} style={styles.filterClearButton}>
+            <Text style={styles.filterClear}>Clear all</Text>
+          </Pressable>
         </View>
       ) : null}
       {error ? (
@@ -299,11 +346,15 @@ export default function ExtensionSourceScreen() {
       )}
 
       <ExtensionFilterSheet
+        key={sourceId}
         visible={filterOpen}
         sourceId={sourceId}
+        sourceName={source?.name}
+        value={filterSelection}
+        initialView={filterView}
         onClose={() => setFilterOpen(false)}
-        onApply={(patches) => {
-          setFilters(patches);
+        onApply={(selection) => {
+          setFilterSelections((current) => ({ ...current, [sourceId]: selection }));
           setPage(1);
         }}
       />
@@ -412,15 +463,27 @@ const styles = StyleSheet.create({
   filterBanner: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
+    flexWrap: "wrap",
+    gap: 6,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: colors.accentSoft,
+    backgroundColor: colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  filterBannerText: { color: colors.accent, fontSize: 12, fontWeight: "700", flex: 1 },
+  filterBannerText: { color: colors.accent, fontSize: 12, fontWeight: "700", flexShrink: 1 },
   filterClear: { color: colors.accent, fontSize: 12, fontWeight: "800" },
+  filterChip: {
+    minHeight: 48,
+    maxWidth: "100%",
+    flexShrink: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: colors.accentSoft,
+  },
+  filterClearButton: { minHeight: 48, justifyContent: "center", paddingHorizontal: 8 },
   footerLoader: { paddingVertical: 20 },
 });

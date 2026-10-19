@@ -7,6 +7,7 @@ import {
   CheckCheck,
   ChevronDown,
   ChevronUp,
+  Copy,
   ExternalLink,
   ListFilter,
   Languages,
@@ -16,6 +17,7 @@ import {
   Share2,
   X,
 } from "lucide-react-native";
+import { setStringAsync } from "expo-clipboard";
 import React, {
   useCallback,
   useEffect,
@@ -25,10 +27,12 @@ import React, {
 } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Keyboard,
   LayoutAnimation,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -37,6 +41,7 @@ import {
   TextInput,
   UIManager,
   View,
+  useWindowDimensions,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
@@ -97,6 +102,8 @@ if (
 }
 
 const DESCRIPTION_COLLAPSED_LINES = 4;
+const TAG_POPOVER_WIDTH = 184;
+const TAG_POPOVER_HEIGHT = 104;
 
 function emptyLibrary(
   source: ChapterSourceModule,
@@ -156,11 +163,19 @@ export default function ChapterMangaViewer({
   const [menuVisible, setMenuVisible] = useState(false);
   const [updatingRead, setUpdatingRead] = useState(false);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const [tagPopover, setTagPopover] = useState<{
+    tag: SharedTag;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const [pretranslateCandidate, setPretranslateCandidate] =
     useState<DownloadCandidate | null>(null);
 
   const listRef = useRef<FlatList<ViewerChapterRow>>(null);
   const searchInputRef = useRef<TextInput>(null);
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -484,8 +499,33 @@ export default function ChapterMangaViewer({
     return null;
   };
 
-  const onTagPress = (tag: SharedTag) => {
-    source.openTag?.(tag);
+  const openTagPopover = (tag: SharedTag, x: number, y: number, width: number, height: number) => {
+    setTagPopover({ tag, x, y, width, height });
+  };
+
+  const copyTag = async () => {
+    if (!tagPopover) return;
+    const tag = tagPopover.tag;
+    setTagPopover(null);
+    try {
+      await setStringAsync(tag.label);
+      setShareNotice("Tag copied to clipboard");
+    } catch (error) {
+      Alert.alert(
+        "Couldn't copy tag",
+        error instanceof Error ? error.message : "Could not access the clipboard.",
+      );
+    }
+  };
+
+  const searchTag = () => {
+    if (!tagPopover) return;
+    const query = tagPopover.tag.label;
+    setTagPopover(null);
+    router.push({
+      pathname: "/(tabs)/browse",
+      params: { tab: "extensions", query },
+    });
   };
 
   const rowDate = (row: ViewerChapterRow) =>
@@ -805,6 +845,7 @@ export default function ChapterMangaViewer({
             <View>
               <Text
                 style={styles.synopsis}
+                selectable
                 numberOfLines={
                   descExpanded || descLines === 0
                     ? undefined
@@ -835,7 +876,9 @@ export default function ChapterMangaViewer({
                   <TagChip
                     key={tag.key}
                     tag={tag}
-                    onPress={() => onTagPress(tag)}
+                    onPress={(bounds) =>
+                      openTagPopover(tag, bounds.x, bounds.y, bounds.width, bounds.height)
+                    }
                   />
                 ))}
               </View>
@@ -849,7 +892,9 @@ export default function ChapterMangaViewer({
                   <TagChip
                     key={tag.key}
                     tag={tag}
-                    onPress={() => onTagPress(tag)}
+                    onPress={(bounds) =>
+                      openTagPopover(tag, bounds.x, bounds.y, bounds.width, bounds.height)
+                    }
                   />
                 ))}
               </ScrollView>
@@ -1176,6 +1221,73 @@ export default function ChapterMangaViewer({
           void requestChapterDownload(candidate, downloadContext);
         }}
       />
+      <Modal
+        visible={tagPopover != null}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setTagPopover(null)}
+      >
+        <View style={styles.tagPopoverLayer}>
+          <Pressable
+            accessibilityLabel="Close tag actions"
+            onPress={() => setTagPopover(null)}
+            style={StyleSheet.absoluteFill}
+          />
+          {tagPopover ? (
+            <View
+              style={[
+                styles.tagPopover,
+                {
+                  left: Math.max(
+                    12,
+                    Math.min(
+                      tagPopover.x +
+                        tagPopover.width / 2 -
+                        TAG_POPOVER_WIDTH / 2,
+                      windowWidth - TAG_POPOVER_WIDTH - 12,
+                    ),
+                  ),
+                  top:
+                    tagPopover.y +
+                      tagPopover.height +
+                      TAG_POPOVER_HEIGHT +
+                      8 <=
+                    windowHeight - 12
+                      ? tagPopover.y + tagPopover.height + 8
+                      : Math.max(12, tagPopover.y - TAG_POPOVER_HEIGHT - 8),
+                },
+              ]}
+            >
+              <Text style={styles.tagPopoverTitle} numberOfLines={1}>
+                {tagPopover.tag.label}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void copyTag()}
+                style={({ pressed }) => [
+                  styles.tagPopoverAction,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Copy color={colors.text} size={16} />
+                <Text style={styles.tagPopoverActionText}>Copy</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={searchTag}
+                style={({ pressed }) => [
+                  styles.tagPopoverAction,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Search color={colors.text} size={16} />
+                <Text style={styles.tagPopoverActionText}>Search</Text>
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1343,10 +1455,28 @@ function sortHint(field: ChapterSortField, dir: SortDirection): string {
   return "Newest first";
 }
 
-function TagChip({ tag, onPress }: { tag: SharedTag; onPress: () => void }) {
+function TagChip({
+  tag,
+  onPress,
+}: {
+  tag: SharedTag;
+  onPress: (bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => void;
+}) {
+  const chipRef = useRef<View>(null);
+
   return (
     <Pressable
-      onPress={onPress}
+      ref={chipRef}
+      onPress={() =>
+        chipRef.current?.measureInWindow((x, y, width, height) =>
+          onPress({ x, y, width, height }),
+        )
+      }
       style={({ pressed }) => [styles.tagChip, pressed && styles.pressed]}
     >
       <Text style={styles.tagChipText}>{tag.label}</Text>
@@ -1556,6 +1686,38 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   tagChipText: { color: colors.textMuted, fontSize: 12.5 },
+  tagPopoverLayer: { flex: 1 },
+  tagPopover: {
+    position: "absolute",
+    width: TAG_POPOVER_WIDTH,
+    minHeight: TAG_POPOVER_HEIGHT,
+    padding: 10,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    elevation: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.24,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+  },
+  tagPopoverTitle: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: "700",
+    paddingHorizontal: 6,
+    paddingBottom: 4,
+  },
+  tagPopoverAction: {
+    minHeight: 34,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 6,
+    borderRadius: radius.sm,
+  },
+  tagPopoverActionText: { color: colors.text, fontSize: 14, fontWeight: "600" },
   langRow: { paddingTop: 16 },
   langScrollContent: { gap: 8, paddingHorizontal: 16 },
   langChip: {

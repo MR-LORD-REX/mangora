@@ -214,7 +214,6 @@ export default function ReaderTranslationPanel(
   );
 }
 
-
 function LanguageTab(props: ReaderTranslationPanelProps) {
   const {
     readerLanguage,
@@ -361,8 +360,6 @@ function LanguageTab(props: ReaderTranslationPanelProps) {
   );
 }
 
-
-
 function ModeTab(props: ReaderTranslationPanelProps) {
   const {
     translationEngine,
@@ -475,8 +472,7 @@ function TrSettingsTab(props: ReaderTranslationPanelProps) {
     <View>
       <SectionLabel>TR cache</SectionLabel>
       <HelperText>
-        Cached translations for this manga are stored in the database. Clearing
-        also drops the in-memory OCR records for this session.
+        Cached translations for this manga are stored in the database.
       </HelperText>
       {clearState === "confirm" ? (
         <View style={styles.confirmRow}>
@@ -615,10 +611,6 @@ function TrSettingsTab(props: ReaderTranslationPanelProps) {
             rightLabel="50 pages"
             onChange={onChangeMaxContextPages}
           />
-          <HelperText>
-            The request gets the last N OCRed pages before the current page,
-            capped by the pages already available in RAM.
-          </HelperText>
         </>
       ) : null}
 
@@ -676,12 +668,8 @@ function PipelineMetrics({
 }
 
 function OcrSettingsTab(props: ReaderTranslationPanelProps) {
-  const {
-    ocrPageWorkers,
-    ocrBubbleWorkers,
-    ocrLookahead,
-    onApplyOcrSettings,
-  } = props;
+  const { ocrPageWorkers, ocrBubbleWorkers, ocrLookahead, onApplyOcrSettings } =
+    props;
   const [pageWorkers, setPageWorkers] = useState(ocrPageWorkers);
   const [bubbleWorkers, setBubbleWorkers] = useState(ocrBubbleWorkers);
   const [lookahead, setLookahead] = useState(ocrLookahead);
@@ -755,10 +743,7 @@ function OcrSettingsTab(props: ReaderTranslationPanelProps) {
         rightLabel="Visible + 2"
         onChange={setLookahead}
       />
-      <HelperText>
-        1 scans only the visible page. 2 adds the next page. 3 adds the next
-        two. Scanned pages are pushed into the OCR queue immediately.
-      </HelperText>
+      
 
       <Pressable
         onPress={apply}
@@ -769,10 +754,6 @@ function OcrSettingsTab(props: ReaderTranslationPanelProps) {
           {dirty ? "Apply changes" : "Applied"}
         </Text>
       </Pressable>
-      <HelperText>
-        OCR settings are staged until applied. Loading and unloading models is
-        expensive, so slider changes do not take effect immediately.
-      </HelperText>
     </View>
   );
 }
@@ -870,7 +851,6 @@ function ApiKeyModal(props: {
     </Modal>
   );
 }
-
 
 function OverlayTab(props: ReaderTranslationPanelProps) {
   const {
@@ -1033,7 +1013,9 @@ function OverlayTab(props: ReaderTranslationPanelProps) {
         onChange={(value) => setChannel("b", value)}
       />
       <View style={styles.tintPreviewRow}>
-        <View style={[styles.tintPreview, { backgroundColor: overlayTextColor }]} />
+        <View
+          style={[styles.tintPreview, { backgroundColor: overlayTextColor }]}
+        />
         <Text style={styles.overlaySliderValue}>{overlayTextColor}</Text>
       </View>
 
