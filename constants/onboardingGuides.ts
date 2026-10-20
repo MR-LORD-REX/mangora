@@ -13,6 +13,7 @@
 import {
   BookOpen,
   KeyRound,
+  Share2,
   Send,
   type LucideIcon,
 } from "lucide-react-native";
@@ -44,6 +45,7 @@ export const ONBOARDING_PLACEHOLDER_LINKS = {
   telegram: "https://t.me/MangoraApp",
   readerGuide: "https://t.me/c/4408464732/8",
   geminiSetup: "https://t.me/c/4408464732/11",
+  deeplinkSetup: "https://t.me/MangoraApp/34",
 } as const;
 
 export const ONBOARDING_GUIDES: OnboardingGuide[] = [
@@ -88,4 +90,15 @@ export const ONBOARDING_GUIDES: OnboardingGuide[] = [
     ctaLabel: "Open setup guide",
     link: ONBOARDING_PLACEHOLDER_LINKS.geminiSetup,
   },
+  {
+    id: "deeplink-setup",
+    title: "Enable deeplinks",
+    body: "Share manga links to other users , which opens the exact manga if mangora is installed.",
+    highlights: ["Deeplink sharing", "Manga sharing"],
+    icon: Share2,
+    accent: colors.gold,
+    accentSoft: colors.goldSoft,
+    ctaLabel: "Open setup guide",
+    link: ONBOARDING_PLACEHOLDER_LINKS.deeplinkSetup,
+  }
 ];
