@@ -176,7 +176,6 @@ The project uses Expo SDK 54, React Native 0.81, React 19, Expo Router, TypeScri
 - `services/downloader/` - queue, page acquisition, archive creation, and storage.
 - `services/notifications/` - foreground download and pre-translation notifications.
 - `plugins/android/` - native Android modules and Expo config plugins.
-- `TR_pipeline.md` - end-to-end translation architecture, file/function map, debugging notes, and invariants.
 - `mangora-website/` - public website and its policy pages.
 
 ## Legal and licensing
