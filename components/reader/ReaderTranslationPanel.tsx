@@ -6,8 +6,8 @@
  *
  *   Language       - source (OCR) + target language pickers
  *   Translation engine - free / AI picker
- *   Translation mode   - off / single page / auto picker
- *   TR settings    - engine sliders, Gemini key, metrics, cache clear
+ *   Translation mode   - off / single page / auto pages / auto bubbles
+ *   TR settings    - engine sliders, Gemini key, API usage, metrics, cache
  *   OCR settings   - staged page / bubble worker and look-ahead sliders
  *   Overlay        - paste text size, font and color
  *
@@ -24,7 +24,7 @@ import {
   Trash2,
   X,
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -43,6 +43,15 @@ import type {
   ReaderTranslationMode,
 } from "@/services/settings/settingsStore";
 import type { ReaderPipelineMetrics } from "@/utils/reader/useReaderTranslation";
+import {
+  GEMINI_MODELS,
+  type GeminiModelId,
+} from "@/services/translation/geminiModels";
+import {
+  getGeminiUsageSnapshot,
+  subscribeGeminiUsage,
+  type GeminiUsageSnapshot,
+} from "@/services/translation/geminiUsage";
 import { READER_TARGET_OPTIONS } from "@/services/translation/translationLang";
 import DotSlider from "./DotSlider";
 import {
@@ -113,9 +122,15 @@ const MODE_OPTIONS: {
   },
   {
     value: "auto",
-    label: "Auto",
+    label: "Auto pages",
     description:
-      "The current page and look-ahead pages are translated automatically as you read.",
+      "The current page and look-ahead pages are translated automatically as you read. A page waits for its full OCR pass before translation starts.",
+  },
+  {
+    value: "autoBubbles",
+    label: "Auto bubbles",
+    description:
+      "AI translation only. Bubbles are sent as soon as a small batch is ready instead of waiting for the whole page - faster first translations while batching keeps API usage efficient. Already-OCRed pages are still attached as context so tone and names stay consistent.",
   },
 ];
 function maskKey(key: string): string {
@@ -153,6 +168,10 @@ export interface ReaderTranslationPanelProps {
   onChangeAiWorkerCount: (value: number) => void;
   aiMaxContextPages: number;
   onChangeMaxContextPages: (pages: number) => void;
+  /** Auto bubbles: how many bubbles one Gemini request may carry (1..5). */
+  aiBubbleBatchSize: number;
+  onChangeAiBubbleBatchSize: (value: number) => void;
+  geminiModelId: GeminiModelId;
   metrics: ReaderPipelineMetrics;
   onClearTrCache: () => Promise<number>;
 
@@ -426,6 +445,12 @@ function ModeTab(props: ReaderTranslationPanelProps) {
           </Pressable>
         );
       })}
+      {translationMode === "autoBubbles" && translationEngine === "free" ? (
+        <HelperText>
+          Auto bubbles uses the AI pipeline. Switch Translation engine to AI
+          translation to enable bubble batching.
+        </HelperText>
+      ) : null}
     </View>
   );
 }
@@ -441,6 +466,9 @@ function TrSettingsTab(props: ReaderTranslationPanelProps) {
     onChangeAiWorkerCount,
     aiMaxContextPages,
     onChangeMaxContextPages,
+    aiBubbleBatchSize,
+    onChangeAiBubbleBatchSize,
+    geminiModelId,
     metrics,
     onClearTrCache,
   } = props;
@@ -596,6 +624,33 @@ function TrSettingsTab(props: ReaderTranslationPanelProps) {
             models concurrently, one per queue slot.
           </HelperText>
 
+          {translationMode === "autoBubbles" ? (
+            <>
+              <SectionLabel>Bubbles per batch</SectionLabel>
+              <View style={styles.sliderValueRow}>
+                <Text style={styles.sliderValueLabel}>
+                  Bubbles collected before one request
+                </Text>
+                <Text style={styles.sliderValue}>{aiBubbleBatchSize}</Text>
+              </View>
+              <DotSlider
+                value={aiBubbleBatchSize}
+                min={1}
+                max={5}
+                step={1}
+                dotCount={5}
+                leftLabel="1 bubble"
+                rightLabel="5 bubbles"
+                onChange={onChangeAiBubbleBatchSize}
+              />
+              <HelperText>
+                Auto bubbles waits for this many OCR-ready bubbles, then sends
+                them together. Smaller batches show text sooner and use more
+                API requests; larger batches use fewer requests.
+              </HelperText>
+            </>
+          ) : null}
+
           <SectionLabel>Max context</SectionLabel>
           <View style={styles.sliderValueRow}>
             <Text style={styles.sliderValueLabel}>Pages sent as context</Text>
@@ -610,6 +665,11 @@ function TrSettingsTab(props: ReaderTranslationPanelProps) {
             leftLabel="1 page"
             rightLabel="50 pages"
             onChange={onChangeMaxContextPages}
+          />
+
+          <ApiUsageSection
+            geminiModelId={geminiModelId}
+            aiWorkerCount={aiWorkerCount}
           />
         </>
       ) : null}
@@ -631,6 +691,183 @@ function TrSettingsTab(props: ReaderTranslationPanelProps) {
   );
 }
 
+function formatCount(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}m`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
+  return String(value);
+}
+
+function UsageMeter({
+  label,
+  used,
+  limit,
+}: {
+  label: string;
+  used: number;
+  limit: number;
+}) {
+  const ratio = limit > 0 ? Math.min(1, used / limit) : 0;
+  return (
+    <View style={styles.meterRow}>
+      <View style={styles.meterHeader}>
+        <Text style={styles.meterLabel}>{label}</Text>
+        <Text style={styles.meterValue}>
+          {formatCount(used)} / {formatCount(limit)}
+        </Text>
+      </View>
+      <View style={styles.barTrack}>
+        <View
+          style={[
+            styles.barFill,
+            { width: `${ratio * 100}%` },
+            ratio >= 0.85 && styles.barFillHot,
+          ]}
+        />
+      </View>
+    </View>
+  );
+}
+
+/** Live Gemini quota meters (rolling 60s RPM/TPM, Pacific-day RPD). */
+function ApiUsageSection({
+  geminiModelId,
+  aiWorkerCount,
+}: {
+  geminiModelId: GeminiModelId;
+  aiWorkerCount: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<GeminiUsageSnapshot[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const modelIds = useMemo(
+    () =>
+      aiWorkerCount >= 2
+        ? GEMINI_MODELS.map((model) => model.id)
+        : [geminiModelId],
+    [aiWorkerCount, geminiModelId],
+  );
+
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      try {
+        const next = await Promise.all(modelIds.map(getGeminiUsageSnapshot));
+        if (!active) return;
+        setRows(next);
+        setError(null);
+      } catch (err) {
+        if (active) setError("Usage meters unavailable.");
+        console.warn("[reader][tr settings] usage refresh failed", err);
+      }
+    };
+    void refresh();
+    const unsubscribe = subscribeGeminiUsage(() => {
+      void refresh();
+    });
+    const timer = setInterval(() => {
+      void refresh();
+    }, 5000);
+    return () => {
+      active = false;
+      unsubscribe();
+      clearInterval(timer);
+    };
+  }, [modelIds]);
+
+  const primary = rows[0];
+  return (
+    <View style={styles.dropdown}>
+      <Pressable
+        style={styles.dropdownHeader}
+        onPress={() => setOpen((value) => !value)}
+      >
+        <View style={styles.dropdownTitleWrap}>
+          <Text style={styles.dropdownTitle}>API usage</Text>
+          <Text style={styles.dropdownSubtitle}>
+            {primary
+              ? `${primary.rpmUsed}/${primary.rpmLimit} RPM · ${primary.rpdUsed}/${primary.rpdLimit} RPD`
+              : "Live Gemini quota"}
+          </Text>
+        </View>
+        {open ? (
+          <ChevronUp size={18} color="#94a3b8" />
+        ) : (
+          <ChevronDown size={18} color="#94a3b8" />
+        )}
+      </Pressable>
+      {open ? (
+        <View style={styles.dropdownBody}>
+          {error ? <Text style={styles.modalError}>{error}</Text> : null}
+          {rows.map((row) => (
+            <View key={row.model} style={styles.usageModel}>
+              <Text style={styles.usageModelLabel}>{row.label}</Text>
+              <UsageMeter
+                label="RPM"
+                used={row.rpmUsed}
+                limit={row.rpmLimit}
+              />
+              <UsageMeter
+                label="TPM"
+                used={row.tpmUsed}
+                limit={row.tpmLimit}
+              />
+              <UsageMeter
+                label="RPD"
+                used={row.rpdUsed}
+                limit={row.rpdLimit}
+              />
+            </View>
+          ))}
+          <Text style={styles.usageNote}>
+            RPM/TPM use a rolling 60s window. RPD resets at midnight Pacific.
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function MetricsTable({
+  header,
+  rows,
+}: {
+  header: string[];
+  rows: (string | number)[][];
+}) {
+  return (
+    <View style={styles.metricsTable}>
+      <View style={[styles.metricsRow, styles.metricsHeaderRow]}>
+        {header.map((label, index) => (
+          <Text
+            key={label}
+            style={[
+              index === 0 ? styles.metricsLabelCell : styles.metricsNumCell,
+              styles.metricsHeaderText,
+            ]}
+          >
+            {label}
+          </Text>
+        ))}
+      </View>
+      {rows.map((row) => (
+        <View key={String(row[0])} style={styles.metricsRow}>
+          {row.map((cell, index) => (
+            <Text
+              key={`${row[0]}-${header[index]}`}
+              style={[
+                index === 0 ? styles.metricsLabelCell : styles.metricsNumCell,
+                index === 0 ? styles.metricsLabelText : styles.metricsNumText,
+              ]}
+            >
+              {cell}
+            </Text>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function PipelineMetrics({
   metrics,
   mode,
@@ -638,31 +875,56 @@ function PipelineMetrics({
   metrics: ReaderPipelineMetrics;
   mode: ReaderTranslationEngine;
 }) {
-  const chips = [
-    { label: "Scan queue", value: metrics.scanPending },
-    { label: "OCR queue", value: metrics.ocrPending },
-    { label: "TR queue", value: metrics.trPending },
-    { label: "Scan active", value: metrics.scanActive },
-    { label: "OCR active", value: metrics.ocrActive },
-    { label: "TR active", value: metrics.trActive },
-    { label: "Pages done", value: metrics.pagesDone },
-    { label: "Pages error", value: metrics.pagesError },
-    { label: "Bubbles", value: metrics.bubblesTotal },
-    { label: "Translated", value: metrics.bubblesTranslated },
-    { label: "Failed", value: metrics.bubblesFailed },
-    { label: "Active jobs", value: metrics.activeJobs },
+  const [open, setOpen] = useState(false);
+  const queueRows: (string | number)[][] = [
+    ["Page scan", metrics.scanPending, metrics.scanActive],
+    ["Bubble OCR", metrics.ocrPending, metrics.ocrActive],
+    ["Translation", metrics.trPending, metrics.trActive],
+  ];
+  const resultRows: (string | number)[][] = [
+    [
+      "Bubbles",
+      metrics.bubblesTotal,
+      metrics.bubblesTranslated,
+      metrics.bubblesFailed,
+    ],
+    ["Pages", metrics.pagesTotal, metrics.pagesDone, metrics.pagesError],
   ];
   return (
-    <View>
-      <SectionLabel>Pipeline metrics - {mode}</SectionLabel>
-      <View style={styles.metricsGrid}>
-        {chips.map((chip) => (
-          <View key={chip.label} style={styles.metricChip}>
-            <Text style={styles.metricValue}>{chip.value}</Text>
-            <Text style={styles.metricLabel}>{chip.label}</Text>
-          </View>
-        ))}
-      </View>
+    <View style={styles.dropdown}>
+      <Pressable
+        style={styles.dropdownHeader}
+        onPress={() => setOpen((value) => !value)}
+      >
+        <View style={styles.dropdownTitleWrap}>
+          <Text style={styles.dropdownTitle}>Pipeline metrics</Text>
+          <Text style={styles.dropdownSubtitle}>
+            {mode} · {metrics.activeJobs} active job
+            {metrics.activeJobs === 1 ? "" : "s"}
+          </Text>
+        </View>
+        {open ? (
+          <ChevronUp size={18} color="#94a3b8" />
+        ) : (
+          <ChevronDown size={18} color="#94a3b8" />
+        )}
+      </Pressable>
+      {open ? (
+        <View style={styles.dropdownBody}>
+          <MetricsTable
+            header={["Stage", "Pending", "Active"]}
+            rows={queueRows}
+          />
+          <MetricsTable
+            header={["Result", "Total", "Done", "Failed"]}
+            rows={resultRows}
+          />
+          <Text style={styles.usageNote}>
+            Pages counters reflect the current translation run. Bubbles are
+            counted from the in-memory OCR store.
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1277,27 +1539,62 @@ const styles = StyleSheet.create({
   sliderValueLabel: { color: "#cbd5e1", fontSize: 12, fontWeight: "700" },
   sliderValue: { color: "#fbbf24", fontSize: 13, fontWeight: "800" },
 
-  metricsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 4,
-    marginBottom: 12,
-  },
-  metricChip: {
-    minWidth: "30%",
-    flexGrow: 1,
+  dropdown: {
+    marginTop: 14,
+    marginBottom: 10,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#33354a",
     backgroundColor: "#1c1e2b",
-    paddingVertical: 9,
-    paddingHorizontal: 8,
-    alignItems: "center",
-    gap: 2,
+    overflow: "hidden",
   },
-  metricValue: { color: "#38bdf8", fontSize: 15, fontWeight: "800" },
-  metricLabel: { color: "#94a3b8", fontSize: 10, fontWeight: "700" },
+  dropdownHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  dropdownTitleWrap: { flex: 1, minWidth: 0 },
+  dropdownTitle: { color: "#e2e8f0", fontSize: 13, fontWeight: "700" },
+  dropdownSubtitle: { color: "#94a3b8", fontSize: 11, marginTop: 2 },
+  dropdownBody: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#33354a",
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 10,
+  },
+  metricsTable: { marginBottom: 10 },
+  metricsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 7,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#2a2c3b",
+  },
+  metricsHeaderRow: { borderTopWidth: 0, paddingTop: 2 },
+  metricsLabelCell: { flex: 1, minWidth: 0 },
+  metricsNumCell: { width: 62, textAlign: "right" },
+  metricsHeaderText: {
+    color: "#64748b",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+  },
+  metricsLabelText: { color: "#cbd5e1", fontSize: 12, fontWeight: "600" },
+  metricsNumText: { color: "#38bdf8", fontSize: 12, fontWeight: "800" },
+
+  usageModel: { marginBottom: 6 },
+  usageModelLabel: {
+    color: "#e2e8f0",
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  usageNote: { color: "#64748b", fontSize: 10.5, lineHeight: 14, marginTop: 4 },
 
   modelGroup: { gap: 8, marginBottom: 14 },
   modelCard: {
@@ -1347,6 +1644,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "#38bdf8",
   },
+  barFillHot: { backgroundColor: "#f87171" },
 
   modalBackdrop: {
     flex: 1,

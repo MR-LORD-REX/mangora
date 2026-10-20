@@ -77,6 +77,33 @@ import { imageHeadersForPage } from "@/utils/reader/imageHeaders";
 import type { ReaderIdentity } from "@/utils/reader/readerIdentity";
 
 const MAX_CROPS_PER_PAGE = 24;
+/** Auto bubbles: flush a partial batch after this much OCR silence. */
+const AI_BUBBLE_FLUSH_MS = 900;
+
+/** True when a YOLO OCR region can contribute text to a translation slot. */
+function regionTouchesSlot(region: OcrRegion, box: Box): boolean {
+  const cx = (region.x1 + region.x2) / 2;
+  const cy = (region.y1 + region.y2) / 2;
+  const padX = (box.x2 - box.x1) * 0.08;
+  const padY = (box.y2 - box.y1) * 0.08;
+  if (
+    cx >= box.x1 - padX &&
+    cx <= box.x2 + padX &&
+    cy >= box.y1 - padY &&
+    cy <= box.y2 + padY
+  ) {
+    return true;
+  }
+  const width = Math.min(region.x2, box.x2) - Math.max(region.x1, box.x1);
+  const height = Math.min(region.y2, box.y2) - Math.max(region.y1, box.y1);
+  if (width <= 0 || height <= 0) return false;
+  const regionArea = (region.x2 - region.x1) * (region.y2 - region.y1);
+  return regionArea > 0 && (width * height) / regionArea >= 0.5;
+}
+
+function bubbleKey(url: string, bubbleId: number): string {
+  return `${url}#${bubbleId}`;
+}
 
 interface OcrBubbleRecord {
   id: number;
@@ -107,6 +134,15 @@ interface OcrPageRecord {
   regionsTotal: number;
   regionsDone: number;
   regionsFailed: number;
+  /**
+   * False until every OCR region of the page has finished. Auto bubbles uses
+   * this to publish bubbles early without closing the page too soon.
+   */
+  ocrComplete: boolean;
+  /** Region indexes still running; used for per-slot readiness. */
+  pendingRegions: Set<number>;
+  /** slot id -> region indexes whose text can land in that slot. */
+  slotRegions: Map<number, number[]>;
   status: "scan" | "ocr" | "translate" | "done" | "error";
   modelId: string | null;
 }
@@ -120,6 +156,8 @@ interface ScanTask {
 interface OcrTask {
   url: string;
   pageIndex: number;
+  /** Index of this region inside the page's OCR region list. */
+  regionIndex: number;
   region: OcrRegion;
   detection: DetectionResult;
   generation: number;
@@ -132,11 +170,27 @@ interface FreeTranslationTask {
   generation: number;
 }
 
-interface AiTranslationTask {
+interface AiPageTranslationTask {
+  kind: "page";
   url: string;
   pageIndex: number;
   generation: number;
 }
+
+/** One bubble waiting for an Auto bubbles AI batch. */
+interface AiBubbleRef {
+  url: string;
+  pageIndex: number;
+  bubbleId: number;
+}
+
+interface AiBubbleBatchTask {
+  kind: "bubbles";
+  items: AiBubbleRef[];
+  generation: number;
+}
+
+type AiTranslationTask = AiPageTranslationTask | AiBubbleBatchTask;
 
 interface PipelineConfig {
   engine: ReaderTranslationEngine;
@@ -147,6 +201,7 @@ interface PipelineConfig {
   geminiModelId: GeminiModelId;
   aiWorkerCount: number;
   aiMaxContextPages: number;
+  aiBubbleBatchSize: number;
   freeRequestConcurrency: number;
 }
 
@@ -161,6 +216,7 @@ export interface ReaderPipelineMetrics {
   pagesScanning: number;
   pagesOcr: number;
   pagesTranslating: number;
+  pagesTotal: number;
   pagesDone: number;
   pagesError: number;
   bubblesTotal: number;
@@ -180,6 +236,7 @@ const EMPTY_METRICS: ReaderPipelineMetrics = {
   pagesScanning: 0,
   pagesOcr: 0,
   pagesTranslating: 0,
+  pagesTotal: 0,
   pagesDone: 0,
   pagesError: 0,
   bubblesTotal: 0,
@@ -207,6 +264,7 @@ export interface UseReaderTranslationOptions {
   freeRequestConcurrency: number;
   aiWorkerCount: number;
   aiMaxContextPages: number;
+  aiBubbleBatchSize: number;
   onTranslationSetupRequired: () => void;
 }
 
@@ -246,6 +304,7 @@ export function useReaderTranslation({
   freeRequestConcurrency,
   aiWorkerCount,
   aiMaxContextPages,
+  aiBubbleBatchSize,
   onTranslationSetupRequired,
 }: UseReaderTranslationOptions): ReaderTranslationController {
   const { translate } = useLocalTranslator();
@@ -271,6 +330,14 @@ export function useReaderTranslation({
   const detectionRef = useRef(new Map<string, DetectionResult>());
   const ocrStoreRef = useRef(new Map<string, OcrPageRecord>());
   const ocrSeqRef = useRef(0);
+  /** Bubbles waiting for the next Auto bubbles Gemini request. */
+  const aiBubbleBufferRef = useRef<AiBubbleRef[]>([]);
+  /** Bubble keys already buffered/queued, so one bubble is translated once. */
+  const aiBubbleScheduledRef = useRef(new Set<string>());
+  const aiBubbleFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const aiBatchSeqRef = useRef(0);
   const ramMangaRef = useRef<string | null>(null);
   const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queueMetricsRef = useRef<Record<string, WorkQueueMetrics>>({});
@@ -306,6 +373,7 @@ export function useReaderTranslation({
     geminiModelId,
     aiWorkerCount,
     aiMaxContextPages,
+    aiBubbleBatchSize,
     freeRequestConcurrency,
   });
   configRef.current = {
@@ -317,6 +385,7 @@ export function useReaderTranslation({
     geminiModelId,
     aiWorkerCount,
     aiMaxContextPages,
+    aiBubbleBatchSize,
     freeRequestConcurrency,
   };
 
@@ -363,6 +432,7 @@ export function useReaderTranslation({
       pagesOcr: pageList.filter((page) => page.stage === "ocr").length,
       pagesTranslating: pageList.filter((page) => page.stage === "translate")
         .length,
+      pagesTotal: pageList.length,
       pagesDone: pageList.filter((page) => page.stage === "done").length,
       pagesError: pageList.filter((page) => page.stage === "error").length,
       bubblesTotal,
@@ -378,6 +448,14 @@ export function useReaderTranslation({
   const onQueueChange = (next: WorkQueueMetrics) => {
     queueMetricsRef.current[next.name] = next;
     publishMetrics();
+    // Auto bubbles: once OCR is idle, do not leave a partial batch waiting.
+    if (
+      next.name === "bubble-ocr" &&
+      next.pending === 0 &&
+      next.active === 0
+    ) {
+      flushAiBubbleBuffer(generationRef.current);
+    }
   };
 
   const updatePage = (url: string, patch: Partial<PageTranslationState>) => {
@@ -514,6 +592,9 @@ export function useReaderTranslation({
       regionsTotal: slots.length,
       regionsDone: slots.length,
       regionsFailed: 0,
+      ocrComplete: true,
+      pendingRegions: new Set(),
+      slotRegions: new Map(),
       status: "done",
       modelId: cached.model,
     });
@@ -533,86 +614,43 @@ export function useReaderTranslation({
     });
     return true;
   };
-  const finishPageOcr = (page: OcrPageRecord, generation: number) => {
-    if (!isCurrentRun(generation)) return;
-    const assigned = assignItemsToSlots(page.slots, page.items);
-    const filled = fillSlotTexts(
-      page.slots,
-      assigned,
-      isCjkLanguageCode(configRef.current.sourceLanguage),
-    );
-    const bubbles = new Map<number, OcrBubbleRecord>();
-    for (const slot of filled) {
-      if (!slot.sourceText.trim()) continue;
-      bubbles.set(slot.id, {
-        id: slot.id,
-        pageIndex: page.pageIndex,
-        url: page.url,
-        pageNumber: page.pageIndex + 1,
-        text: slot.sourceText,
-        sourceLanguage: configRef.current.sourceLanguage,
-        targetLanguage: configRef.current.targetLanguage,
-        kind: slot.kind,
-        pasteBox: slot.pasteBox,
-        eraseBoxes: slot.eraseBoxes,
-        confidence: 1,
-        status: "ready",
-        translatedText: null,
-      });
-    }
-    page.bubbles = bubbles;
-    const regions: TranslationRegionState[] = filled.map((slot) => ({
-      ...slot,
-      translatedText: null,
-      status: bubbles.has(slot.id) ? "queued" : "error",
-    }));
-    console.log("[reader][ocr] page ready", {
-      pageIndex: page.pageIndex,
-      regions: page.regionsTotal,
-      bubbles: bubbles.size,
-    });
-    if (bubbles.size === 0) {
-      markPageError(
-        page.url,
-        `OCR returned no usable text on page ${page.pageIndex + 1}.`,
-      );
-      return;
-    }
-    page.status = "translate";
-    updatePage(page.url, {
-      stage: "translate",
-      busy: true,
-      visible: true,
-      message: `Translating ${bubbles.size} bubble${bubbles.size === 1 ? "" : "s"}\u2026`,
-      regions,
-    });
-    if (configRef.current.engine === "free") {
-      for (const bubble of bubbles.values()) {
-        queuesRef.current?.free.push(
-          {
-            url: page.url,
-            pageIndex: page.pageIndex,
-            bubbleId: bubble.id,
-            generation,
-          },
-          `${page.url}:${bubble.id}`,
-        );
-      }
-    } else if (configRef.current.engine === "ai") {
-      queuesRef.current?.ai.push(
-        { url: page.url, pageIndex: page.pageIndex, generation },
-        page.url,
-      );
-    }
-  };
+  const isBubbleStreaming = () =>
+    configRef.current.engine === "ai" &&
+    configRef.current.translationMode === "autoBubbles";
 
-  const finishBubbleTranslation = (page: OcrPageRecord, bubble: OcrBubbleRecord) => {
-    void bubble;
-    const regions: TranslationRegionState[] = [];
-    for (const slot of page.slots) {
+  const bubbleBatchSize = () =>
+    Math.min(5, Math.max(1, Math.round(configRef.current.aiBubbleBatchSize)));
+
+  const createBubbleRecord = (
+    page: OcrPageRecord,
+    slot: TranslationSlot,
+  ): OcrBubbleRecord => ({
+    id: slot.id,
+    pageIndex: page.pageIndex,
+    url: page.url,
+    pageNumber: page.pageIndex + 1,
+    text: slot.sourceText,
+    sourceLanguage: configRef.current.sourceLanguage,
+    targetLanguage: configRef.current.targetLanguage,
+    kind: slot.kind,
+    pasteBox: slot.pasteBox,
+    eraseBoxes: slot.eraseBoxes,
+    confidence: 1,
+    status: "ready",
+    translatedText: null,
+  });
+
+  const buildPageRegions = (page: OcrPageRecord): TranslationRegionState[] =>
+    page.slots.map((slot) => {
       const record = page.bubbles.get(slot.id);
-      if (!record) continue;
-      regions.push({
+      if (!record) {
+        return {
+          ...slot,
+          translatedText: null,
+          status: page.ocrComplete ? "error" : "queued",
+        };
+      }
+      return {
         ...slot,
         sourceText: record.text,
         eraseBoxes: record.eraseBoxes,
@@ -625,38 +663,248 @@ export function useReaderTranslation({
               : record.status === "translating"
                 ? "processing"
                 : "queued",
-      });
+      };
+    });
+
+  const clearAiBubbleBuffer = () => {
+    if (aiBubbleFlushTimerRef.current) {
+      clearTimeout(aiBubbleFlushTimerRef.current);
+      aiBubbleFlushTimerRef.current = null;
     }
-    const allDone = [...page.bubbles.values()].every(
+    aiBubbleBufferRef.current = [];
+    aiBubbleScheduledRef.current.clear();
+  };
+
+  /** Allows a page retry to re-queue bubbles that were already scheduled. */
+  const forgetScheduledBubbles = (url: string) => {
+    aiBubbleBufferRef.current = aiBubbleBufferRef.current.filter(
+      (item) => item.url !== url,
+    );
+    for (const key of [...aiBubbleScheduledRef.current]) {
+      if (key.startsWith(`${url}#`)) aiBubbleScheduledRef.current.delete(key);
+    }
+  };
+
+  /** Rebuilds the overlay + page status from the live bubble records. */
+  const refreshPageState = (page: OcrPageRecord) => {
+    const bubbles = [...page.bubbles.values()];
+    const settled = bubbles.every(
       (item) => item.status === "translated" || item.status === "error",
     );
-    const translated = [...page.bubbles.values()].filter(
+    const translated = bubbles.filter(
       (item) => item.status === "translated",
     ).length;
-    updatePage(page.url, {
-      busy: !allDone,
-      stage: allDone ? (translated > 0 ? "done" : "error") : "translate",
-      visible: allDone ? translated > 0 : true,
-      message: allDone
-        ? null
-        : `Translating ${translated}/${page.bubbles.size}\u2026`,
-      regions,
-    });
-    if (allDone) {
+    const translating = bubbles.some(
+      (item) => item.status === "translating",
+    );
+    const complete = page.ocrComplete && bubbles.length > 0 && settled;
+    const alreadyComplete = page.status === "done" || page.status === "error";
+    if (complete) {
       page.status = translated > 0 ? "done" : "error";
-      console.log("[reader][tr] page finished", {
-        pageIndex: page.pageIndex,
-        translated,
-        failed: page.bubbles.size - translated,
+    }
+    updatePage(page.url, {
+      mode: configRef.current.engine,
+      busy: !complete,
+      stage: complete ? (translated > 0 ? "done" : "error") : "translate",
+      visible: complete ? translated > 0 : true,
+      message: complete
+        ? null
+        : translated > 0
+          ? `Translating ${translated}/${bubbles.length}\u2026`
+          : translating
+            ? "Translating\u2026"
+            : "Reading text\u2026",
+      regions: buildPageRegions(page),
+    });
+    if (!complete || alreadyComplete) return;
+    console.log("[reader][tr] page finished", {
+      pageIndex: page.pageIndex,
+      translated,
+      failed: bubbles.length - translated,
+    });
+    if (translated > 0) void savePageRecord(page);
+    else {
+      showTranslationError(
+        `Translation failed for page ${page.pageIndex + 1}. Use the retry button on the page.`,
+      );
+    }
+    finishSinglePage(page.url);
+  };
+
+  const scheduleAiBubble = (
+    page: OcrPageRecord,
+    bubble: OcrBubbleRecord,
+    generation: number,
+  ) => {
+    const key = bubbleKey(page.url, bubble.id);
+    if (aiBubbleScheduledRef.current.has(key)) return;
+    aiBubbleScheduledRef.current.add(key);
+    aiBubbleBufferRef.current.push({
+      url: page.url,
+      pageIndex: page.pageIndex,
+      bubbleId: bubble.id,
+    });
+    console.log("[reader][tr][ai-bubbles] bubble buffered", {
+      pageIndex: page.pageIndex,
+      bubbleId: bubble.id,
+      buffered: aiBubbleBufferRef.current.length,
+      batchSize: bubbleBatchSize(),
+    });
+    if (aiBubbleBufferRef.current.length >= bubbleBatchSize()) {
+      flushAiBubbleBuffer(generation);
+      return;
+    }
+    if (aiBubbleFlushTimerRef.current) {
+      clearTimeout(aiBubbleFlushTimerRef.current);
+    }
+    aiBubbleFlushTimerRef.current = setTimeout(() => {
+      aiBubbleFlushTimerRef.current = null;
+      flushAiBubbleBuffer(generationRef.current);
+    }, AI_BUBBLE_FLUSH_MS);
+  };
+
+  const flushAiBubbleBuffer = (generation: number) => {
+    if (aiBubbleFlushTimerRef.current) {
+      clearTimeout(aiBubbleFlushTimerRef.current);
+      aiBubbleFlushTimerRef.current = null;
+    }
+    if (!isCurrentRun(generation)) {
+      aiBubbleBufferRef.current = [];
+      return;
+    }
+    const queue = queuesRef.current?.ai;
+    if (!queue) return;
+    const size = bubbleBatchSize();
+    const touchedPages = new Set<string>();
+    while (aiBubbleBufferRef.current.length > 0) {
+      const candidates = aiBubbleBufferRef.current.splice(0, size);
+      const items: AiBubbleRef[] = [];
+      for (const item of candidates) {
+        const page = ocrStoreRef.current.get(item.url);
+        const bubble = page?.bubbles.get(item.bubbleId);
+        if (!bubble || bubble.status !== "ready") continue;
+        bubble.status = "translating";
+        touchedPages.add(item.url);
+        items.push(item);
+      }
+      if (items.length === 0) continue;
+      aiBatchSeqRef.current += 1;
+      queue.push(
+        { kind: "bubbles", items, generation },
+        `ai-bubbles:${generation}:${aiBatchSeqRef.current}`,
+      );
+      console.log("[reader][tr][ai-bubbles] batch queued", {
+        bubbles: items.length,
+        batchSize: size,
       });
-      if (translated > 0) void savePageRecord(page);
-      else {
-        showTranslationError(
-          `Translation failed for page ${page.pageIndex + 1}. Use the retry button on the page.`,
+    }
+    for (const url of touchedPages) {
+      const page = ocrStoreRef.current.get(url);
+      if (page) refreshPageState(page);
+    }
+  };
+
+  /** Emits a bubble as soon as every OCR region feeding its slot is done. */
+  const emitReadyBubbles = (page: OcrPageRecord, generation: number) => {
+    if (!isCurrentRun(generation) || !isBubbleStreaming()) return;
+    const assigned = assignItemsToSlots(page.slots, page.items);
+    const filled = fillSlotTexts(
+      page.slots,
+      assigned,
+      isCjkLanguageCode(configRef.current.sourceLanguage),
+    );
+    let emitted = 0;
+    for (const slot of filled) {
+      if (!slot.sourceText.trim() || page.bubbles.has(slot.id)) continue;
+      const regionIndexes = page.slotRegions.get(slot.id) ?? [];
+      const ready = regionIndexes.every(
+        (index) => !page.pendingRegions.has(index),
+      );
+      if (!ready) continue;
+      const bubble = createBubbleRecord(page, slot);
+      page.bubbles.set(slot.id, bubble);
+      scheduleAiBubble(page, bubble, generation);
+      emitted += 1;
+    }
+    if (emitted > 0) {
+      page.status = "translate";
+      console.log("[reader][ocr] bubbles ready", {
+        pageIndex: page.pageIndex,
+        emitted,
+        ocrComplete: page.ocrComplete,
+      });
+      refreshPageState(page);
+    }
+  };
+
+  const finishPageOcr = (page: OcrPageRecord, generation: number) => {
+    if (!isCurrentRun(generation)) return;
+    page.ocrComplete = true;
+    page.pendingRegions.clear();
+    const assigned = assignItemsToSlots(page.slots, page.items);
+    const filled = fillSlotTexts(
+      page.slots,
+      assigned,
+      isCjkLanguageCode(configRef.current.sourceLanguage),
+    );
+    const created: OcrBubbleRecord[] = [];
+    for (const slot of filled) {
+      if (!slot.sourceText.trim() || page.bubbles.has(slot.id)) continue;
+      const bubble = createBubbleRecord(page, slot);
+      page.bubbles.set(slot.id, bubble);
+      created.push(bubble);
+    }
+    console.log("[reader][ocr] page ready", {
+      pageIndex: page.pageIndex,
+      regions: page.regionsTotal,
+      bubbles: page.bubbles.size,
+      created: created.length,
+      streaming: isBubbleStreaming(),
+    });
+    if (page.bubbles.size === 0) {
+      markPageError(
+        page.url,
+        `OCR returned no usable text on page ${page.pageIndex + 1}.`,
+      );
+      return;
+    }
+    page.status = "translate";
+    updatePage(page.url, {
+      mode: configRef.current.engine,
+      stage: "translate",
+      busy: true,
+      visible: true,
+      message: `Translating ${page.bubbles.size} bubble${page.bubbles.size === 1 ? "" : "s"}\u2026`,
+      regions: buildPageRegions(page),
+    });
+    if (configRef.current.engine === "free") {
+      for (const bubble of created) {
+        queuesRef.current?.free.push(
+          {
+            url: page.url,
+            pageIndex: page.pageIndex,
+            bubbleId: bubble.id,
+            generation,
+          },
+          `${page.url}:${bubble.id}`,
         );
       }
-      finishSinglePage(page.url);
+    } else if (configRef.current.engine === "ai") {
+      if (isBubbleStreaming()) {
+        for (const bubble of created) {
+          scheduleAiBubble(page, bubble, generation);
+        }
+      } else {
+        queuesRef.current?.ai.push(
+          { kind: "page", url: page.url, pageIndex: page.pageIndex, generation },
+          page.url,
+        );
+      }
     }
+    const settled = [...page.bubbles.values()].every(
+      (item) => item.status === "translated" || item.status === "error",
+    );
+    if (settled) refreshPageState(page);
   };
   const scanWorker = async (task: ScanTask) => {
     const { url, pageIndex, generation } = task;
@@ -665,6 +913,59 @@ export function useReaderTranslation({
     const restored = await restoreCachedPage(url, pageIndex, generation);
     if (restored) {
       finishSinglePage(url);
+      return;
+    }
+    // The OCR RAM cache already has this page (for example after a stopped
+    // run). Reuse the YOLO/OCR result instead of scanning the page again.
+    const existing = ocrStoreRef.current.get(url);
+    if (existing && existing.ocrComplete) {
+      const bubbles = [...existing.bubbles.values()];
+      for (const bubble of bubbles) {
+        if (bubble.status === "translating" || bubble.status === "error") {
+          bubble.status = "ready";
+        }
+      }
+      const pending = bubbles.filter(
+        (bubble) => bubble.status === "ready" || bubble.status === "error",
+      );
+      console.log("[reader][scan] reuse OCR", {
+        pageIndex,
+        bubbles: bubbles.length,
+        pending: pending.length,
+      });
+      if (pending.length === 0) {
+        refreshPageState(existing);
+        finishSinglePage(url);
+        return;
+      }
+      existing.status = "translate";
+      updatePage(url, {
+        mode: configRef.current.engine,
+        imageWidth: existing.imageWidth,
+        imageHeight: existing.imageHeight,
+        busy: true,
+        visible: true,
+        stage: "translate",
+        message: `Translating ${pending.length} bubble${pending.length === 1 ? "" : "s"}\u2026`,
+        regions: buildPageRegions(existing),
+      });
+      if (configRef.current.engine === "free") {
+        for (const bubble of pending) {
+          queuesRef.current?.free.push(
+            { url, pageIndex, bubbleId: bubble.id, generation },
+            `${url}:${bubble.id}`,
+          );
+        }
+      } else if (isBubbleStreaming()) {
+        for (const bubble of pending) {
+          scheduleAiBubble(existing, bubble, generation);
+        }
+      } else {
+        queuesRef.current?.ai.push(
+          { kind: "page", url, pageIndex, generation },
+          url,
+        );
+      }
       return;
     }
     if (!isCurrentRun(generation)) return;
@@ -728,6 +1029,14 @@ export function useReaderTranslation({
         );
         return;
       }
+      const slotRegions = new Map<number, number[]>();
+      for (const slot of slots) {
+        const indexes: number[] = [];
+        regions.forEach((region, index) => {
+          if (regionTouchesSlot(region, slot.pasteBox)) indexes.push(index);
+        });
+        slotRegions.set(slot.id, indexes);
+      }
       const page: OcrPageRecord = {
         url,
         pageIndex,
@@ -741,6 +1050,9 @@ export function useReaderTranslation({
         regionsTotal: regions.length,
         regionsDone: 0,
         regionsFailed: 0,
+        ocrComplete: false,
+        pendingRegions: new Set(regions.map((_, index) => index)),
+        slotRegions,
         status: "ocr",
         modelId: null,
       };
@@ -763,16 +1075,18 @@ export function useReaderTranslation({
         slots: slots.length,
         ocrRegions: regions.length,
       });
-      for (const region of regions) {
+      for (let regionIndex = 0; regionIndex < regions.length; regionIndex += 1) {
+        const region = regions[regionIndex];
         queuesRef.current?.ocr.push(
           {
             url,
             pageIndex,
+            regionIndex,
             region,
             detection,
             generation,
           },
-          `${url}:${region.x1}:${region.y1}:${region.classId}`,
+          `${url}:${regionIndex}:${region.x1}:${region.y1}:${region.classId}`,
         );
       }
     } catch (error) {
@@ -786,7 +1100,7 @@ export function useReaderTranslation({
   };
 
   const ocrWorker = async (task: OcrTask) => {
-    const { url, pageIndex, region, detection, generation } = task;
+    const { url, pageIndex, regionIndex, region, detection, generation } = task;
     if (!isCurrentRun(generation)) return;
     const page = ocrStoreRef.current.get(url);
     if (!page) return;
@@ -803,6 +1117,7 @@ export function useReaderTranslation({
       if (!isCurrentRun(generation)) return;
       page.items.push(...result.items);
       page.regionsDone += 1;
+      page.pendingRegions.delete(regionIndex);
       console.log("[reader][ocr] region done", {
         pageIndex,
         classId: region.classId,
@@ -813,12 +1128,14 @@ export function useReaderTranslation({
     } catch (error) {
       if (!isCurrentRun(generation)) return;
       page.regionsFailed += 1;
+      page.pendingRegions.delete(regionIndex);
       console.warn("[reader][ocr] region failed", {
         pageIndex,
         classId: region.classId,
         error,
       });
     }
+    if (isCurrentRun(generation)) emitReadyBubbles(page, generation);
     if (page.regionsDone + page.regionsFailed >= page.regionsTotal) {
       finishPageOcr(page, generation);
     }
@@ -831,7 +1148,7 @@ export function useReaderTranslation({
     const bubble = page?.bubbles.get(bubbleId);
     if (!page || !bubble) return;
     bubble.status = "translating";
-    finishBubbleTranslation(page, bubble);
+    refreshPageState(page);
     try {
       const translated = await translateSingleText(
         translate,
@@ -853,9 +1170,9 @@ export function useReaderTranslation({
         error,
       });
     }
-    finishBubbleTranslation(page, bubble);
+    refreshPageState(page);
   };
-  const aiWorker = async (task: AiTranslationTask, slot: number) => {
+  const aiPageWorker = async (task: AiPageTranslationTask, slot: number) => {
     const { url, pageIndex, generation } = task;
     if (!isCurrentRun(generation)) return;
     const page = ocrStoreRef.current.get(url);
@@ -884,7 +1201,7 @@ export function useReaderTranslation({
     if (bubbles.length === 0) return;
     for (const bubble of bubbles) bubble.status = "translating";
     page.status = "translate";
-    finishBubbleTranslation(page, bubbles[0]);
+    refreshPageState(page);
 
     const maxContext = Math.min(
       50,
@@ -966,7 +1283,7 @@ export function useReaderTranslation({
         translated,
         contextPages: history.length,
       });
-      finishBubbleTranslation(page, bubbles[0]);
+      refreshPageState(page);
     } catch (error) {
       if (!isCurrentRun(generation)) return;
       void recordGeminiUsage({
@@ -980,15 +1297,189 @@ export function useReaderTranslation({
       for (const bubble of bubbles) {
         if (bubble.status === "translating") bubble.status = "error";
       }
-      page.status = "error";
       console.warn("[reader][tr][ai] page failed", { pageIndex, model, error });
-      finishBubbleTranslation(page, bubbles[0]);
+      refreshPageState(page);
       showTranslationError(
         error instanceof Error
           ? `Page ${pageIndex + 1}: ${error.message}`
           : `AI translation failed for page ${pageIndex + 1}.`,
       );
     }
+  };
+
+  /**
+   * Auto bubbles: translates a small batch of ready bubbles from one or more
+   * pages in a single Gemini request. History pages (already OCRed) supply the
+   * same story/tone context the page pipeline uses.
+   */
+  const aiBubbleBatchWorker = async (
+    task: AiBubbleBatchTask,
+    slot: number,
+  ) => {
+    const { items, generation } = task;
+    if (!isCurrentRun(generation)) return;
+    const apiKey = configRef.current.geminiApiKey.trim();
+    if (!apiKey) {
+      for (const item of items) {
+        const page = ocrStoreRef.current.get(item.url);
+        const bubble = page?.bubbles.get(item.bubbleId);
+        if (bubble) bubble.status = "error";
+        if (page) refreshPageState(page);
+      }
+      showTranslationError("AI translation needs a Gemini API key.");
+      return;
+    }
+    const primary = configRef.current.geminiModelId || GEMINI_DEFAULT_MODEL;
+    const secondary =
+      GEMINI_MODELS.find((model) => model.id !== primary)?.id ?? primary;
+    const models =
+      configRef.current.aiWorkerCount >= 2 ? [primary, secondary] : [primary];
+    const model = models[slot % models.length];
+
+    const groups = new Map<
+      string,
+      { page: OcrPageRecord; label: string; bubbles: OcrBubbleRecord[] }
+    >();
+    for (const item of items) {
+      const page = ocrStoreRef.current.get(item.url);
+      const bubble = page?.bubbles.get(item.bubbleId);
+      if (!page || !bubble || bubble.status !== "translating") continue;
+      let group = groups.get(item.url);
+      if (!group) {
+        group = { page, label: `page_${groups.size}`, bubbles: [] };
+        groups.set(item.url, group);
+      }
+      group.bubbles.push(bubble);
+    }
+    if (groups.size === 0) return;
+
+    const maxContext = Math.min(
+      50,
+      Math.max(1, Math.round(configRef.current.aiMaxContextPages)),
+    );
+    const batchUrls = new Set(groups.keys());
+    const maxSeq = Math.max(
+      ...[...groups.values()].map((group) => group.page.seq),
+    );
+    const history = [...ocrStoreRef.current.values()]
+      .filter(
+        (candidate) =>
+          !batchUrls.has(candidate.url) &&
+          candidate.seq < maxSeq &&
+          candidate.bubbles.size > 0,
+      )
+      .sort((a, b) => a.seq - b.seq)
+      .slice(-maxContext)
+      .map((candidate, index) => ({
+        label: `history_${index}`,
+        pageIndex: candidate.pageIndex,
+        regions: [...candidate.bubbles.values()]
+          .filter((bubble) => bubble.text.trim())
+          .map((bubble) => ({ regionId: bubble.id, text: bubble.text })),
+      }));
+    const batch = [...groups.values()].map((group) => ({
+      label: group.label,
+      pageIndex: group.page.pageIndex,
+      regions: group.bubbles.map((bubble) => ({
+        regionId: bubble.id,
+        text: bubble.text,
+      })),
+    }));
+    const bubbleCount = batch.reduce(
+      (total, group) => total + group.regions.length,
+      0,
+    );
+    console.log("[reader][tr][ai-bubbles] request", {
+      bubbles: bubbleCount,
+      pages: groups.size,
+      model,
+      contextPages: history.length,
+    });
+
+    try {
+      await waitForRpmCapacity(model);
+      const response = await translateGeminiBatch({
+        apiKey,
+        model,
+        sourceCode: configRef.current.sourceLanguage,
+        targetCode: configRef.current.targetLanguage,
+        history,
+        batch,
+      });
+      if (!isCurrentRun(generation)) return;
+      void recordGeminiUsage({
+        model,
+        success: true,
+        inputTokens: response.usage.inputTokens,
+        outputTokens: response.usage.outputTokens,
+      });
+      if (response.results.length === 0) {
+        throw new GeminiApiError(
+          "Gemini returned no usable translation results.",
+          undefined,
+          "EMPTY_RESULT",
+        );
+      }
+      const resultByLabel = new Map<string, string>();
+      for (const result of response.results) {
+        resultByLabel.set(`${result.label}:${result.regionId}`, result.text);
+      }
+      let translated = 0;
+      for (const group of groups.values()) {
+        for (const bubble of group.bubbles) {
+          const text = resultByLabel.get(`${group.label}:${bubble.id}`);
+          if (text && text.trim()) {
+            bubble.translatedText = text;
+            bubble.status = "translated";
+            translated += 1;
+          } else {
+            bubble.status = "error";
+          }
+        }
+        group.page.modelId = model;
+      }
+      for (const group of groups.values()) refreshPageState(group.page);
+      console.log("[reader][tr][ai-bubbles] response", {
+        model,
+        bubbles: bubbleCount,
+        translated,
+        contextPages: history.length,
+      });
+    } catch (error) {
+      if (!isCurrentRun(generation)) return;
+      void recordGeminiUsage({
+        model,
+        success: false,
+        errorCode:
+          error instanceof GeminiApiError
+            ? String(error.code ?? error.status ?? "error")
+            : "network",
+      });
+      for (const group of groups.values()) {
+        for (const bubble of group.bubbles) {
+          if (bubble.status === "translating") bubble.status = "error";
+        }
+        refreshPageState(group.page);
+      }
+      console.warn("[reader][tr][ai-bubbles] batch failed", {
+        model,
+        bubbles: bubbleCount,
+        error,
+      });
+      showTranslationError(
+        error instanceof Error
+          ? `AI bubbles: ${error.message}`
+          : "AI bubble translation failed.",
+      );
+    }
+  };
+
+  const aiWorker = async (task: AiTranslationTask, slot: number) => {
+    if (task.kind === "bubbles") {
+      await aiBubbleBatchWorker(task, slot);
+      return;
+    }
+    await aiPageWorker(task, slot);
   };
   workersRef.current = {
     scan: scanWorker,
@@ -1058,7 +1549,11 @@ export function useReaderTranslation({
       const url = pagesRef.current[pageIndex];
       if (!url) continue;
       const state = pagesStateRef.current[url];
-      if (state?.stage === "done" || state?.stage === "error") continue;
+      // Any existing state means this page already entered the pipeline
+      // (queued / YOLO / OCR / translation / done). Re-pushing it here used to
+      // re-run YOLO on pages that were still being OCRed and flooded the
+      // bubble OCR queue with duplicate crops.
+      if (state) continue;
       queues.scan.push({ url, pageIndex, generation }, url);
     }
     console.log("[reader][scan] window queued", {
@@ -1097,6 +1592,7 @@ export function useReaderTranslation({
     generationRef.current += 1;
     autoRef.current = false;
     singleRef.current = false;
+    clearAiBubbleBuffer();
     queues.scan.clearPending();
     queues.ocr.clearPending();
     queues.free.clearPending();
@@ -1123,6 +1619,7 @@ export function useReaderTranslation({
     generationRef.current += 1;
     autoRef.current = false;
     singleRef.current = false;
+    clearAiBubbleBuffer();
     queues.scan.clearPending();
     queues.ocr.clearPending();
     queues.free.clearPending();
@@ -1152,7 +1649,7 @@ export function useReaderTranslation({
 
   const validateRun = (): string | null => {
     if (configRef.current.translationMode === "off") {
-      return "Translation mode is Off - choose Single page or Auto first.";
+      return "Translation mode is Off - choose Single page, Auto pages or Auto bubbles first.";
     }
     if (
       isSameEngineLanguage(
@@ -1185,9 +1682,12 @@ export function useReaderTranslation({
       stopTranslationRun();
       return;
     }
-    if (configRef.current.translationMode !== "auto") {
+    if (
+      configRef.current.translationMode !== "auto" &&
+      configRef.current.translationMode !== "autoBubbles"
+    ) {
       showTranslationError(
-        "Auto translation is not selected - switch Translation mode to Auto.",
+        "Auto translation is not selected - switch Translation mode to Auto pages or Auto bubbles.",
       );
       onTranslationSetupRequired();
       return;
@@ -1260,6 +1760,7 @@ export function useReaderTranslation({
     delete pagesStateRef.current[url];
     detectionRef.current.delete(url);
     ocrStoreRef.current.delete(url);
+    forgetScheduledBubbles(url);
     setSinglePageBusy(true);
     setSinglePageIndex(pageIndex);
     setPipelineError(null);
@@ -1282,6 +1783,7 @@ export function useReaderTranslation({
     console.log("[reader][tr] retry page", { pageIndex, stage });
     ocrStoreRef.current.delete(url);
     detectionRef.current.delete(url);
+    forgetScheduledBubbles(url);
     delete pagesStateRef.current[url];
     setTranslationPages({ ...pagesStateRef.current });
     void deleteTranslationPage({
@@ -1328,6 +1830,7 @@ export function useReaderTranslation({
   const clearRamCache = () => {
     ocrStoreRef.current.clear();
     detectionRef.current.clear();
+    clearAiBubbleBuffer();
     ocrSeqRef.current = 0;
     pagesStateRef.current = {};
     setTranslationPages({});
@@ -1341,6 +1844,7 @@ export function useReaderTranslation({
   useEffect(() => {
     return () => {
       if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
+      clearAiBubbleBuffer();
       queues.scan.stop();
       queues.ocr.stop();
       queues.free.stop();

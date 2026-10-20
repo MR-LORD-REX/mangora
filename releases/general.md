@@ -1,6 +1,6 @@
 # Planned & in progress
 
-**Updated 2026-10-18**
+**Updated 2026-10-20**
 
 Small changes and work in flight that has not shipped in a versioned release yet.
 
@@ -10,9 +10,7 @@ Small changes and work in flight that has not shipped in a versioned release yet
 
 ## Planned
 
-- **Offline browse cache.** Cache list and search responses so browsing works without a connection.
-- **Per-source age gate.** Per-source control over the adult-oriented sources, on top of the global
-  age-restricted toggle.
+- Nothing planned right now.
 
 ## Small fixes
 

@@ -1,6 +1,13 @@
 {
-  "latest": "0.0.3",
+  "latest": "0.0.4",
   "versions": [
+    {
+      "version": "0.0.4",
+      "date": "2026-10-20",
+      "title": "Auto bubbles, pre-translation, ONNX OCR, and extension management",
+      "file": "v0.0.4.md",
+      "type": "stable"
+    },
     {
       "version": "0.0.3",
       "date": "2026-10-18",
@@ -9,5 +16,5 @@
       "type": "stable"
     }
   ],
-  "general": { "file": "general.md", "updated": "2026-10-18" }
+  "general": { "file": "general.md", "updated": "2026-10-20" }
 }

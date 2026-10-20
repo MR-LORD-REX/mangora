@@ -7,7 +7,7 @@
  * (`.../files/trapp-settings/settings.json`) so they survive restarts and do
  * not need any extra dependency (AsyncStorage etc.). Every write is mirrored
  * into the SQLite `app_settings` table via settingsRepository so the database
- * holds a global copy as well (see spec Â§15). The file remains the source of
+ * holds a global copy as well (see section 15). The file remains the source of
  * truth; the DB row is a mirror that is seeded at bootstrap when missing.
  *
  * The reader and home screen both read the same store; the reader subscribes
@@ -31,7 +31,7 @@ import {
 export type ReaderTranslationEngine = "free" | "ai";
 
 /** When translation runs in the reader. */
-export type ReaderTranslationMode = "off" | "single" | "auto";
+export type ReaderTranslationMode = "off" | "single" | "auto" | "autoBubbles";
 
 export type ReaderReadingMode =
   | "scrollVertical"
@@ -95,6 +95,8 @@ export interface AppSettings {
   aiWorkerCount: number;
   /** AI TR: past OCRed pages attached to each request (1..50, default 10). */
   aiMaxContextPages: number;
+  /** AI TR Auto bubbles mode: bubble batch size per Gemini request (1..5, default 3). */
+  readerAiBubbleBatchSize: number;
   /** Reader Config -> Language -> Target: translate-into language code. */
   readerTargetLanguage: string;
   /** Reading modes / orientation / fit & chrome toggles (new reader UI). */
@@ -188,6 +190,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   freeRequestConcurrency: 2,
   aiWorkerCount: 1,
   aiMaxContextPages: 10,
+  readerAiBubbleBatchSize: 3,
   readerTargetLanguage: "en",
   readerReadingMode: "scrollVertical",
   readerPagedDirection: "ltr",
@@ -308,7 +311,10 @@ function sanitize(raw: unknown): AppSettings {
       : "free";
   const rawMode = value.readerTranslationMode as string | undefined;
   const mode: ReaderTranslationMode =
-    rawMode === "single" || rawMode === "auto" || rawMode === "off"
+    rawMode === "single" ||
+    rawMode === "auto" ||
+    rawMode === "autoBubbles" ||
+    rawMode === "off"
       ? rawMode
       : rawLegacy === "free" ||
           rawLegacy === "ai" ||
@@ -341,6 +347,7 @@ function sanitize(raw: unknown): AppSettings {
     ),
     aiWorkerCount: Math.round(num(value.aiWorkerCount, 1, 1, 2)),
     aiMaxContextPages: Math.round(num(value.aiMaxContextPages, 10, 1, 50)),
+    readerAiBubbleBatchSize: Math.round(num(value.readerAiBubbleBatchSize, 3, 1, 5)),
     readerReadingMode: oneOf(value.readerReadingMode, READING_MODES, "scrollVertical"),
     readerPagedDirection:
       value.readerPagedDirection === "rtl" ? "rtl" : "ltr",

@@ -274,6 +274,7 @@ export default function GenericReader() {
   const [freeRequestConcurrency, setFreeRequestConcurrency] = useState(2);
   const [aiWorkerCount, setAiWorkerCount] = useState(1);
   const [aiMaxContextPages, setAiMaxContextPages] = useState(10);
+  const [aiBubbleBatchSize, setAiBubbleBatchSize] = useState(3);
   const [translationOpen, setTranslationOpen] = useState(false);
   const [translationTab, setTranslationTab] =
     useState<ReaderTranslationTab>("trMode");
@@ -329,6 +330,7 @@ export default function GenericReader() {
     freeRequestConcurrency,
     aiWorkerCount,
     aiMaxContextPages,
+    aiBubbleBatchSize,
     onTranslationSetupRequired: openTranslationSetup,
   });
 
@@ -735,6 +737,7 @@ export default function GenericReader() {
       setFreeRequestConcurrency(settings.freeRequestConcurrency);
       setAiWorkerCount(settings.aiWorkerCount);
       setAiMaxContextPages(settings.aiMaxContextPages);
+      setAiBubbleBatchSize(settings.readerAiBubbleBatchSize);
       setOverlayFont(settings.readerOverlayFont);
       setOverlayFontWeight(settings.readerOverlayFontWeight);
       setOverlayFontScale(settings.readerOverlayFontScale);
@@ -812,6 +815,12 @@ export default function GenericReader() {
     setAiMaxContextPages(next);
     updateSettings({ aiMaxContextPages: next }).catch(console.error);
     console.log("[reader][settings] AI max context pages", next);
+  };
+  const handleSelectAiBubbleBatchSize = (size: number) => {
+    const next = Math.min(5, Math.max(1, Math.round(size)));
+    setAiBubbleBatchSize(next);
+    updateSettings({ readerAiBubbleBatchSize: next }).catch(console.error);
+    console.log("[reader][settings] AI bubbles per batch", next);
   };
   const handleApplyOcrSettings = (patch: {
     pageWorkers: number;
@@ -1284,6 +1293,9 @@ export default function GenericReader() {
             onChangeAiWorkerCount={handleSelectAiWorkerCount}
             aiMaxContextPages={aiMaxContextPages}
             onChangeMaxContextPages={handleSelectMaxContextPages}
+            aiBubbleBatchSize={aiBubbleBatchSize}
+            onChangeAiBubbleBatchSize={handleSelectAiBubbleBatchSize}
+            geminiModelId={geminiModelId}
             metrics={metrics}
             onClearTrCache={handleClearTrCache}
             ocrPageWorkers={ocrPageWorkers}

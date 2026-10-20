@@ -12,7 +12,7 @@
 
 ---
 
-Mangora is an Android application for reading material obtained through extensions that the user chooses to install. It provides a shared library and reader, optional offline chapter downloads, on-device text detection and OCR, and optional text translation overlays.
+Mangora is an Android application for reading material obtained through extensions that the user chooses to install. It provides a shared library and reader, optional offline chapter downloads, on-device text detection and OCR, and optional text translation overlays. Mangora operates no application server or backend: the library, history, settings, OCR models, translation cache, and usage counters live on the device. Optional online features contact third-party services directly from the device.
 
 **Mangora is not a manga publisher, content catalogue, or content-hosting service.** It does not ship a built-in list of reading providers. Users may add compatible extension repositories and install extensions; those extensions determine which catalogs and external services the app can contact. Mangora does not operate or endorse those independent repositories, extensions, websites, or services.
 
@@ -47,13 +47,23 @@ Mangora is an Android application for reading material obtained through extensio
 3. The on-device OCR model for the selected language reads those regions.
 4. If translation is enabled, Mangora translates recognized text and displays it as an overlay.
 
-Translation is **off by default**. OCR runs on-device with one of two downloadable models, chosen from the chapter language: **Baberu OCR** for Japanese, Chinese and English, or **PP-OCRv5 Korean** for Korean and Latin scripts. Download either pack from **Settings > OCR models**. Translation modes are:
+Translation is **off by default**. OCR runs entirely on-device with one of two downloadable models, chosen from the chapter language: **Baberu OCR** for Japanese, Chinese and English, or **PP-OCRv5 Korean** for Korean and Latin scripts. Download either pack from **Settings > OCR models**.
+
+There are two translation engines:
+
+- **Free:** sends each recognized bubble and language information to Google's public translation endpoints. It does not require an API key.
+- **AI:** sends recognized text, and optionally prior-page text context, to the Gemini API using the API key saved by the user.
+
+The reader provides four translation modes:
 
 - **Off:** no OCR or translation pipeline is started.
-- **Free translation:** sends recognized text and language information to Google's public translation endpoints. It does not require an API key.
-- **AI translation:** sends recognized text, and optionally prior-page text context, to the Gemini API using the API key saved by the user.
+- **Single page:** translates only the current page on demand.
+- **Auto pages:** translates pages automatically as you read. It waits for the full page OCR pass, then sends the page to the selected engine.
+- **Auto bubbles:** an AI-only low-latency mode. Each bubble is emitted as soon as its OCR regions finish, then 1-5 bubbles (default 3) are sent in one Gemini request. Previously OCRed pages are attached as context so names and tone stay consistent. The buffer flushes when it reaches the configured batch size, when OCR goes idle, or after 900 ms without a new bubble. This produces the first translations sooner while batching keeps API requests bounded. Smaller batches show text sooner but use more requests; larger batches use fewer requests.
 
 OCR and translation are distinct. Text recognition never leaves the device. Free or AI translation still sends recognized text to the respective translation service.
+
+Translation controls in the reader include **Bubbles per batch** (1-5, Auto bubbles only), **Max context**, AI worker count, a collapsible **API usage** meter for Gemini RPM/TPM/RPD, and a collapsible **Pipeline metrics** table for queue and result counts. Downloaded chapters can also be queued for background processing from **Settings > Translation queue**; pages with a cached result are skipped. Pre-translation currently processes one page at a time and does not use Auto bubbles batching.
 
 Translation results and OCR text used for overlays may be cached in the local SQLite database. The user can clear the translation cache from Settings.
 
@@ -75,6 +85,8 @@ Mangora cannot verify that third-party material is licensed or lawful, cannot ch
 
 ### Stored on your device
 
+Mangora operates no user account system, application backend, or central database for app data. The library, reading history, progress, settings, extension repository settings, download records, OCR models, translation cache, and Gemini usage counters are kept on the device.
+
 The app keeps library records, metadata, progress, history, settings, extension repository settings, download records, and translation cache data in app-private SQLite and files. Settings include the Gemini API key when one is saved. Mangora does not claim that the API key or database backup is encrypted by the app.
 
 Downloaded `.cbz` files and backups are written to locations the user authorizes through Android's document picker. A whole-database backup may contain settings, keys, reading data, and cached OCR/translation text. Keep it in a secure location. Files saved outside app-private storage may remain after uninstalling Mangora or clearing app data.
@@ -90,7 +102,7 @@ Depending on the feature being used, the device may communicate with:
 - GitHub's release API and asset hosting when checking for or downloading updates.
 - Hugging Face model distribution hosts when downloading an on-device OCR model from Settings.
 
-Requests originate in the app and are sent to the endpoints described above. Receiving services can ordinarily receive network metadata such as IP address, request time, URL, and client/request headers. Extension behavior can include cookies or other headers. Each service has its own policies and retention practices. The project does not operate a user account service or a central sync backend for your library, history, or settings.
+Requests originate in the app and go directly to the endpoints described above; no request passes through a Mangora server. Receiving services can ordinarily receive network metadata such as IP address, request time, URL, and client/request headers. Extension behavior can include cookies or other headers. Each service has its own policies and retention practices. The project does not operate a user account service or a central sync backend for your library, history, or settings.
 
 The website is hosted on Firebase Hosting and fetches release information from GitHub from your browser. It may temporarily cache release responses in browser session storage. See the [Privacy Policy](https://mangora-web.web.app/privacy) for a fuller data-flow explanation and external service details.
 
@@ -103,7 +115,7 @@ The website is hosted on Firebase Hosting and fetches release information from G
 - Clear Android app storage or uninstall to remove app-private data; manage files in user-selected folders separately.
 - Protect the device, saved API keys, backups, and downloaded files.
 
-Mangora's current application and website source do not include a Mangora analytics or advertising SDK. That does not make requests to extension, translation, OCR, hosting, or update services anonymous; those operators may process standard request information under their own policies.
+Mangora's current application and website source do not include a Mangora analytics or advertising SDK. That does not make requests to extension, translation, model-download, hosting, or update services anonymous; those operators may process standard request information under their own policies.
 
 ## Installation
 
@@ -150,14 +162,22 @@ The project uses Expo SDK 54, React Native 0.81, React 19, Expo Router, TypeScri
 
 ## Repository map
 
-- `app/` — Expo Router screens and navigation.
-- `components/` — reader, library, extension, downloader, and settings UI.
-- `services/extensions/` — repository catalog parsing, extension installation, and the native bridge.
-- `services/db/` — SQLite schema, migrations, backup/restore, and repositories.
-- `services/ocr/`, `services/yolo/`, `services/translation/` — detection, OCR, and translation pipeline.
-- `services/downloader/` — queue, page acquisition, archive creation, and storage.
-- `plugins/android/` — native Android modules and Expo config plugins.
-- `mangora-website/` — public website and its policy pages.
+- `app/` - Expo Router screens and navigation.
+- `app/reader/[id].tsx` - reader screen and translation-settings wiring.
+- `app/settings/translation-queue.tsx`, `app/settings/ocr-models.tsx` - pre-translation and OCR model settings screens.
+- `components/reader/ReaderTranslationPanel.tsx` - translation sheet, mode/engine controls, API usage, and pipeline metrics.
+- `components/settings/`, `components/translation/` - settings sections and the downloaded-chapter pre-translation dialog.
+- `utils/reader/useReaderTranslation.ts` - reader translation orchestrator, queues, workers, batching, and RAM page store.
+- `services/ocr/` - on-device OCR engines, model catalog/downloads, ONNX Runtime setup, and crop types.
+- `services/yolo/` - text-region detection.
+- `services/translation/` - free and Gemini engines, page/bubble translation helpers, quota accounting, runtime lock, language mapping, pre-translation queue, and reusable work queue.
+- `services/extensions/` - repository catalog parsing, extension installation, and the native bridge.
+- `services/db/` - SQLite schema, migrations, backup/restore, and repositories.
+- `services/downloader/` - queue, page acquisition, archive creation, and storage.
+- `services/notifications/` - foreground download and pre-translation notifications.
+- `plugins/android/` - native Android modules and Expo config plugins.
+- `TR_pipeline.md` - end-to-end translation architecture, file/function map, debugging notes, and invariants.
+- `mangora-website/` - public website and its policy pages.
 
 ## Legal and licensing
 
