@@ -1,6 +1,13 @@
 {
-  "latest": "0.0.4",
+  "latest": "0.0.5",
   "versions": [
+    {
+      "version": "0.0.5",
+      "date": "2026-10-20",
+      "title": "Parallel OCR engines, PP-OCR line detection, and queue resume fixes",
+      "file": "v0.0.5.md",
+      "type": "stable"
+    },
     {
       "version": "0.0.4",
       "date": "2026-10-20",

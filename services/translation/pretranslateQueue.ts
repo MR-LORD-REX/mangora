@@ -27,9 +27,21 @@ import {
   isModelDownloaded,
   recognizePageRegions,
 } from "@/services/ocr/localOcr";
-import { getLocalOcrModel, modelIdForLanguage } from "@/services/ocr/ocrModels";
-import { prepareTextRegions, type OcrRegion } from "@/services/ocr/pageOcr";
-import { getSettings, type AppSettings } from "@/services/settings/settingsStore";
+import {
+  clampOcrBubbleWorkers,
+  getLocalOcrModel,
+  modelIdForLanguage,
+} from "@/services/ocr/ocrModels";
+import {
+  preparePaddleRegions,
+  prepareTextRegions,
+  type OcrRegion,
+} from "@/services/ocr/pageOcr";
+import {
+  getSettings,
+  type AppSettings,
+  type ReaderTranslationEngine,
+} from "@/services/settings/settingsStore";
 import { localTranslate } from "@/services/translation/freeGoogleTranslator";
 import {
   GeminiApiError,
@@ -45,7 +57,6 @@ import {
   buildTranslationSlots,
   fillSlotTexts,
 } from "@/services/translation/regionText";
-import type { ReaderTranslationEngine } from "@/services/settings/settingsStore";
 import {
   releaseTranslationLock,
   subscribeTranslationLock,
@@ -82,9 +93,13 @@ export interface PretranslateJob {
   aiWorkerCount: number;
   aiMaxContextPages: number;
   freeRequestConcurrency: number;
+  /** OCR bubble workers for this job (Baberu 1..5, PP-OCR clamped to 1). */
+  bubbleWorkers: number;
   status: PretranslateStatus;
   pagesDone: number;
   pagesFailed: number;
+  /** 0-based index of the next page to process; survives pause/resume. */
+  nextPageIndex: number;
   currentPage: number | null;
   error: string | null;
   createdAt: number;
@@ -172,11 +187,39 @@ async function loadPersisted(): Promise<void> {
     if (!file.exists) return;
     const parsed = JSON.parse(await file.text()) as PretranslateJob[];
     if (!Array.isArray(parsed)) return;
-    jobs = parsed.map((job) => ({
-      ...job,
-      status: job.status === "running" ? "paused" : job.status,
-      currentPage: null,
-    }));
+    jobs = parsed.map((job) => {
+      const pageCount = Array.isArray(job.pageUris) ? job.pageUris.length : 0;
+      const hasResumeIndex =
+        typeof job.nextPageIndex === "number" &&
+        Number.isFinite(job.nextPageIndex);
+      const nextPageIndex = hasResumeIndex
+        ? Math.min(pageCount, Math.max(0, Math.round(job.nextPageIndex)))
+        : 0;
+      // Jobs saved by older builds do not have a resume index. Their counters
+      // may already contain replayed cached pages, so rebuild progress from
+      // the cache instead of trusting the inflated values.
+      const pagesDone = hasResumeIndex
+        ? Math.min(nextPageIndex, Math.max(0, Math.round(job.pagesDone ?? 0)))
+        : 0;
+      const pagesFailed = hasResumeIndex
+        ? Math.min(
+            nextPageIndex - pagesDone,
+            Math.max(0, Math.round(job.pagesFailed ?? 0)),
+          )
+        : 0;
+      return {
+        ...job,
+        bubbleWorkers: clampOcrBubbleWorkers(
+          modelIdForLanguage(job.sourceLanguage),
+          job.bubbleWorkers ?? 5,
+        ),
+        status: job.status === "running" ? "paused" : job.status,
+        pagesDone,
+        pagesFailed,
+        nextPageIndex,
+        currentPage: null,
+      };
+    });
     console.log("[translation][queue] restored jobs", { count: jobs.length });
   } catch (error) {
     console.warn("[translation][queue] restore failed", error);
@@ -226,6 +269,10 @@ function settingsSnapshot(settings: AppSettings) {
     aiWorkerCount: settings.aiWorkerCount,
     aiMaxContextPages: settings.aiMaxContextPages,
     freeRequestConcurrency: settings.freeRequestConcurrency,
+    bubbleWorkers: clampOcrBubbleWorkers(
+      modelIdForLanguage(settings.readerLanguage || "ja"),
+      settings.pretranslateBubbleWorkers,
+    ),
   };
 }
 
@@ -269,9 +316,14 @@ export async function enqueuePretranslateJob(input: {
     aiWorkerCount: snap.aiWorkerCount,
     aiMaxContextPages: snap.aiMaxContextPages,
     freeRequestConcurrency: snap.freeRequestConcurrency,
+    bubbleWorkers: clampOcrBubbleWorkers(
+      modelIdForLanguage(input.sourceLanguage ?? snap.sourceLanguage),
+      snap.bubbleWorkers,
+    ),
     status: paused ? "paused" : "queued",
     pagesDone: 0,
     pagesFailed: 0,
+    nextPageIndex: 0,
     currentPage: null,
     error: null,
     createdAt: Date.now(),
@@ -349,14 +401,7 @@ async function translatePage(
   const ocrModel = getLocalOcrModel(modelId);
   let regions: OcrRegion[];
   if (ocrModel?.engine === "ctc") {
-    const clean = detection.boxes
-      .filter((box) => box.classId === 0)
-      .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
-      .slice(0, MAX_CROPS_PER_PAGE)
-      .sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
-    regions = clean.length
-      ? clean
-      : prepareTextRegions(detection.boxes, MAX_CROPS_PER_PAGE);
+    regions = preparePaddleRegions(detection.boxes, MAX_CROPS_PER_PAGE);
   } else {
     regions = prepareTextRegions(detection.boxes, MAX_CROPS_PER_PAGE);
   }
@@ -371,6 +416,7 @@ async function translatePage(
     regions,
     language: job.sourceLanguage,
     maxCrops: MAX_CROPS_PER_PAGE,
+    concurrency: job.bubbleWorkers,
   });
   const assigned = assignItemsToSlots(slots, ocr.items);
   const filled = fillSlotTexts(
@@ -505,8 +551,42 @@ async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
     pages: job.pageUris.length,
   });
   const history: HistoryPage[] = [];
+  const totalPages = job.pageUris.length;
+  const startIndex = Math.min(
+    totalPages,
+    Math.max(0, Math.round(job.nextPageIndex ?? 0)),
+  );
+
+  // Resume with the same AI context the job had before it was paused. Only
+  // the context window is read back; earlier pages are not re-counted.
+  if (job.engine === "ai" && startIndex > 0) {
+    const contextPages = Math.min(job.aiMaxContextPages, startIndex);
+    const firstContext = startIndex - contextPages;
+    for (let index = firstContext; index < startIndex; index += 1) {
+      const cached = await findTranslationPage({
+        mangaId: job.mangaId,
+        pageUrl: job.pageUris[index],
+        sourceLanguage: job.sourceLanguage,
+        targetLanguage: job.targetLanguage,
+      }).catch(() => null);
+      if (!cached) continue;
+      history.push({
+        pageIndex: index,
+        bubbles: cached.regions.map((region) => ({
+          id: region.regionId,
+          text: region.sourceText,
+        })),
+      });
+    }
+    console.log("[translation][queue] context restored", {
+      id: job.id,
+      from: firstContext,
+      pages: history.length,
+      startIndex,
+    });
+  }
   try {
-    for (let index = 0; index < job.pageUris.length; index += 1) {
+    for (let index = startIndex; index < totalPages; index += 1) {
       if (cancelRequested.has(job.id) || paused) break;
       const pageUri = job.pageUris[index];
       job.currentPage = index + 1;
@@ -527,8 +607,8 @@ async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
           })),
         });
         job.pagesDone += 1;
+        job.nextPageIndex = index + 1;
         publish();
-        void notifyTranslationProgress(job, index + 1, job.pageUris.length);
         continue;
       }
       try {
@@ -546,8 +626,9 @@ async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
           error,
         });
       }
+      job.nextPageIndex = index + 1;
       publish();
-      void notifyTranslationProgress(job, index + 1, job.pageUris.length);
+      void notifyTranslationProgress(job, index + 1, totalPages);
     }
   } finally {
     job.currentPage = null;

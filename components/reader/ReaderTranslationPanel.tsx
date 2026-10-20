@@ -42,6 +42,12 @@ import type {
   ReaderTranslationEngine,
   ReaderTranslationMode,
 } from "@/services/settings/settingsStore";
+import {
+  getLocalOcrModel,
+  maxOcrBubbleWorkers,
+  modelIdForLanguage,
+  ocrBubbleRamMb,
+} from "@/services/ocr/ocrModels";
 import type { ReaderPipelineMetrics } from "@/utils/reader/useReaderTranslation";
 import {
   GEMINI_MODELS,
@@ -930,11 +936,25 @@ function PipelineMetrics({
 }
 
 function OcrSettingsTab(props: ReaderTranslationPanelProps) {
-  const { ocrPageWorkers, ocrBubbleWorkers, ocrLookahead, onApplyOcrSettings } =
-    props;
+  const {
+    ocrPageWorkers,
+    ocrBubbleWorkers,
+    ocrLookahead,
+    ocrLanguage,
+    onApplyOcrSettings,
+  } = props;
+  const ocrModelId = modelIdForLanguage(ocrLanguage);
+  const ocrModel = getLocalOcrModel(ocrModelId);
+  const maxBubbleWorkers = maxOcrBubbleWorkers(ocrModelId);
   const [pageWorkers, setPageWorkers] = useState(ocrPageWorkers);
   const [bubbleWorkers, setBubbleWorkers] = useState(ocrBubbleWorkers);
   const [lookahead, setLookahead] = useState(ocrLookahead);
+
+  const effectiveBubbleWorkers = Math.min(
+    maxBubbleWorkers,
+    Math.max(1, bubbleWorkers),
+  );
+  const ramMb = ocrBubbleRamMb(ocrModelId, effectiveBubbleWorkers);
 
   useEffect(() => {
     setPageWorkers(ocrPageWorkers);
@@ -942,18 +962,28 @@ function OcrSettingsTab(props: ReaderTranslationPanelProps) {
     setLookahead(ocrLookahead);
   }, [ocrPageWorkers, ocrBubbleWorkers, ocrLookahead]);
 
+  useEffect(() => {
+    setBubbleWorkers((current) =>
+      Math.min(maxBubbleWorkers, Math.max(1, current)),
+    );
+  }, [maxBubbleWorkers]);
+
   const dirty =
     pageWorkers !== ocrPageWorkers ||
-    bubbleWorkers !== ocrBubbleWorkers ||
+    effectiveBubbleWorkers !== ocrBubbleWorkers ||
     lookahead !== ocrLookahead;
 
   const apply = () => {
     console.log("[reader][ocr settings] apply", {
       pageWorkers,
-      bubbleWorkers,
+      bubbleWorkers: effectiveBubbleWorkers,
       lookahead,
     });
-    onApplyOcrSettings({ pageWorkers, bubbleWorkers, lookahead });
+    onApplyOcrSettings({
+      pageWorkers,
+      bubbleWorkers: effectiveBubbleWorkers,
+      lookahead,
+    });
   };
 
   return (
@@ -977,18 +1007,27 @@ function OcrSettingsTab(props: ReaderTranslationPanelProps) {
       <SectionLabel>Bubble workers</SectionLabel>
       <View style={styles.sliderValueRow}>
         <Text style={styles.sliderValueLabel}>Bubbles OCRed at once</Text>
-        <Text style={styles.sliderValue}>{bubbleWorkers}</Text>
+        <Text style={styles.sliderValue}>
+          {effectiveBubbleWorkers}
+          {ramMb !== null ? ` \u00b7 ~${ramMb} MB` : " \u00b7 1 engine"}
+        </Text>
       </View>
       <DotSlider
-        value={bubbleWorkers}
+        value={effectiveBubbleWorkers}
         min={1}
-        max={3}
+        max={maxBubbleWorkers}
         step={1}
-        dotCount={3}
+        dotCount={maxBubbleWorkers}
+        disabled={maxBubbleWorkers <= 1}
         leftLabel="1 bubble"
-        rightLabel="3 bubbles"
+        rightLabel={`${maxBubbleWorkers} bubble${maxBubbleWorkers === 1 ? "" : "s"}`}
         onChange={setBubbleWorkers}
       />
+      <HelperText>
+        {ocrModel?.engine === "baberu"
+          ? " Budget about 121 MB per worker: 3 is the default, while 4-5 suit devices with 4 GB+ RAM and good CPU."
+          : "Default is 1"}
+      </HelperText>
 
       <SectionLabel>Look ahead</SectionLabel>
       <View style={styles.sliderValueRow}>

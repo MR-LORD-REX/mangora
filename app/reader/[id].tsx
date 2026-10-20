@@ -68,7 +68,10 @@ import {
   updateProgress,
 } from "@/services/db/repositories/progressRepository";
 import { clearTranslationCacheForManga } from "@/services/db/repositories/translationRepository";
-import { modelIdForLanguage } from "@/services/ocr/ocrModels";
+import {
+  clampOcrBubbleWorkers,
+  modelIdForLanguage,
+} from "@/services/ocr/ocrModels";
 import type { AppSettings } from "@/services/settings/settingsStore";
 import {
   getSettings,
@@ -269,7 +272,7 @@ export default function GenericReader() {
   const [geminiModelId, setGeminiModelId] =
     useState<GeminiModelId>(GEMINI_DEFAULT_MODEL);
   const [ocrPageWorkers, setOcrPageWorkers] = useState(2);
-  const [ocrBubbleWorkers, setOcrBubbleWorkers] = useState(1);
+  const [ocrBubbleWorkers, setOcrBubbleWorkers] = useState(3);
   const [ocrLookahead, setOcrLookahead] = useState(2);
   const [freeRequestConcurrency, setFreeRequestConcurrency] = useState(2);
   const [aiWorkerCount, setAiWorkerCount] = useState(1);
@@ -732,7 +735,13 @@ export default function GenericReader() {
       setGeminiApiKey(settings.geminiApiKey || "");
       setGeminiModelId(settings.geminiModelId || GEMINI_DEFAULT_MODEL);
       setOcrPageWorkers(settings.ocrPageWorkers);
-      setOcrBubbleWorkers(settings.ocrBubbleWorkers);
+      const effectiveLanguage = settings.readerLanguage || autoLanguage;
+      setOcrBubbleWorkers(
+        clampOcrBubbleWorkers(
+          modelIdForLanguage(effectiveLanguage),
+          settings.ocrBubbleWorkers,
+        ),
+      );
       setOcrLookahead(settings.ocrLookahead);
       setFreeRequestConcurrency(settings.freeRequestConcurrency);
       setAiWorkerCount(settings.aiWorkerCount);
@@ -754,7 +763,7 @@ export default function GenericReader() {
       .catch(() => {});
     const unsubscribe = subscribeSettings(apply);
     return unsubscribe;
-  }, []);
+  }, [autoLanguage]);
 
   const handleSelectReaderLanguage = (code: string) => {
     const nextLanguage = code ? canonicalChineseForReader(code) : "";
@@ -828,7 +837,10 @@ export default function GenericReader() {
     lookahead: number;
   }) => {
     const nextPageWorkers = Math.min(2, Math.max(1, patch.pageWorkers));
-    const nextBubbleWorkers = Math.min(3, Math.max(1, patch.bubbleWorkers));
+    const nextBubbleWorkers = clampOcrBubbleWorkers(
+      modelIdForLanguage(ocrLanguage),
+      patch.bubbleWorkers,
+    );
     const nextLookahead = Math.min(3, Math.max(1, patch.lookahead));
     setOcrPageWorkers(nextPageWorkers);
     setOcrBubbleWorkers(nextBubbleWorkers);

@@ -9,8 +9,9 @@
  *
  *   baberu        - vision encoder + INT8 KV decoder, trained for Japanese,
  *                   Chinese and English manga bubbles. 122 MB (INT4 vision).
- *   paddle-korean - PP-OCRv5 Korean mobile recognizer (CTC). Korean + Latin
- *                   scripts. 13 MB.
+ *   paddle-korean - PP-OCRv5 Korean mobile recognizer (CTC) plus the
+ *                   PP-OCRv5 mobile text-line detector (DBNet). Korean + Latin
+ *                   scripts. About 18 MB total.
  *
  * URLs point at the publishers' Hugging Face repositories so the app never
  * hosts model weights itself. Keep `bytes` in sync with the upstream files:
@@ -51,6 +52,8 @@ export interface LocalOcrModelDef {
 const BABERU_BASE = "https://huggingface.co/genshiai-daichi/baberu-ocr/resolve/main";
 const PADDLE_KOREAN_BASE =
   "https://huggingface.co/PaddlePaddle/korean_PP-OCRv5_mobile_rec_onnx/resolve/main";
+const PADDLE_DET_BASE =
+  "https://huggingface.co/PaddlePaddle/PP-OCRv5_mobile_det_onnx/resolve/main";
 
 const BABERU_FILES: LocalOcrModelFile[] = [
   {
@@ -76,6 +79,11 @@ const BABERU_FILES: LocalOcrModelFile[] = [
 ];
 
 const PADDLE_KOREAN_FILES: LocalOcrModelFile[] = [
+  {
+    path: "detection.onnx",
+    url: `${PADDLE_DET_BASE}/inference.onnx`,
+    bytes: 4_826_518,
+  },
   {
     path: "inference.onnx",
     url: `${PADDLE_KOREAN_BASE}/inference.onnx`,
@@ -108,7 +116,8 @@ export const LOCAL_OCR_MODELS: LocalOcrModelDef[] = [
   {
     id: "paddle-korean",
     label: "PP-OCRv5 Korean",
-    detail: "PaddleOCR mobile recognizer for Korean and Latin scripts.",
+    detail:
+      "PaddleOCR line detector + recognizer for Korean and Latin scripts.",
     engine: "ctc",
     languages: [
       "ko",
@@ -189,4 +198,30 @@ export function formatModelBytes(bytes: number): string {
 /** Shown when a selectable language has no provider. */
 export function modelForLanguageLabel(code: string | null | undefined): string {
   return getLocalOcrModel(modelIdForLanguage(code))?.label ?? "OCR model";
+}
+
+/** Baberu keeps one set of ONNX sessions per worker (~121 MB each). */
+export const BABERU_RAM_MB_PER_ENGINE = 121;
+
+/** A Paddle engine contains both detector and recognizer sessions. */
+export function maxOcrBubbleWorkers(id: LocalOcrModelId): number {
+  return getLocalOcrModel(id)?.engine === "baberu" ? 5 : 1;
+}
+
+/** Clamp a requested bubble-worker count to the selected engine's limit. */
+export function clampOcrBubbleWorkers(
+  id: LocalOcrModelId,
+  workers: number,
+): number {
+  const limit = maxOcrBubbleWorkers(id);
+  return Math.min(limit, Math.max(1, Math.round(workers)));
+}
+
+/** Estimated resident memory for Baberu workers, or null for single-engine PP. */
+export function ocrBubbleRamMb(
+  id: LocalOcrModelId,
+  workers: number,
+): number | null {
+  if (getLocalOcrModel(id)?.engine !== "baberu") return null;
+  return clampOcrBubbleWorkers(id, workers) * BABERU_RAM_MB_PER_ENGINE;
 }

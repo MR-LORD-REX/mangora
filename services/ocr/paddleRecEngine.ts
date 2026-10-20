@@ -14,6 +14,7 @@
  */
 
 import * as FileSystem from "expo-file-system/legacy";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 
 import {
   asTensor,
@@ -22,6 +23,10 @@ import {
   type OcrRuntime,
   type OrtSession,
 } from "./onnxRuntime";
+import {
+  createPaddleDetEngine,
+  type PaddleLineBox,
+} from "./paddleDetEngine";
 
 const INPUT_HEIGHT = 48;
 const INPUT_WIDTH = 320;
@@ -34,6 +39,23 @@ export interface CtcResult {
 export interface CtcEngine {
   recognize(uri: string): Promise<CtcResult>;
   release(): Promise<void>;
+}
+
+async function cropLine(uri: string, box: PaddleLineBox): Promise<string | null> {
+  const x1 = Math.max(0, Math.floor(box.x1));
+  const y1 = Math.max(0, Math.floor(box.y1));
+  const width = Math.max(1, Math.ceil(box.x2) - x1);
+  const height = Math.max(1, Math.ceil(box.y2) - y1);
+  if (width < 3 || height < 3) return null;
+
+  const context = ImageManipulator.manipulate(uri);
+  context.crop({ originX: x1, originY: y1, width, height });
+  const rendered = await context.renderAsync();
+  const saved = await rendered.saveAsync({
+    format: SaveFormat.JPEG,
+    compress: 0.95,
+  });
+  return saved.uri;
 }
 
 function yamlScalar(raw: string): string {
@@ -146,6 +168,7 @@ export async function createCtcEngine(
   runtime: OcrRuntime,
 ): Promise<CtcEngine> {
   const { ort } = runtime;
+  const detector = await createPaddleDetEngine(dirUri, runtime);
   const session: OrtSession = await ort.InferenceSession.create(
     `${dirUri}inference.onnx`,
     {
@@ -159,7 +182,7 @@ export async function createCtcEngine(
   const yaml = await FileSystem.readAsStringAsync(`${dirUri}inference.yml`);
   const chars = parseCharacterDict(yaml);
 
-  const recognize = async (uri: string): Promise<CtcResult> => {
+  const recognizeLine = async (uri: string): Promise<CtcResult> => {
     const image = await decodeSkiaImage(runtime, uri);
     const { pixels, contentWidth } = readPaddedRgba(
       runtime,
@@ -182,8 +205,40 @@ export async function createCtcEngine(
     );
   };
 
+  const recognize = async (uri: string): Promise<CtcResult> => {
+    const boxes = await detector.detect(uri);
+    if (boxes.length === 0) {
+      console.warn("[ocr][paddle] detector found no lines; using bubble crop");
+      return recognizeLine(uri);
+    }
+
+    const parts: CtcResult[] = [];
+    for (const box of boxes) {
+      let lineUri: string | null = null;
+      try {
+        lineUri = await cropLine(uri, box);
+        if (!lineUri) continue;
+        const result = await recognizeLine(lineUri);
+        if (result.text.trim()) parts.push(result);
+      } catch (error) {
+        console.warn("[ocr][paddle] line failed", { box, error });
+      } finally {
+        if (lineUri) await FileSystem.deleteAsync(lineUri, { idempotent: true });
+      }
+    }
+
+    const text = parts.map((part) => part.text.trim()).join(" ").trim();
+    const weight = parts.reduce((sum, part) => sum + part.text.length, 0);
+    const confidence =
+      weight > 0
+        ? parts.reduce((sum, part) => sum + part.confidence * part.text.length, 0) /
+          weight
+        : 0;
+    return { text, confidence };
+  };
+
   const release = async (): Promise<void> => {
-    await session.release().catch(() => {});
+    await Promise.allSettled([session.release(), detector.release()]);
   };
 
   return { recognize, release };

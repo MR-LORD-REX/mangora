@@ -28,8 +28,13 @@ import {
   recognizePageRegions,
   releaseLocalOcrEngines,
 } from "@/services/ocr/localOcr";
-import { getLocalOcrModel, modelIdForLanguage } from "@/services/ocr/ocrModels";
 import {
+  clampOcrBubbleWorkers,
+  getLocalOcrModel,
+  modelIdForLanguage,
+} from "@/services/ocr/ocrModels";
+import {
+  preparePaddleRegions,
   prepareTextRegions,
   type OcrRegion,
   type OcrTextItem,
@@ -129,6 +134,8 @@ interface OcrPageRecord {
   imageWidth: number;
   imageHeight: number;
   slots: TranslationSlot[];
+  /** OCR regions for this page, indexed by `pendingRegions`. */
+  regions: OcrRegion[];
   bubbles: Map<number, OcrBubbleRecord>;
   items: OcrTextItem[];
   regionsTotal: number;
@@ -308,6 +315,11 @@ export function useReaderTranslation({
   onTranslationSetupRequired,
 }: UseReaderTranslationOptions): ReaderTranslationController {
   const { translate } = useLocalTranslator();
+  const ocrModelId = modelIdForLanguage(ocrLanguage);
+  const effectiveOcrBubbleWorkers = clampOcrBubbleWorkers(
+    ocrModelId,
+    ocrBubbleWorkers,
+  );
 
   const [translationPages, setTranslationPages] = useState<
     Record<string, PageTranslationState>
@@ -587,6 +599,7 @@ export function useReaderTranslation({
       imageWidth: cached.imageWidth,
       imageHeight: cached.imageHeight,
       slots,
+      regions: [],
       bubbles,
       items: [],
       regionsTotal: slots.length,
@@ -918,6 +931,40 @@ export function useReaderTranslation({
     // The OCR RAM cache already has this page (for example after a stopped
     // run). Reuse the YOLO/OCR result instead of scanning the page again.
     const existing = ocrStoreRef.current.get(url);
+    if (existing && !existing.ocrComplete) {
+      const detection = detectionRef.current.get(url);
+      if (detection && existing.regions.length > 0) {
+        if (existing.pendingRegions.size === 0) {
+          finishPageOcr(existing, generation);
+          return;
+        }
+        existing.status = "ocr";
+        updatePage(url, {
+          mode: configRef.current.engine,
+          imageWidth: existing.imageWidth,
+          imageHeight: existing.imageHeight,
+          busy: true,
+          visible: true,
+          stage: "ocr",
+          message: `Resuming text (${existing.pendingRegions.size} region${existing.pendingRegions.size === 1 ? "" : "s"})\u2026`,
+          regions: buildPageRegions(existing),
+        });
+        console.log("[reader][scan] resume OCR", {
+          pageIndex,
+          pending: existing.pendingRegions.size,
+          total: existing.regionsTotal,
+        });
+        for (const regionIndex of existing.pendingRegions) {
+          const region = existing.regions[regionIndex];
+          if (!region) continue;
+          queuesRef.current?.ocr.push(
+            { url, pageIndex, regionIndex, region, detection, generation },
+            `${url}:${regionIndex}:${region.x1}:${region.y1}:${region.classId}`,
+          );
+        }
+        return;
+      }
+    }
     if (existing && existing.ocrComplete) {
       const bubbles = [...existing.bubbles.values()];
       for (const bubble of bubbles) {
@@ -1007,18 +1054,11 @@ export function useReaderTranslation({
           slot.pasteBox.y2 > slot.pasteBox.y1,
       );
       const ocrModel = getLocalOcrModel(
-        modelIdForLanguage(configRef.current.sourceLanguage),
+        ocrModelId,
       );
       let regions: OcrRegion[];
       if (ocrModel?.engine === "ctc") {
-        const clean = detection.boxes
-          .filter((box) => box.classId === 0)
-          .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
-          .slice(0, MAX_CROPS_PER_PAGE)
-          .sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
-        regions = clean.length
-          ? clean
-          : prepareTextRegions(detection.boxes, MAX_CROPS_PER_PAGE);
+        regions = preparePaddleRegions(detection.boxes, MAX_CROPS_PER_PAGE);
       } else {
         regions = prepareTextRegions(detection.boxes, MAX_CROPS_PER_PAGE);
       }
@@ -1045,6 +1085,7 @@ export function useReaderTranslation({
         imageWidth: detection.imageWidth,
         imageHeight: detection.imageHeight,
         slots,
+        regions,
         bubbles: new Map(),
         items: [],
         regionsTotal: regions.length,
@@ -1113,6 +1154,7 @@ export function useReaderTranslation({
         regions: [region],
         language: configRef.current.sourceLanguage,
         maxCrops: 1,
+        concurrency: effectiveOcrBubbleWorkers,
       });
       if (!isCurrentRun(generation)) return;
       page.items.push(...result.items);
@@ -1498,7 +1540,7 @@ export function useReaderTranslation({
       ),
       ocr: new WorkQueue<OcrTask>(
         "bubble-ocr",
-        ocrBubbleWorkers,
+        effectiveOcrBubbleWorkers,
         (task, slot) => workersRef.current.ocr(task, slot),
         onQueueChange,
       ),
@@ -1517,7 +1559,7 @@ export function useReaderTranslation({
     };
     console.log("[reader][tr] queues created", {
       scan: ocrPageWorkers,
-      ocr: ocrBubbleWorkers,
+      ocr: effectiveOcrBubbleWorkers,
       free: freeRequestConcurrency,
       ai: aiWorkerCount,
     });
@@ -1529,8 +1571,8 @@ export function useReaderTranslation({
   }, [queues, ocrPageWorkers]);
 
   useEffect(() => {
-    queues.ocr.setConcurrency(ocrBubbleWorkers);
-  }, [queues, ocrBubbleWorkers]);
+    queues.ocr.setConcurrency(effectiveOcrBubbleWorkers);
+  }, [queues, effectiveOcrBubbleWorkers]);
 
   useEffect(() => {
     queues.free.setConcurrency(freeRequestConcurrency);

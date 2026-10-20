@@ -47,7 +47,9 @@ Mangora is an Android application for reading material obtained through extensio
 3. The on-device OCR model for the selected language reads those regions.
 4. If translation is enabled, Mangora translates recognized text and displays it as an overlay.
 
-Translation is **off by default**. OCR runs entirely on-device with one of two downloadable models, chosen from the chapter language: **Baberu OCR** for Japanese, Chinese and English, or **PP-OCRv5 Korean** for Korean and Latin scripts. Download either pack from **Settings > OCR models**.
+Translation is **off by default**. OCR runs entirely on-device with one of two downloadable models, chosen from the chapter language: **Baberu OCR** for Japanese, Chinese and English, or **PP-OCRv5 Korean** for Korean and Latin scripts. PP-OCRv5 pairs a DBNet text-line detector with the CTC recognizer (~18 MB total) so multi-line bubbles are split into lines before recognition. Download either pack from **Settings > OCR models**.
+
+Baberu can run several OCR workers in parallel. Each worker owns an independent ONNX engine set and uses about 121 MB of RAM, so the OCR settings slider goes from 1 to 5 and defaults to 3. PP-OCR stays at one worker until its detector + recognizer throughput has been measured on-device.
 
 There are two translation engines:
 
@@ -63,7 +65,7 @@ The reader provides four translation modes:
 
 OCR and translation are distinct. Text recognition never leaves the device. Free or AI translation still sends recognized text to the respective translation service.
 
-Translation controls in the reader include **Bubbles per batch** (1-5, Auto bubbles only), **Max context**, AI worker count, a collapsible **API usage** meter for Gemini RPM/TPM/RPD, and a collapsible **Pipeline metrics** table for queue and result counts. Downloaded chapters can also be queued for background processing from **Settings > Translation queue**; pages with a cached result are skipped. Pre-translation currently processes one page at a time and does not use Auto bubbles batching.
+Translation controls in the reader include **Bubbles per batch** (1-5, Auto bubbles only), **Bubble workers** (1-5, default 3, with the effective RAM estimate), **Max context**, AI worker count, a collapsible **API usage** meter for Gemini RPM/TPM/RPD, and a collapsible **Pipeline metrics** table for queue and result counts. Downloaded chapters can also be queued for background processing from **Settings > Translation queue**; pages with a cached result are skipped. Pre-translation processes one page at a time but uses its own **Bubble workers** slider (1-5, default 5) to OCR several bubbles inside that page concurrently. PP-OCR jobs are clamped to one worker. Paused jobs resume from their stored next-page index, so cached pages are not recounted or re-notified. Auto bubbles batching is reader-only.
 
 Translation results and OCR text used for overlays may be cached in the local SQLite database. The user can clear the translation cache from Settings.
 
@@ -168,7 +170,7 @@ The project uses Expo SDK 54, React Native 0.81, React 19, Expo Router, TypeScri
 - `components/reader/ReaderTranslationPanel.tsx` - translation sheet, mode/engine controls, API usage, and pipeline metrics.
 - `components/settings/`, `components/translation/` - settings sections and the downloaded-chapter pre-translation dialog.
 - `utils/reader/useReaderTranslation.ts` - reader translation orchestrator, queues, workers, batching, and RAM page store.
-- `services/ocr/` - on-device OCR engines, model catalog/downloads, ONNX Runtime setup, and crop types.
+- `services/ocr/` - on-device OCR engine pool (`localOcr.ts`), Baberu/CTC engines, PP-OCR DBNet line detector (`paddleDetEngine.ts`), model catalog/downloads, ONNX Runtime setup, and crop types.
 - `services/yolo/` - text-region detection.
 - `services/translation/` - free and Gemini engines, page/bubble translation helpers, quota accounting, runtime lock, language mapping, pre-translation queue, and reusable work queue.
 - `services/extensions/` - repository catalog parsing, extension installation, and the native bridge.

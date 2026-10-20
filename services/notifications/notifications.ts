@@ -19,6 +19,12 @@ const EVENT_CHANNEL_ID = "mangora-events";
 const TRANSLATION_CATEGORY = "translation-queue";
 let translationNotificationId: string | null = null;
 let responseListenerInstalled = false;
+let pendingTranslationProgress: {
+  job: TranslationNotificationJob;
+  current: number;
+  total: number;
+} | null = null;
+let translationProgressPump: Promise<void> | null = null;
 
 let permissionGranted = false;
 
@@ -135,33 +141,69 @@ interface TranslationNotificationJob {
   pagesFailed: number;
 }
 
-/** Live pre-translate progress notification (one at a time). */
-export async function notifyTranslationProgress(
+function pumpTranslationProgress(): Promise<void> {
+  if (translationProgressPump) return translationProgressPump;
+  translationProgressPump = (async () => {
+    while (pendingTranslationProgress) {
+      const next = pendingTranslationProgress;
+      pendingTranslationProgress = null;
+      if (!permissionGranted) continue;
+      try {
+        if (translationNotificationId) {
+          await Notifications.dismissNotificationAsync(
+            translationNotificationId,
+          );
+          translationNotificationId = null;
+        }
+        translationNotificationId = await Notifications.scheduleNotificationAsync(
+          {
+            content: {
+              title: `Pre-translating ${next.job.chapterTitle}`,
+              body: `${next.current}/${next.total} pages \u00b7 ${next.job.mangaTitle}${
+                next.job.pagesFailed > 0
+                  ? ` \u00b7 ${next.job.pagesFailed} failed`
+                  : ""
+              }`,
+              data: { kind: "translation-queue" },
+              categoryIdentifier: TRANSLATION_CATEGORY,
+              autoDismiss: next.job.status === "completed",
+              sound: false,
+            },
+            trigger: null,
+          },
+        );
+      } catch {
+        // Progress notifications never affect the job.
+      }
+    }
+  })().finally(() => {
+    translationProgressPump = null;
+    if (pendingTranslationProgress) void pumpTranslationProgress();
+  });
+  return translationProgressPump;
+}
+
+/**
+ * Live pre-translate progress notification (one at a time). Bursts collapse
+ * to the newest value, so resuming a long job cannot stack notifications.
+ */
+export function notifyTranslationProgress(
   job: TranslationNotificationJob,
   current: number,
   total: number,
 ): Promise<void> {
-  if (!permissionGranted) return;
-  try {
-    if (translationNotificationId) {
-      await Notifications.dismissNotificationAsync(translationNotificationId);
-    }
-    translationNotificationId = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: `Pre-translating ${job.chapterTitle}`,
-        body: `${current}/${total} pages \u00b7 ${job.mangaTitle}${
-          job.pagesFailed > 0 ? ` \u00b7 ${job.pagesFailed} failed` : ""
-        }`,
-        data: { kind: "translation-queue" },
-        categoryIdentifier: TRANSLATION_CATEGORY,
-        autoDismiss: job.status === "completed",
-        sound: false,
-      },
-      trigger: null,
-    });
-  } catch {
-    // Progress notifications never affect the job.
-  }
+  if (!permissionGranted) return Promise.resolve();
+  pendingTranslationProgress = {
+    job: {
+      chapterTitle: job.chapterTitle,
+      mangaTitle: job.mangaTitle,
+      status: job.status,
+      pagesFailed: job.pagesFailed,
+    },
+    current,
+    total,
+  };
+  return pumpTranslationProgress();
 }
 
 /** Reminder when the JS queue pauses because the app left the foreground. */

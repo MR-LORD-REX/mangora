@@ -228,6 +228,26 @@ export function prepareTextRegions(regions: OcrRegion[], maxCrops = 24): OcrRegi
     .sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
 }
 
+/**
+ * Region selector for the Paddle detector + recognizer pair.
+ *
+ * DBNet finds text lines *inside* whatever crop it receives, so a whole YOLO
+ * bubble is the correct input. Clean-text boxes are only a fallback for pages
+ * where YOLO emitted no bubble/messy boxes at all.
+ */
+export function preparePaddleRegions(
+  regions: OcrRegion[],
+  maxCrops = 24,
+): OcrRegion[] {
+  const bubbles = prepareTextRegions(regions, maxCrops);
+  if (bubbles.length > 0) return bubbles;
+  return regions
+    .filter((region) => region.classId === 0)
+    .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
+    .slice(0, Math.max(1, maxCrops))
+    .sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
+}
+
 
 const CROP_PADDING_PX = 3;
 

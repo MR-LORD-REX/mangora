@@ -31,6 +31,13 @@ import {
   type ReaderTranslationEngine,
 } from "@/services/settings/settingsStore";
 import {
+  clampOcrBubbleWorkers,
+  getLocalOcrModel,
+  maxOcrBubbleWorkers,
+  modelIdForLanguage,
+  ocrBubbleRamMb,
+} from "@/services/ocr/ocrModels";
+import {
   READER_TARGET_OPTIONS,
   isSameEngineLanguage,
 } from "@/services/translation/translationLang";
@@ -62,6 +69,7 @@ export default function PretranslateDialog({
   const [freeConcurrency, setFreeConcurrency] = useState(2);
   const [aiWorkers, setAiWorkers] = useState(1);
   const [maxContext, setMaxContext] = useState(10);
+  const [bubbleWorkers, setBubbleWorkers] = useState(5);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -85,6 +93,7 @@ export default function PretranslateDialog({
         setFreeConcurrency(settings.freeRequestConcurrency);
         setAiWorkers(settings.aiWorkerCount);
         setMaxContext(settings.aiMaxContextPages);
+        setBubbleWorkers(settings.pretranslateBubbleWorkers);
         console.log("[pretranslate] dialog opened", {
           chapterId: candidate.target.chapterId,
           pages: uris.length,
@@ -104,6 +113,14 @@ export default function PretranslateDialog({
   if (!candidate) return null;
 
   const downloaded = pages.length > 0;
+  const ocrModelId = modelIdForLanguage(source);
+  const ocrModel = getLocalOcrModel(ocrModelId);
+  const maxBubbleWorkers = maxOcrBubbleWorkers(ocrModelId);
+  const effectiveBubbleWorkers = Math.min(
+    maxBubbleWorkers,
+    Math.max(1, bubbleWorkers),
+  );
+  const bubbleRamMb = ocrBubbleRamMb(ocrModelId, effectiveBubbleWorkers);
 
   const confirm = async () => {
     if (!downloaded) return;
@@ -122,6 +139,10 @@ export default function PretranslateDialog({
         freeRequestConcurrency: freeConcurrency,
         aiWorkerCount: aiWorkers,
         aiMaxContextPages: maxContext,
+        pretranslateBubbleWorkers: clampOcrBubbleWorkers(
+          ocrModelId,
+          effectiveBubbleWorkers,
+        ),
       });
       if (engine === "ai" && !next.geminiApiKey.trim()) {
         setNotice(
@@ -215,6 +236,12 @@ export default function PretranslateDialog({
             </>
           ) : (
             <>
+              <ScrollView
+                style={styles.cardScroll}
+                contentContainerStyle={styles.cardScrollContent}
+                nestedScrollEnabled
+                showsVerticalScrollIndicator={false}
+              >
               <Text style={styles.message}>
                 It is a pretranslate feature, for translating downloaded
                 chapters in advance for seamless reading. Adjust the settings,
@@ -222,7 +249,7 @@ export default function PretranslateDialog({
               </Text>
 
               {showSettings ? (
-                <ScrollView style={styles.settingsScroll} nestedScrollEnabled>
+                <>
                   <Text style={styles.sectionLabel}>Engine</Text>
                   {(["free", "ai"] as ReaderTranslationEngine[]).map((value) => (
                     <Pressable
@@ -326,11 +353,35 @@ export default function PretranslateDialog({
                       />
                     </>
                   )}
-                </ScrollView>
+
+                  <Text style={styles.sectionLabel}>Bubble workers</Text>
+                  <Text style={styles.bubbleWorkersValue}>
+                    {effectiveBubbleWorkers}
+                    {bubbleRamMb !== null
+                      ? ` \u00b7 ~${bubbleRamMb} MB`
+                      : " \u00b7 1 engine"}
+                  </Text>
+                  <DotSlider
+                    value={effectiveBubbleWorkers}
+                    min={1}
+                    max={maxBubbleWorkers}
+                    step={1}
+                    dotCount={maxBubbleWorkers}
+                    disabled={maxBubbleWorkers <= 1}
+                    leftLabel="1 bubble"
+                    rightLabel={`${maxBubbleWorkers} bubble${maxBubbleWorkers === 1 ? "" : "s"}`}
+                    onChange={setBubbleWorkers}
+                  />
+                  <Text style={styles.settingsHint}>
+                    {ocrModel?.engine === "baberu"
+                      ? "Each worker loads its own Baberu engine, so OCR runs in parallel. Budget about 121 MB per worker."
+                      : "PP-OCR keeps one detector + recognizer worker until its throughput has been measured."}
+                  </Text>
+                </>
               ) : null}
 
               {notice ? <Text style={styles.notice}>{notice}</Text> : null}
-
+              </ScrollView>
               <View style={styles.actions}>
                 <Pressable
                   style={[styles.button, styles.settingsButton]}
@@ -372,7 +423,7 @@ const styles = StyleSheet.create({
   card: {
     width: "100%",
     maxWidth: 460,
-    maxHeight: "86%",
+    maxHeight: "90%",
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
@@ -398,7 +449,20 @@ const styles = StyleSheet.create({
     marginTop: 14,
     marginBottom: 6,
   },
-  settingsScroll: { maxHeight: 300 },
+  cardScroll: { flexShrink: 1 },
+  cardScrollContent: { paddingBottom: 6 },
+  bubbleWorkersValue: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: "800",
+    marginBottom: 6,
+  },
+  settingsHint: {
+    color: colors.textFaint,
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 8,
+  },
   radioRow: {
     flexDirection: "row",
     alignItems: "center",

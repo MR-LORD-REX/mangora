@@ -74,7 +74,7 @@ export interface AppSettings {
   readerLanguage: string;
   /** Translation engine: free Google endpoint or Gemini. */
   readerTranslationEngine: ReaderTranslationEngine;
-  /** Translation mode: off / single page / auto. */
+  /** Translation mode: off / single page / Auto pages / Auto bubbles. */
   readerTranslationMode: ReaderTranslationMode;
   /** Gemini API key used by AI translation ("" = not set). */
   geminiApiKey: string;
@@ -85,8 +85,14 @@ export interface AppSettings {
    * Applied from Translation options -> OCR settings.
    */
   ocrPageWorkers: number;
-  /** OCR pipeline: concurrent bubble OCR workers (1..2, default 1). */
+  /**
+   * OCR pipeline: concurrent bubble OCR workers (1..5, default 3). Baberu
+   * supports up to 5 independent engines (~121 MB each); PP-OCR is clamped
+   * to 1 until its detector + recognizer throughput has been measured.
+   */
   ocrBubbleWorkers: number;
+  /** Pre-translate: concurrent bubble OCR workers (1..5, default 5). */
+  pretranslateBubbleWorkers: number;
   /** OCR pipeline: pages queued ahead of the visible page (1..3, default 2). */
   ocrLookahead: number;
   /** Free TR: concurrent Google Translate requests (1..5, default 2). */
@@ -185,7 +191,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   geminiApiKey: "",
   geminiModelId: GEMINI_DEFAULT_MODEL,
   ocrPageWorkers: 2,
-  ocrBubbleWorkers: 2,
+  ocrBubbleWorkers: 3,
+  pretranslateBubbleWorkers: 5,
   ocrLookahead: 2,
   freeRequestConcurrency: 2,
   aiWorkerCount: 1,
@@ -340,7 +347,10 @@ function sanitize(raw: unknown): AppSettings {
       ? value.geminiModelId
       : GEMINI_DEFAULT_MODEL,
     ocrPageWorkers: Math.round(num(value.ocrPageWorkers, 2, 1, 2)),
-    ocrBubbleWorkers: Math.round(num(value.ocrBubbleWorkers, 1, 1, 3)),
+    ocrBubbleWorkers: Math.round(num(value.ocrBubbleWorkers, 3, 1, 5)),
+    pretranslateBubbleWorkers: Math.round(
+      num(value.pretranslateBubbleWorkers, 5, 1, 5),
+    ),
     ocrLookahead: Math.round(num(value.ocrLookahead, 2, 1, 3)),
     freeRequestConcurrency: Math.round(
       num(value.freeRequestConcurrency, 2, 1, 5),

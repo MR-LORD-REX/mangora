@@ -128,7 +128,8 @@ export default function TranslationQueueSection({
 
 function JobRow({ job }: { job: PretranslateJob }) {
   const total = job.pageUris.length;
-  const progress = total > 0 ? Math.min(1, job.pagesDone / total) : 0;
+  const done = Math.min(total, Math.max(0, job.pagesDone));
+  const progress = total > 0 ? done / total : 0;
   return (
     <View style={styles.row}>
       <View style={styles.rowHead}>
@@ -154,13 +155,13 @@ function JobRow({ job }: { job: PretranslateJob }) {
       <View style={styles.rowFooter}>
         <Text style={styles.statusText}>
           {job.status === "running"
-            ? `Page ${job.currentPage ?? job.pagesDone + 1} of ${total}`
+            ? `Page ${Math.min(total, job.currentPage ?? done + 1)} of ${total}`
             : job.status === "paused"
               ? "Paused"
               : "Queued"}
         </Text>
         <Text style={styles.metaText}>
-          {job.pagesDone}/{total} pages
+          {done}/{total} pages
           {job.pagesFailed ? ` · ${job.pagesFailed} failed` : ""}
         </Text>
       </View>
