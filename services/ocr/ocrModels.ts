@@ -7,11 +7,11 @@
  * bundled with the APK: Settings -> OCR models downloads only the provider the
  * user needs into the app's documents directory.
  *
- *   baberu        - vision encoder + INT8 KV decoder, trained for Japanese,
- *                   Chinese and English manga bubbles. 122 MB (INT4 vision).
- *   paddle-korean - PP-OCRv5 Korean mobile recognizer (CTC) plus the
- *                   PP-OCRv5 mobile text-line detector (DBNet). Korean + Latin
- *                   scripts. About 18 MB total.
+ *   paddle-v6     - PP-OCRv6 medium CTC recognizer plus the PP-OCRv5 mobile
+ *                   text-line detector (DBNet). Japanese, Chinese and English
+ *                   (including vertical text). About 82 MB.
+ *   paddle-korean - PP-OCRv5 Korean mobile recognizer (CTC) plus the same
+ *                   detector. Korean + Latin scripts. About 18 MB total.
  *
  * URLs point at the publishers' Hugging Face repositories so the app never
  * hosts model weights itself. Keep `bytes` in sync with the upstream files:
@@ -19,9 +19,9 @@
  * ---------------------------------------------------------------------------
  */
 
-export type LocalOcrModelId = "baberu" | "paddle-korean";
+export type LocalOcrModelId = "paddle-v6" | "paddle-korean";
 
-export type LocalOcrEngine = "baberu" | "ctc";
+export type LocalOcrEngine = "ctc";
 
 export interface LocalOcrModelFile {
   /** Relative path inside the model directory (also used as the ONNX name). */
@@ -49,32 +49,28 @@ export interface LocalOcrModelDef {
   homepage: string;
 }
 
-const BABERU_BASE = "https://huggingface.co/genshiai-daichi/baberu-ocr/resolve/main";
+const PADDLE_V6_REC_BASE =
+  "https://huggingface.co/PaddlePaddle/PP-OCRv6_medium_rec_onnx/resolve/50c7eacafc52fa7bcf4194e8cd08e46f8558504b";
 const PADDLE_KOREAN_BASE =
   "https://huggingface.co/PaddlePaddle/korean_PP-OCRv5_mobile_rec_onnx/resolve/main";
 const PADDLE_DET_BASE =
-  "https://huggingface.co/PaddlePaddle/PP-OCRv5_mobile_det_onnx/resolve/main";
+  "https://huggingface.co/PaddlePaddle/PP-OCRv5_mobile_det_onnx/resolve/e6f4fa85f00e168c862bc462aebca69eef9b3d3d";
 
-const BABERU_FILES: LocalOcrModelFile[] = [
+const PADDLE_V6_FILES: LocalOcrModelFile[] = [
   {
-    path: "onnx/vision_int4.onnx",
-    url: `${BABERU_BASE}/onnx/vision_int4.onnx`,
-    bytes: 52_293_486,
+    path: "detection.onnx",
+    url: `${PADDLE_DET_BASE}/inference.onnx`,
+    bytes: 4_826_518,
   },
   {
-    path: "onnx/decoder_prefill_int8.onnx",
-    url: `${BABERU_BASE}/onnx/decoder_prefill_int8.onnx`,
-    bytes: 35_133_596,
+    path: "inference.onnx",
+    url: `${PADDLE_V6_REC_BASE}/inference.onnx`,
+    bytes: 76_554_979,
   },
   {
-    path: "onnx/decoder_step_int8.onnx",
-    url: `${BABERU_BASE}/onnx/decoder_step_int8.onnx`,
-    bytes: 34_715_466,
-  },
-  {
-    path: "tokenizer/vocab.json",
-    url: `${BABERU_BASE}/tokenizer/vocab.json`,
-    bytes: 130_761,
+    path: "inference.yml",
+    url: `${PADDLE_V6_REC_BASE}/inference.yml`,
+    bytes: 150_580,
   },
 ];
 
@@ -102,16 +98,17 @@ function totalBytes(files: LocalOcrModelFile[]): number {
 
 export const LOCAL_OCR_MODELS: LocalOcrModelDef[] = [
   {
-    id: "baberu",
-    label: "Baberu OCR",
-    detail: "Manga bubble OCR for Japanese, Chinese and English.",
-    engine: "baberu",
+    id: "paddle-v6",
+    label: "PP-OCRv6 Medium",
+    detail:
+      "PaddleOCR v6 medium recognizer with a PP-OCRv5 line detector for Japanese, Chinese and English.",
+    engine: "ctc",
     languages: ["ja", "zh", "zh-tw", "en"],
     languageLabel: "Japanese / Chinese / English",
-    bytes: totalBytes(BABERU_FILES),
-    files: BABERU_FILES,
+    bytes: totalBytes(PADDLE_V6_FILES),
+    files: PADDLE_V6_FILES,
     license: "Apache-2.0",
-    homepage: "https://huggingface.co/genshiai-daichi/baberu-ocr",
+    homepage: "https://huggingface.co/PaddlePaddle/PP-OCRv6_medium_rec_onnx",
   },
   {
     id: "paddle-korean",
@@ -161,15 +158,15 @@ function baseLanguageCode(code: string | null | undefined): string {
 /**
  * Provider that should read a chapter written in `code`.
  *
- * Japanese, Chinese and English are the Baberu languages. Korean and every
+ * Japanese, Chinese and English use PP-OCRv6 medium. Korean and every
  * Latin-script language use the PP-OCRv5 Korean recognizer. Unknown codes
- * fall back to Baberu (it is the safer multi-script model).
+ * fall back to PP-OCRv6 because its CJK dictionary is the wider one.
  */
 export function modelIdForLanguage(code: string | null | undefined): LocalOcrModelId {
   const base = baseLanguageCode(code);
   if (base === "ko") return "paddle-korean";
-  if (base === "en") return "baberu";
-  if (base === "ja" || base === "jp" || base === "zh") return "baberu";
+  if (base === "en") return "paddle-v6";
+  if (base === "ja" || base === "jp" || base === "zh") return "paddle-v6";
   const latin = new Set([
     "fr",
     "de",
@@ -185,7 +182,7 @@ export function modelIdForLanguage(code: string | null | undefined): LocalOcrMod
     "tl",
     "fil",
   ]);
-  return latin.has(base) ? "paddle-korean" : "baberu";
+  return latin.has(base) ? "paddle-korean" : "paddle-v6";
 }
 
 /** Formats a byte count for the Settings rows (decimal megabytes). */
@@ -200,12 +197,12 @@ export function modelForLanguageLabel(code: string | null | undefined): string {
   return getLocalOcrModel(modelIdForLanguage(code))?.label ?? "OCR model";
 }
 
-/** Baberu keeps one set of ONNX sessions per worker (~121 MB each). */
-export const BABERU_RAM_MB_PER_ENGINE = 121;
-
-/** A Paddle engine contains both detector and recognizer sessions. */
+/**
+ * Slider maximum. Both PP-OCR providers use the value as the recognition
+ * batch size, not a count of independent engines.
+ */
 export function maxOcrBubbleWorkers(id: LocalOcrModelId): number {
-  return getLocalOcrModel(id)?.engine === "baberu" ? 5 : 1;
+  return getLocalOcrModel(id) ? 8 : 1;
 }
 
 /** Clamp a requested bubble-worker count to the selected engine's limit. */
@@ -217,11 +214,23 @@ export function clampOcrBubbleWorkers(
   return Math.min(limit, Math.max(1, Math.round(workers)));
 }
 
-/** Estimated resident memory for Baberu workers, or null for single-engine PP. */
-export function ocrBubbleRamMb(
+/**
+ * A Paddle engine contains one detector + one recognizer session. Bubble
+ * "workers" therefore size a batch, not a pool of extra engines.
+ */
+export function ocrEngineConcurrency(
   id: LocalOcrModelId,
   workers: number,
-): number | null {
-  if (getLocalOcrModel(id)?.engine !== "baberu") return null;
-  return clampOcrBubbleWorkers(id, workers) * BABERU_RAM_MB_PER_ENGINE;
+): number {
+  void id;
+  void workers;
+  return 1;
+}
+
+/** Text lines sent per recognizer forward pass. */
+export function ocrRecognitionBatchSize(
+  id: LocalOcrModelId,
+  workers: number,
+): number {
+  return getLocalOcrModel(id) ? clampOcrBubbleWorkers(id, workers) : 1;
 }

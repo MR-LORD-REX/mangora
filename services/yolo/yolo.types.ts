@@ -10,6 +10,8 @@
  * ---------------------------------------------------------------------------
  */
 
+import type { BubbleMask } from "@/services/translation/translation.types";
+
 /** Class id order matches the model's names metadata. */
 export const YOLO_CLASS_NAMES = ["clean_text", "messy_text", "text_bubble"] as const;
 export type YoloClassName = (typeof YOLO_CLASS_NAMES)[number];
@@ -30,6 +32,11 @@ export interface Detection {
   confidence: number;
   /** Index into YOLO_CLASS_NAMES. */
   classId: number;
+  /**
+   * Optional instance mask. The Manga109 segmenter fills this for every
+   * speech bubble; the YOLO text detector leaves it undefined.
+   */
+  mask?: BubbleMask;
 }
 
 /** Normalized result of one detection pass. */
@@ -40,6 +47,8 @@ export interface DetectionResult {
   imageHeight: number;
   /** Detections sorted by confidence, highest first. */
   boxes: Detection[];
+  /** Which detector produced the boxes (diagnostics / overlay fallback). */
+  detector?: "manga109" | "yolo";
 }
 
 /** Per-call knobs for the detector. */

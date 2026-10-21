@@ -19,11 +19,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import ReaderBottomBar from "@/components/reader/ReaderBottomBar";
+import AddToLibraryButton from "@/components/library/AddToLibraryButton";
 import { ReaderDownloadButton } from "@/components/downloader/DownloadButtons";
 import {
   applyFilterExclusivity,
   DEFAULT_READER_CHROME,
+  isGapLessMode,
   isHorizontalMode,
+  isLongStripMode,
   isPagedMode,
   orientationToLock,
   type ReaderChromeSettings,
@@ -43,6 +46,7 @@ import {
   canonicalChineseForReader,
 } from "@/components/reader/readerLanguages";
 import ReaderPage from "@/components/reader/ReaderPage";
+import ReaderPageActionsSheet from "@/components/reader/ReaderPageActionsSheet";
 import SingleTranslateFab from "@/components/reader/SingleTranslateFab";
 import ReaderReadingModeSheet from "@/components/reader/ReaderReadingModeSheet";
 import ReaderRotationSheet from "@/components/reader/ReaderRotationSheet";
@@ -82,10 +86,12 @@ import {
   GEMINI_DEFAULT_MODEL,
   type GeminiModelId,
 } from "@/services/translation/geminiModels";
-import { validateGeminiApiKey } from "@/services/translation/geminiTranslator";
 import { chapterNumberLabel, chapterTitleFromId } from "@/utils/reader/chapterLabel";
 import { imageHeadersForPage } from "@/utils/reader/imageHeaders";
-import { loadChapterPages } from "@/utils/reader/loadChapterPages";
+import {
+  loadAdjacentChapters,
+  loadChapterPages,
+} from "@/utils/reader/loadChapterPages";
 import { pageGeometry, type PageDims } from "@/utils/reader/pageGeometry";
 import { readerBackgroundColor } from "@/utils/reader/readerBackground";
 import {
@@ -93,14 +99,25 @@ import {
   chromeToSettingsPatch,
 } from "@/utils/reader/readerChromeSettings";
 import {
-  getDownloadedPageUris,
-  getDownloadedPageUrisByProviderChapter,
+  getDownloadedChapter,
   readerTarget,
 } from "@/services/downloader";
 import type { DownloadCandidate } from "@/services/downloader";
+import {
+  buildReaderDisplayItems,
+  type ReaderDisplayItem,
+} from "@/utils/reader/readerItems";
 import { resolveReaderIdentity } from "@/utils/reader/readerIdentity";
 import { prepareReaderOpen } from "@/services/library/readerTracking";
 import { useReaderTranslation } from "@/utils/reader/useReaderTranslation";
+import {
+  enforceReaderCacheLimit,
+  materializeDownloadedReaderChapter,
+  materializeNetworkReaderChapter,
+  pinReaderCacheChapter,
+  readValidReaderCacheChapter,
+  releaseReaderCacheChapter,
+} from "@/services/reader/readerCache";
 
 function paramString(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -211,13 +228,15 @@ export default function GenericReader() {
   const [loading, setLoading] = useState(true);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [autoScroll, setAutoScroll] = useState(false);
-  const listRef = useRef<FlatList<string>>(null);
+  const listRef = useRef<FlatList<ReaderDisplayItem>>(null);
   const [chrome, setChrome] = useState<ReaderChromeSettings>(
     DEFAULT_READER_CHROME,
   );
   const [defaultZoomScale, setDefaultZoomScale] = useState(1);
   const [pageDims, setPageDims] = useState<Record<string, PageDims>>({});
   const lastPageIndexRef = useRef(0);
+  const lastDisplayIndexRef = useRef(0);
+  const [currentDisplayIndex, setCurrentDisplayIndex] = useState(0);
   const pagedModeRef = useRef(false);
 
   /** Records the decoded pixel size of a page once known (getSize/onLoad). */
@@ -240,10 +259,64 @@ export default function GenericReader() {
     height: screenHeight,
   });
 
+  // Resolve headers once per page list. Passing a freshly looked-up object on
+  // every render would retrigger SubsamplingStripImage's download effect when
+  // unrelated chrome settings (such as crop) change.
+  const pageImageHeaders = useMemo(() => {
+    const byUrl = new Map<string, Record<string, string> | undefined>();
+    for (const url of pages) {
+      byUrl.set(url, imageHeadersForPage(source, url));
+    }
+    return byUrl;
+  }, [pages, source]);
+
+  const displayItems = useMemo(
+    () =>
+      buildReaderDisplayItems(pages, pageDims, {
+        splitWidePages: chrome.splitWidePages,
+        rotateWidePagesToFit: chrome.rotateWidePagesToFit,
+        pagedDirection: chrome.pagedDirection,
+      }),
+    [
+      chrome.pagedDirection,
+      chrome.rotateWidePagesToFit,
+      chrome.splitWidePages,
+      pageDims,
+      pages,
+    ],
+  );
+  const displayItemsRef = useRef(displayItems);
+  displayItemsRef.current = displayItems;
+  const previousDisplayItemsRef = useRef(displayItems);
+
+  /** First FlatList row for each source page (used by the page scrubber). */
+  const firstDisplayIndexByPage = useMemo(() => {
+    const first = new Array<number>(pages.length).fill(0);
+    for (let index = displayItems.length - 1; index >= 0; index -= 1) {
+      first[displayItems[index].pageIndex] = index;
+    }
+    return first;
+  }, [displayItems, pages.length]);
+
+  // A split can change the row count after the first image measurement.
+  // Keep the visible source page selected while moving to its first half.
+  useEffect(() => {
+    const item = displayItems[currentDisplayIndex];
+    if (item && item.pageIndex === currentPageIndex) return;
+    const next = firstDisplayIndexByPage[currentPageIndex] ?? 0;
+    lastDisplayIndexRef.current = next;
+    setCurrentDisplayIndex(next);
+  }, [
+    currentDisplayIndex,
+    currentPageIndex,
+    displayItems,
+    firstDisplayIndexByPage,
+  ]);
+
   const [readingModeSheetOpen, setReadingModeSheetOpen] = useState(false);
   const [rotationSheetOpen, setRotationSheetOpen] = useState(false);
   const [pendingReadingMode, setPendingReadingMode] =
-    useState<ReaderReadingMode>("scrollVertical");
+    useState<ReaderReadingMode>("webtoon");
   const [pendingDirection, setPendingDirection] =
     useState<ReaderPagedDirection>("ltr");
   const [pendingOrientation, setPendingOrientation] =
@@ -271,19 +344,19 @@ export default function GenericReader() {
   const [geminiApiKey, setGeminiApiKey] = useState("");
   const [geminiModelId, setGeminiModelId] =
     useState<GeminiModelId>(GEMINI_DEFAULT_MODEL);
-  const [ocrPageWorkers, setOcrPageWorkers] = useState(2);
-  const [ocrBubbleWorkers, setOcrBubbleWorkers] = useState(3);
+  const [autoModelSwitch, setAutoModelSwitch] = useState(false);
+  const [ocrBubbleWorkers, setOcrBubbleWorkers] = useState(8);
   const [ocrLookahead, setOcrLookahead] = useState(2);
-  const [freeRequestConcurrency, setFreeRequestConcurrency] = useState(2);
-  const [aiWorkerCount, setAiWorkerCount] = useState(1);
   const [aiMaxContextPages, setAiMaxContextPages] = useState(10);
-  const [aiBubbleBatchSize, setAiBubbleBatchSize] = useState(3);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const pinnedChapterRef = useRef<string | null>(null);
   const [translationOpen, setTranslationOpen] = useState(false);
   const [translationTab, setTranslationTab] =
     useState<ReaderTranslationTab>("trMode");
 
   const [configOpen, setConfigOpen] = useState(false);
   const [configTab, setConfigTab] = useState<ReaderConfigTab>("reading");
+  const [pageActionsUrl, setPageActionsUrl] = useState<string | null>(null);
   const [prevChapterId, setPrevChapterId] = useState<string | null>(null);
   const [nextChapterId, setNextChapterId] = useState<string | null>(null);
   const readerRecordRef = useRef<{
@@ -327,13 +400,14 @@ export default function GenericReader() {
     targetLanguage,
     geminiApiKey,
     geminiModelId,
-    ocrPageWorkers,
     ocrBubbleWorkers,
     ocrLookahead,
-    freeRequestConcurrency,
-    aiWorkerCount,
     aiMaxContextPages,
-    aiBubbleBatchSize,
+    autoModelSwitch,
+    onAutoModelSwitchDisabled: () => {
+      setAutoModelSwitch(false);
+      updateSettings({ readerAutoModelSwitch: false }).catch(console.error);
+    },
     onTranslationSetupRequired: openTranslationSetup,
   });
 
@@ -380,9 +454,15 @@ export default function GenericReader() {
         pageIndex: lastPageIndex,
       });
       if (!cancelled) {
+        const displayIndex = displayItemsRef.current.findIndex(
+          (item) => item.pageIndex === lastPageIndex,
+        );
+        const targetIndex = displayIndex >= 0 ? displayIndex : 0;
+        lastDisplayIndexRef.current = targetIndex;
+        setCurrentDisplayIndex(targetIndex);
         requestAnimationFrame(() => {
           listRef.current?.scrollToIndex({
-            index: lastPageIndex,
+            index: targetIndex,
             animated: false,
           });
         });
@@ -470,55 +550,73 @@ export default function GenericReader() {
         return;
       }
       setLoading(true);
+      setLoadError(null);
       setPrevChapterId(null);
       setNextChapterId(null);
       setImageWindow(new Set([0, 1, 2, 3, 4]));
       setConfigOpen(false);
       resetTranslationPipeline();
+      if (pinnedChapterRef.current) {
+        releaseReaderCacheChapter(pinnedChapterRef.current);
+        pinnedChapterRef.current = null;
+      }
 
       try {
-        // Prefer the downloaded copy: it also keeps the chapter readable offline.
-        try {
-          const localPages = await getDownloadedPageUris(
-            readerIdentity.chapterId,
+        // Pin this chapter before any extraction/download so the LRU pass
+        // cannot remove pages while the reader is using them.
+        pinReaderCacheChapter(readerIdentity.chapterId);
+        pinnedChapterRef.current = readerIdentity.chapterId;
+
+        const download = await getDownloadedChapter(
+          readerIdentity.chapterId,
+          source,
+          downloadTargetIdentity.providerChapterId,
+        );
+        if (download?.status === "completed") {
+          const hit = await materializeDownloadedReaderChapter(
+            readerIdentity,
+            {
+              fileUri: download.fileUri ?? null,
+              pageCount: download.pageCount ?? null,
+              pagesDirUri: download.pagesDirUri ?? null,
+            },
+            {
+              mangaTitle: download.mangaTitle,
+              chapterTitle: download.chapterTitle,
+            },
           );
-          if (localPages.length > 0) {
-            if (!cancelled) {
-              setPages(localPages);
-            }
-            return;
-          }
-        } catch (error) {
-          console.warn("Downloaded chapter lookup failed:", error);
+          if (!cancelled) setPages(hit.pages);
+          return;
         }
 
-        // Fall back to matching by provider chapter identity: URL-based
-        // providers can rebuild a canonical id from the route that differs
-        // from the one recorded at download time, which would otherwise send a
-        // downloaded chapter back to the network.
-        try {
-          const localPages = await getDownloadedPageUrisByProviderChapter(
-            source,
-            downloadTargetIdentity.providerChapterId,
-          );
-          if (localPages.length > 0) {
-            if (!cancelled) {
-              setPages(localPages);
-            }
-            return;
+        // Warm open: the shared cache is the content authority, so reuse a
+        // complete entry without asking the extension for the page list.
+        const cached = await readValidReaderCacheChapter(readerIdentity);
+        if (cached) {
+          if (!cancelled) {
+            setPages(cached.pages);
+            loadAdjacentChapters({
+              source,
+              chapterId,
+              mangaId,
+              onAdjacent: (adjacent) => {
+                if (!cancelled) {
+                  setPrevChapterId(adjacent.prev);
+                  setNextChapterId(adjacent.next);
+                }
+              },
+            });
+            void enforceReaderCacheLimit();
           }
-        } catch (error) {
-          console.warn("Downloaded chapter lookup by provider failed:", error);
+          return;
         }
 
-        await loadChapterPages({
+        const networkUrls = await loadChapterPages({
           source,
           chapterId,
           mangaId,
           chapterMemo,
-          onPages: (nextPages) => {
-            if (!cancelled) setPages(nextPages);
-          },
+          onPages: () => {},
           onAdjacent: (adjacent) => {
             if (!cancelled) {
               setPrevChapterId(adjacent.prev);
@@ -526,8 +624,25 @@ export default function GenericReader() {
             }
           },
         });
+        if (cancelled) return;
+        if (!networkUrls || networkUrls.length === 0) {
+          throw new Error("This chapter returned no pages.");
+        }
+        const hit = await materializeNetworkReaderChapter(
+          readerIdentity,
+          networkUrls,
+          { mangaTitle, chapterTitle: title },
+        );
+        if (!cancelled) setPages(hit.pages);
       } catch (error) {
         console.error("Failed to load chapter pages:", error);
+        if (!cancelled) {
+          setLoadError(
+            error instanceof Error
+              ? error.message
+              : "Could not load this chapter.",
+          );
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -536,6 +651,10 @@ export default function GenericReader() {
     loadPages();
     return () => {
       cancelled = true;
+      if (pinnedChapterRef.current) {
+        releaseReaderCacheChapter(pinnedChapterRef.current);
+        pinnedChapterRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterId, source]);
@@ -549,7 +668,19 @@ export default function GenericReader() {
   useEffect(() => {
     if (!pages.length) return;
     const requested = requestedPageDimsRef.current;
-    for (const index of imageWindow) {
+    // Long strips need a few extra rows measured ahead of time; otherwise a
+    // page that enters the viewport with a placeholder height makes the whole
+    // column jump. Paged readers only need the current prefetch window.
+    const prefetchRadius = isLongStripMode(chrome.readingMode) ? 8 : 2;
+    const wanted = new Set<number>(imageWindow);
+    for (
+      let index = Math.max(0, currentPageIndex);
+      index <= Math.min(pages.length - 1, currentPageIndex + prefetchRadius);
+      index += 1
+    ) {
+      wanted.add(index);
+    }
+    for (const index of wanted) {
       const url = pages[index];
       if (!url || requested.has(url) || pageDims[url]) continue;
       requested.add(url);
@@ -570,7 +701,15 @@ export default function GenericReader() {
         Image.getSize(url, onSize, onError);
       }
     }
-  }, [imageWindow, pageDims, pages, rememberPageDims, source]);
+  }, [
+    chrome.readingMode,
+    currentPageIndex,
+    imageWindow,
+    pageDims,
+    pages,
+    rememberPageDims,
+    source,
+  ]);
 
   const scrollOffset = useRef(0);
   const [scrollSpeed, setScrollSpeed] = useState(1);
@@ -590,34 +729,47 @@ export default function GenericReader() {
    */
   const pageOffsets = useMemo(() => {
     const horizontal = isHorizontalMode(chrome.readingMode);
-    const offsets = new Array<number>(pages.length + 1);
+    const pageGapValue =
+      isLongStripMode(chrome.readingMode) &&
+      !isGapLessMode(chrome.readingMode)
+        ? chrome.webtoonPageGap
+        : 0;
+    const offsets = new Array<number>(displayItems.length + 1);
     offsets[0] = 0;
-    for (let i = 0; i < pages.length; i += 1) {
+    for (let i = 0; i < displayItems.length; i += 1) {
+      const item = displayItems[i];
       const geometry = pageGeometry(
-        pages[i],
+        item.url,
         chrome.readingMode,
-        chrome.fitMode,
         chrome.sidePadding,
         bodySize,
         pageDims,
+        chrome.imageScaleType,
+        chrome.rotateWidePagesToFit,
+        item.half,
       );
-      const length = horizontal ? geometry.itemW : geometry.itemH;
+      const gap = item.gapAfter ? pageGapValue : 0;
+      const length = horizontal
+        ? geometry.itemW
+        : geometry.itemH + gap;
       offsets[i + 1] = offsets[i] + Math.max(length, 1);
     }
     return offsets;
   }, [
     bodySize,
-    chrome.fitMode,
+    chrome.imageScaleType,
     chrome.readingMode,
+    chrome.rotateWidePagesToFit,
     chrome.sidePadding,
+    chrome.webtoonPageGap,
+    displayItems,
     pageDims,
-    pages,
   ]);
 
   const syncPageIndexFromOffset = (offset: number) => {
-    if (pagedModeRef.current || pages.length === 0) return;
+    if (pagedModeRef.current || displayItems.length === 0) return;
     let low = 0;
-    let high = pages.length - 1;
+    let high = displayItems.length - 1;
     while (low < high) {
       const mid = (low + high) >> 1;
       if (pageOffsets[mid + 1] > offset) {
@@ -626,9 +778,14 @@ export default function GenericReader() {
         low = mid + 1;
       }
     }
-    if (lastPageIndexRef.current !== low) {
-      lastPageIndexRef.current = low;
-      setCurrentPageIndex(low);
+    if (lastDisplayIndexRef.current !== low) {
+      lastDisplayIndexRef.current = low;
+      setCurrentDisplayIndex(low);
+    }
+    const pageIndex = displayItems[low]?.pageIndex ?? 0;
+    if (lastPageIndexRef.current !== pageIndex) {
+      lastPageIndexRef.current = pageIndex;
+      setCurrentPageIndex(pageIndex);
     }
   };
 
@@ -645,16 +802,16 @@ export default function GenericReader() {
   };
 
   useEffect(() => {
-    if (pages.length === 0) {
+    if (displayItems.length === 0) {
       setImageWindow(new Set());
       return;
     }
 
     // Keep the prefetch window tight: each entry can hold a decoded tiled
     // page, and a 300-page chapter should not keep seven huge images alive.
-    const radius = isPagedMode(chrome.readingMode) ? 1 : 2;
-    const start = Math.max(0, currentPageIndex - radius);
-    const end = Math.min(pages.length - 1, currentPageIndex + radius);
+    const radius = isPagedMode(chrome.readingMode) ? 1 : 3;
+    const start = Math.max(0, currentDisplayIndex - radius);
+    const end = Math.min(displayItems.length - 1, currentDisplayIndex + radius);
     const nextWindow = new Set<number>();
     for (let index = start; index <= end; index += 1) {
       nextWindow.add(index);
@@ -669,17 +826,23 @@ export default function GenericReader() {
       }
       return nextWindow;
     });
-  }, [chrome.readingMode, currentPageIndex, pages.length]);
+  }, [chrome.readingMode, currentDisplayIndex, displayItems.length]);
 
   // Paged modes only: every page fills the viewport, so viewability is
   // exact there. Scroll modes are handled by syncPageIndexFromOffset.
   const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
     if (!pagedModeRef.current) return;
     if (viewableItems && viewableItems.length > 0) {
-      const index = viewableItems[0].index ?? 0;
-      if (lastPageIndexRef.current !== index) {
-        lastPageIndexRef.current = index;
-        setCurrentPageIndex(index);
+      const displayIndex = viewableItems[0].index ?? 0;
+      const item = viewableItems[0].item as ReaderDisplayItem | undefined;
+      const pageIndex = item?.pageIndex ?? displayIndex;
+      if (lastDisplayIndexRef.current !== displayIndex) {
+        lastDisplayIndexRef.current = displayIndex;
+        setCurrentDisplayIndex(displayIndex);
+      }
+      if (lastPageIndexRef.current !== pageIndex) {
+        lastPageIndexRef.current = pageIndex;
+        setCurrentPageIndex(pageIndex);
       }
     }
   }, []);
@@ -734,7 +897,7 @@ export default function GenericReader() {
       setHideTranslated(settings.readerHideTranslated);
       setGeminiApiKey(settings.geminiApiKey || "");
       setGeminiModelId(settings.geminiModelId || GEMINI_DEFAULT_MODEL);
-      setOcrPageWorkers(settings.ocrPageWorkers);
+      setAutoModelSwitch(settings.readerAutoModelSwitch);
       const effectiveLanguage = settings.readerLanguage || autoLanguage;
       setOcrBubbleWorkers(
         clampOcrBubbleWorkers(
@@ -743,10 +906,7 @@ export default function GenericReader() {
         ),
       );
       setOcrLookahead(settings.ocrLookahead);
-      setFreeRequestConcurrency(settings.freeRequestConcurrency);
-      setAiWorkerCount(settings.aiWorkerCount);
       setAiMaxContextPages(settings.aiMaxContextPages);
-      setAiBubbleBatchSize(settings.readerAiBubbleBatchSize);
       setOverlayFont(settings.readerOverlayFont);
       setOverlayFontWeight(settings.readerOverlayFontWeight);
       setOverlayFontScale(settings.readerOverlayFontScale);
@@ -807,54 +967,22 @@ export default function GenericReader() {
     updateSettings({ readerHideTranslated: value }).catch(console.error);
     console.log("[reader][settings] hide translated", value);
   };
-  const handleSelectFreeConcurrency = (value: number) => {
+  const handleSelectGeminiModel = (model: GeminiModelId) => {
+    if (model !== geminiModelId) stopTranslationRun();
+    setGeminiModelId(model);
+    updateSettings({ geminiModelId: model }).catch(console.error);
+    console.log("[reader][settings] Gemini model", model);
+  };
+  const handleChangeAutoModelSwitch = (value: boolean) => {
+    setAutoModelSwitch(value);
+    updateSettings({ readerAutoModelSwitch: value }).catch(console.error);
+    console.log("[reader][settings] auto model switch", value);
+  };
+  const handleChangeLookahead = (value: number) => {
     const next = Math.min(5, Math.max(1, Math.round(value)));
-    setFreeRequestConcurrency(next);
-    updateSettings({ freeRequestConcurrency: next }).catch(console.error);
-    console.log("[reader][settings] free TR concurrency", next);
-  };
-  const handleSelectAiWorkerCount = (value: number) => {
-    const next = Math.min(2, Math.max(1, Math.round(value)));
-    setAiWorkerCount(next);
-    updateSettings({ aiWorkerCount: next }).catch(console.error);
-    console.log("[reader][settings] AI TR workers", next);
-  };
-  const handleSelectMaxContextPages = (pages: number) => {
-    const next = Math.min(50, Math.max(1, Math.round(pages)));
-    setAiMaxContextPages(next);
-    updateSettings({ aiMaxContextPages: next }).catch(console.error);
-    console.log("[reader][settings] AI max context pages", next);
-  };
-  const handleSelectAiBubbleBatchSize = (size: number) => {
-    const next = Math.min(5, Math.max(1, Math.round(size)));
-    setAiBubbleBatchSize(next);
-    updateSettings({ readerAiBubbleBatchSize: next }).catch(console.error);
-    console.log("[reader][settings] AI bubbles per batch", next);
-  };
-  const handleApplyOcrSettings = (patch: {
-    pageWorkers: number;
-    bubbleWorkers: number;
-    lookahead: number;
-  }) => {
-    const nextPageWorkers = Math.min(2, Math.max(1, patch.pageWorkers));
-    const nextBubbleWorkers = clampOcrBubbleWorkers(
-      modelIdForLanguage(ocrLanguage),
-      patch.bubbleWorkers,
-    );
-    const nextLookahead = Math.min(3, Math.max(1, patch.lookahead));
-    setOcrPageWorkers(nextPageWorkers);
-    setOcrBubbleWorkers(nextBubbleWorkers);
-    setOcrLookahead(nextLookahead);
-    updateSettings({
-      ocrPageWorkers: nextPageWorkers,
-      ocrBubbleWorkers: nextBubbleWorkers,
-      ocrLookahead: nextLookahead,
-    }).catch(console.error);
-    console.log("[reader][settings] OCR applied", {
-      pageWorkers: nextPageWorkers,
-      bubbleWorkers: nextBubbleWorkers,
-      lookahead: nextLookahead,
-    });
+    setOcrLookahead(next);
+    updateSettings({ ocrLookahead: next }).catch(console.error);
+    console.log("[reader][settings] look ahead", next);
   };
   const handleClearTrCache = async (): Promise<number> => {
     const removed = await clearTranslationCacheForManga(readerIdentity.mangaId);
@@ -864,14 +992,6 @@ export default function GenericReader() {
       removed,
     });
     return removed;
-  };
-  const handleValidateAndSaveGeminiKey = async (apiKey: string) => {
-    const trimmed = apiKey.trim();
-    // One request to confirm the key (and selected model) actually work.
-    await validateGeminiApiKey(trimmed, geminiModelId);
-    setGeminiApiKey(trimmed);
-    await updateSettings({ geminiApiKey: trimmed });
-    console.log("[reader][settings] Gemini key validated and saved");
   };
   const handleSelectOverlayFont = (font: ReaderOverlayFont) => {
     setOverlayFont(font);
@@ -937,6 +1057,11 @@ export default function GenericReader() {
   };
 
   const horizontalList = isHorizontalMode(chrome.readingMode);
+  const longStripMode = isLongStripMode(chrome.readingMode);
+  const pageGap =
+    longStripMode && !isGapLessMode(chrome.readingMode)
+      ? chrome.webtoonPageGap
+      : 0;
 
   useEffect(() => {
     const lock = orientationToLock(chrome.orientation);
@@ -974,13 +1099,17 @@ export default function GenericReader() {
 
   const scrollRetryRef = useRef(0);
 
-  const scrollToPage = useCallback(
+  const scrollToDisplayItem = useCallback(
     (index: number) => {
-      const target = Math.min(Math.max(index, 0), pages.length - 1);
-      if (pages.length === 0) return;
+      if (displayItems.length === 0) return;
+      const target = Math.min(Math.max(index, 0), displayItems.length - 1);
+      const item = displayItems[target];
+      if (!item) return;
       scrollRetryRef.current = 0;
-      setCurrentPageIndex(target);
-      lastPageIndexRef.current = target;
+      setCurrentDisplayIndex(target);
+      lastDisplayIndexRef.current = target;
+      setCurrentPageIndex(item.pageIndex);
+      lastPageIndexRef.current = item.pageIndex;
       if (isPagedMode(chrome.readingMode)) {
         listRef.current?.scrollToIndex({ index: target, animated: false });
         return;
@@ -990,12 +1119,47 @@ export default function GenericReader() {
         animated: false,
       });
     },
-    [chrome.readingMode, pageOffsets, pages.length],
+    [chrome.readingMode, displayItems, pageOffsets],
+  );
+
+  // Image measurements can turn a landscape page into two rows after it has
+  // already been displayed. Keep the pager on the same source page instead of
+  // letting inserted halves shift the visible row under the user.
+  useEffect(() => {
+    const previous = previousDisplayItemsRef.current;
+    if (previous === displayItems) return;
+    previousDisplayItemsRef.current = displayItems;
+    if (!pagedMode || displayItems.length === 0) return;
+
+    const visiblePage =
+      previous[lastDisplayIndexRef.current]?.pageIndex ?? currentPageIndex;
+    const target = displayItems.findIndex(
+      (item) => item.pageIndex === visiblePage,
+    );
+    if (target < 0) return;
+    lastDisplayIndexRef.current = target;
+    setCurrentDisplayIndex(target);
+    setCurrentPageIndex(visiblePage);
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToIndex({ index: target, animated: false });
+    });
+  }, [currentPageIndex, displayItems, pagedMode]);
+
+  const scrollToPage = useCallback(
+    (index: number) => {
+      const target = Math.min(Math.max(index, 0), pages.length - 1);
+      if (pages.length === 0) return;
+      scrollToDisplayItem(firstDisplayIndexByPage[target] ?? 0);
+    },
+    [firstDisplayIndexByPage, pages.length, scrollToDisplayItem],
   );
 
   const handleScrollToIndexFailed = useCallback(
     ({ index, averageItemLength }: { index: number; averageItemLength: number }) => {
-      const target = Math.min(Math.max(index, 0), pages.length - 1);
+      const target = Math.min(
+        Math.max(index, 0),
+        Math.max(displayItems.length - 1, 0),
+      );
       const estimated =
         pageOffsets[target] ?? Math.max(0, averageItemLength) * target;
       listRef.current?.scrollToOffset({ offset: estimated, animated: false });
@@ -1012,7 +1176,7 @@ export default function GenericReader() {
         }, 120);
       }
     },
-    [pageOffsets, pages.length],
+    [displayItems.length, pageOffsets],
   );
 
   /**
@@ -1037,10 +1201,12 @@ export default function GenericReader() {
         height: bodySize.height,
       });
       if (action === "prev") {
-        if (currentPageIndex > 0) scrollToPage(currentPageIndex - 1);
+        if (currentDisplayIndex > 0) {
+          scrollToDisplayItem(currentDisplayIndex - 1);
+        }
       } else if (action === "next") {
-        if (currentPageIndex < pages.length - 1) {
-          scrollToPage(currentPageIndex + 1);
+        if (currentDisplayIndex < displayItems.length - 1) {
+          scrollToDisplayItem(currentDisplayIndex + 1);
         }
       } else {
         setShowHeader(true);
@@ -1051,9 +1217,63 @@ export default function GenericReader() {
       bodySize.width,
       chrome,
       configOpen,
-      currentPageIndex,
-      pages.length,
-      scrollToPage,
+      currentDisplayIndex,
+      displayItems.length,
+      scrollToDisplayItem,
+    ],
+  );
+
+  /**
+   * Strip-mode tap handling. A tap is measured against the viewport (page rows
+   * can be many screens tall), and prev/next scrolls by roughly one screenful
+   * like Mihon's webtoon viewer instead of jumping to a page boundary.
+   */
+  const handleStripTap = useCallback(
+    (x: number, y: number, index: number) => {
+      if (configOpen) return;
+      const offset = pageOffsets[index] ?? 0;
+      const scroll = scrollOffset.current;
+      const viewportX = horizontalList ? x + offset - scroll : x;
+      const viewportY = horizontalList ? y : y + offset - scroll;
+      const rtl =
+        chrome.readingMode === "pagedHorizontal" &&
+        chrome.pagedDirection === "rtl";
+      const action = resolveTapZoneAction({
+        layout: chrome.tapZoneLayout,
+        invert: chrome.invertTapZones,
+        rtl,
+        x: viewportX,
+        y: viewportY,
+        width: bodySize.width,
+        height: bodySize.height,
+      });
+      if (action === "toggle") {
+        setShowHeader(true);
+        return;
+      }
+      const step =
+        (horizontalList ? bodySize.width : bodySize.height) * 0.85;
+      const target = Math.max(
+        0,
+        scroll + (action === "next" ? step : -step),
+      );
+      scrollOffset.current = target;
+      listRef.current?.scrollToOffset({
+        offset: target,
+        animated: chrome.animatePageTransitions,
+      });
+    },
+    [
+      bodySize.height,
+      bodySize.width,
+      chrome.animatePageTransitions,
+      chrome.invertTapZones,
+      chrome.pagedDirection,
+      chrome.readingMode,
+      chrome.tapZoneLayout,
+      configOpen,
+      horizontalList,
+      pageOffsets,
     ],
   );
 
@@ -1062,6 +1282,22 @@ export default function GenericReader() {
   const flashOpacity = useRef(new Animated.Value(0)).current;
   const [zoneFlashNonce, setZoneFlashNonce] = useState(0);
   const lastZoneLayoutRef = useRef<ReaderTapZoneLayout | null>(null);
+
+  const pageFlashOpacity = useRef(new Animated.Value(0)).current;
+  const lastFlashIndexRef = useRef(currentPageIndex);
+
+  useEffect(() => {
+    if (lastFlashIndexRef.current === currentPageIndex) return;
+    lastFlashIndexRef.current = currentPageIndex;
+    if (!chrome.flashOnPageChange) return;
+    pageFlashOpacity.stopAnimation();
+    pageFlashOpacity.setValue(1);
+    Animated.timing(pageFlashOpacity, {
+      toValue: 0,
+      duration: 110,
+      useNativeDriver: true,
+    }).start();
+  }, [chrome.flashOnPageChange, currentPageIndex, pageFlashOpacity]);
 
   useEffect(() => {
     const layout = chrome.tapZoneLayout;
@@ -1099,7 +1335,7 @@ export default function GenericReader() {
 
   /** FlatList jump targets use the same prefix table as scroll tracking. */
   const getItemLayout = useCallback(
-    (_data: ArrayLike<string> | null | undefined, index: number) => {
+    (_data: ArrayLike<ReaderDisplayItem> | null | undefined, index: number) => {
       const offset = pageOffsets[index] ?? 0;
       const next = pageOffsets[index + 1] ?? offset;
       return { length: Math.max(next - offset, 1), offset, index };
@@ -1126,7 +1362,9 @@ export default function GenericReader() {
           <Pressable onPress={goBack} style={styles.emptyBack}>
             <ArrowLeft color="white" size={28} />
           </Pressable>
-          <Text style={styles.emptyText}>No pages found for this chapter.</Text>
+          <Text style={styles.emptyText}>
+            {loadError ?? "No pages found for this chapter."}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -1256,8 +1494,19 @@ export default function GenericReader() {
               setTranslationOpen(false);
               setReadingModeSheetOpen(false);
               setRotationSheetOpen(false);
+              setPageActionsUrl(null);
               setShowHeader(false);
             }}
+            bookmarkSlot={
+              <AddToLibraryButton
+                provider={readerIdentity.provider}
+                providerMangaId={readerIdentity.providerMangaId}
+                title={mangaTitle}
+                thumbnailUrl={thumbnailUrl}
+                variant="icon"
+                iconVariant="bookmark"
+              />
+            }
             downloadSlot={
               <ReaderDownloadButton
                 candidate={downloadCandidate}
@@ -1297,23 +1546,14 @@ export default function GenericReader() {
             onSelectTranslationEngine={handleSelectTranslationEngine}
             translationMode={translationMode}
             onSelectTranslationMode={handleSelectTranslationMode}
-            geminiApiKey={geminiApiKey}
-            onValidateAndSaveKey={handleValidateAndSaveGeminiKey}
-            freeRequestConcurrency={freeRequestConcurrency}
-            onChangeFreeConcurrency={handleSelectFreeConcurrency}
-            aiWorkerCount={aiWorkerCount}
-            onChangeAiWorkerCount={handleSelectAiWorkerCount}
-            aiMaxContextPages={aiMaxContextPages}
-            onChangeMaxContextPages={handleSelectMaxContextPages}
-            aiBubbleBatchSize={aiBubbleBatchSize}
-            onChangeAiBubbleBatchSize={handleSelectAiBubbleBatchSize}
             geminiModelId={geminiModelId}
+            onSelectGeminiModel={handleSelectGeminiModel}
+            autoModelSwitch={autoModelSwitch}
+            onChangeAutoModelSwitch={handleChangeAutoModelSwitch}
+            ocrLookahead={ocrLookahead}
+            onChangeLookahead={handleChangeLookahead}
             metrics={metrics}
             onClearTrCache={handleClearTrCache}
-            ocrPageWorkers={ocrPageWorkers}
-            ocrBubbleWorkers={ocrBubbleWorkers}
-            ocrLookahead={ocrLookahead}
-            onApplyOcrSettings={handleApplyOcrSettings}
             overlayFont={overlayFont}
             onChangeOverlayFont={handleSelectOverlayFont}
             overlayFontWeight={overlayFontWeight}
@@ -1344,11 +1584,11 @@ export default function GenericReader() {
             autoScrollActive={autoScroll}
             autoScrollDisabled={pagedMode}
             onToggleAutoScroll={() => setAutoScroll((value) => !value)}
-            fitMode={chrome.fitMode}
-            onToggleFit={() =>
-              handleChromeChange({
-                fitMode: chrome.fitMode === "fit" ? "original" : "fit",
-              })
+            pagedDirection={chrome.pagedDirection}
+            orientation={chrome.orientation}
+            cropEnabled={chrome.cropBorders}
+            onToggleCrop={() =>
+              handleChromeChange({ cropBorders: !chrome.cropBorders })
             }
             onOpenSettings={openSettings}
           />
@@ -1361,7 +1601,7 @@ export default function GenericReader() {
             onSelect={setPendingReadingMode}
             onSelectDirection={setPendingDirection}
             onRevert={() => {
-              setPendingReadingMode("scrollVertical");
+              setPendingReadingMode("webtoon");
               setPendingDirection("ltr");
             }}
             onApply={() => {
@@ -1382,6 +1622,18 @@ export default function GenericReader() {
               handleChromeChange({ orientation: pendingOrientation });
               setRotationSheetOpen(false);
             }}
+          />
+        )}
+
+        {pageActionsUrl && (
+          <ReaderPageActionsSheet
+            pageUrl={pageActionsUrl}
+            hideTranslated={hideTranslated}
+            onClose={() => setPageActionsUrl(null)}
+            onToggleHideTranslated={() =>
+              handleChangeHideTranslated(!hideTranslated)
+            }
+            onRetryTranslation={retryPage}
           />
         )}
 
@@ -1419,14 +1671,14 @@ export default function GenericReader() {
         ) : null}
         <FlatList
           ref={listRef}
-          data={pages}
+          data={displayItems}
           horizontal={horizontalList}
           inverted={
             chrome.readingMode === "pagedHorizontal" &&
             chrome.pagedDirection === "rtl"
           }
           pagingEnabled={pagedMode}
-          keyExtractor={(item, index) => `${item}-${index}`}
+          keyExtractor={(item) => item.key}
           initialNumToRender={pagedMode ? 1 : 3}
           maxToRenderPerBatch={4}
           windowSize={5}
@@ -1449,23 +1701,26 @@ export default function GenericReader() {
           }
           renderItem={({ item, index }) => (
             <ReaderPage
-              url={item}
+              url={item.url}
               loadImage={imageWindow.has(index)}
               extensionSourceId={extensionSourceId}
               geometry={pageGeometry(
-                item,
+                item.url,
                 chrome.readingMode,
-                chrome.fitMode,
                 chrome.sidePadding,
                 bodySize,
                 pageDims,
+                chrome.imageScaleType,
+                chrome.rotateWidePagesToFit,
+                item.half,
               )}
               pageBackground={pageBackground}
-              imageHeaders={imageHeadersForPage(source, item)}
+              imageHeaders={pageImageHeaders.get(item.url)}
               chrome={chrome}
               defaultZoomScale={defaultZoomScale}
               pagedMode={pagedMode}
-              translation={translationPages[item]}
+              splitHalf={item.half}
+              translation={translationPages[item.url]}
               translationActive={translationActive}
               showPageStatus={showPageStatus}
               hideTranslated={hideTranslated}
@@ -1479,7 +1734,15 @@ export default function GenericReader() {
               overlayTextColor={overlayTextColor}
               onLoadDims={rememberPageDims}
               onToggleChrome={toggleChrome}
-              onTapAt={handlePagedTap}
+              onTapAt={
+                pagedMode
+                  ? handlePagedTap
+                  : (x, y) => handleStripTap(x, y, index)
+              }
+              onLongPress={() => {
+                if (chrome.showActionsOnLongTap) setPageActionsUrl(item.url);
+              }}
+              pageGap={item.gapAfter ? pageGap : 0}
               onRetryTranslation={retryPage}
             />
           )}
@@ -1494,6 +1757,9 @@ export default function GenericReader() {
               chrome.tapZoneLayout,
               bodySize.width,
               bodySize.height,
+              chrome.readingMode === "pagedHorizontal" &&
+                chrome.pagedDirection === "rtl",
+              chrome.invertTapZones,
             ).map((rect) => (
               <View
                 key={rect.edge}
@@ -1504,12 +1770,18 @@ export default function GenericReader() {
                     top: rect.y,
                     width: rect.width,
                     height: rect.height,
+                    backgroundColor: rect.color,
                   },
                 ]}
               />
             ))}
           </Animated.View>
         )}
+
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.pageFlash, { opacity: pageFlashOpacity }]}
+        />
       </View>
     </SafeAreaView>
   );
@@ -1589,6 +1861,11 @@ const styles = StyleSheet.create({
   zoneFlashBand: {
     position: "absolute",
     backgroundColor: "rgba(251,191,36,0.35)",
+  },
+  pageFlash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#000",
+    zIndex: 15,
   },
   errorToast: {
     position: "absolute",

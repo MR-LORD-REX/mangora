@@ -239,6 +239,49 @@ class DownloadModule(private val reactContext: ReactApplicationContext) :
     }
   }
 
+  /** Resolves a direct child of a SAF folder, or null. */
+  @ReactMethod
+  fun findSafChild(parentUri: String, name: String, promise: Promise) {
+    runAsync(promise) {
+      val parent = DocumentFile.fromTreeUri(context(), Uri.parse(parentUri))
+        ?: return@runAsync null
+      parent.findFile(name)?.uri?.toString()
+    }
+  }
+
+  /** Lists the direct children of a SAF folder with their byte sizes. */
+  @ReactMethod
+  fun listSafChildren(parentUri: String, promise: Promise) {
+    runAsync(promise) {
+      val parent = DocumentFile.fromTreeUri(context(), Uri.parse(parentUri))
+        ?: return@runAsync Arguments.createArray()
+      val children = Arguments.createArray()
+      parent.listFiles().forEach { child ->
+        val entry = Arguments.createMap()
+        entry.putString("name", child.name)
+        entry.putString("uri", child.uri.toString())
+        entry.putDouble("size", if (child.isDirectory) 0.0 else child.length().toDouble())
+        entry.putBoolean("isDirectory", child.isDirectory)
+        children.pushMap(entry)
+      }
+      children
+    }
+  }
+
+  /** Renames a document inside a SAF folder (used for atomic metadata writes). */
+  @ReactMethod
+  fun renameSafDocument(uri: String, newName: String, promise: Promise) {
+    runAsync(promise) {
+      val renamed = DocumentsContract.renameDocument(
+        context().contentResolver,
+        Uri.parse(uri),
+        newName
+      )
+      renamed?.toString()
+        ?: throw IllegalStateException("Could not rename the document to '$newName'")
+    }
+  }
+
   /**
    * Deletes `<parentUri>/<segments...>` when that chain already exists, without
    * creating anything. Resolves true when a directory was removed.

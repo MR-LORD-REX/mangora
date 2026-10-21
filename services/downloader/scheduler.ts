@@ -28,14 +28,22 @@ import {
   type DownloadRecordInput,
 } from "@/services/db/repositories/downloadRepository";
 import { getSettings, subscribeSettings } from "@/services/settings/settingsStore";
+import { removeReaderCacheChapter } from "@/services/reader/readerCache";
 import { notifyDownloadsFinished } from "@/services/notifications/notifications";
+import { assertDecodableImageUri } from "@/services/images/decode";
 import { snapshotDownloadMetadata } from "./metadata";
 import { resolveChapterPageUrls } from "./chapterPages";
+import { validateArchiveFile, validateSafArchive } from "./archive";
+import {
+  metadataEntryFromDownload,
+  removeDownloadMetadataEntries,
+  upsertDownloadMetadataEntry,
+} from "./catalogMetadata";
 
 import { chapterFileName } from "./naming";
 import {
   buildArchive,
-  deleteSafArchive,
+  deleteSafDocumentStrict,
   getNetworkState,
   startDownloadNotification,
   subscribeDownloadActions,
@@ -52,7 +60,12 @@ import {
   prepareChapterDirectory,
   removeChapterCache,
 } from "./pageFiles";
-import { ensureFolder, ensureMangaFolder, type DownloadFolderState } from "./storage";
+import {
+  ensureFolder,
+  ensureMangaFolder,
+  getFolderState,
+  type DownloadFolderState,
+} from "./storage";
 import {
   requiresForegroundApp,
   type DownloadJob,
@@ -321,7 +334,6 @@ async function runJob(
       }),
     );
     job.pagesDirUri = directory.uri;
-    await updateDownload(job.id, { pagesDirUri: directory.uri });
 
     const thumbnailPath = await cacheMangaThumbnail({
       provider: job.provider,
@@ -350,10 +362,21 @@ async function runJob(
     });
     if (control.cancel) throw new DownloadCancelledError();
 
+    // Every page must be a real, decodable image before it enters the archive.
+    // This also rejects HTML challenge pages returned with a 200 status.
+    for (const page of files) {
+      await assertDecodableImageUri(page.path, `Page ${page.name}`);
+    }
+
     const localArchive = new File(directory, "archive.cbz");
-    const archive = await buildArchive(
+    await buildArchive(
       files.map((page) => ({ path: page.path, name: page.name })),
       localArchive.uri,
+    );
+    // Validate the ZIP before it is copied into the user's folder.
+    const localValidation = await validateArchiveFile(
+      localArchive.uri,
+      pageUrls.length,
     );
 
     const fileName = chapterFileName({
@@ -369,24 +392,67 @@ async function runJob(
     const fileUri = await writeArchive(mangaFolderUri, fileName, localArchive);
     if (control.cancel) throw new DownloadCancelledError();
 
+    // Read the final SAF document back: proves it exists, is non-empty and has
+    // exactly the expected numbered image entries.
+    const savedValidation = await validateSafArchive(
+      fileUri,
+      localValidation.pageCount,
+      new File(directory, "saved-archive.cbz").uri,
+    );
+
+    const completedAt = Date.now();
+    // metadata.json is the recoverable catalog. The validated archive is the
+    // source of truth, so a metadata write failure must not discard a valid
+    // download; it is surfaced as a warning on the completed row instead.
+    let metadataError: string | null = null;
+    try {
+      await upsertDownloadMetadataEntry(
+        state.downloadsDirUri,
+        metadataEntryFromDownload({
+          id: job.id,
+          provider: job.provider,
+          providerMangaId: job.providerMangaId,
+          providerChapterId: job.providerChapterId,
+          mangaId: job.mangaId,
+          mangaTitle: job.mangaTitle,
+          chapterTitle: job.chapterTitle,
+          chapterIndex: job.chapterIndex,
+          chapterNumber: job.chapterNumber,
+          scanlationGroup: job.scanlationGroup,
+          chapterGroupKey: job.chapterGroupKey,
+          languageCode: job.languageCode,
+          pageCount: savedValidation.pageCount,
+          byteSize: savedValidation.byteSize,
+          fileName,
+          completedAt,
+        }),
+      );
+    } catch (error) {
+      metadataError =
+        "Download saved, but metadata.json could not be updated: " +
+        (error instanceof Error ? error.message : "unknown error");
+      console.warn("[downloader] metadata.json was not synchronized", error);
+    }
+
     job.status = "completed";
     job.reason = null;
     job.fileUri = fileUri;
     job.fileName = fileName;
     job.folderUri = mangaFolderUri;
-    job.byteSize = archive.size;
+    job.byteSize = savedValidation.byteSize;
     job.pagesDone = files.length;
-    job.finishedAt = Date.now();
+    job.finishedAt = completedAt;
     await updateDownload(job.id, {
       status: "completed",
-      error: null,
+      error: metadataError,
       fileUri,
       fileName,
       folderUri: mangaFolderUri,
-      byteSize: archive.size,
+      byteSize: savedValidation.byteSize,
       pageCount: job.pageCount,
       downloadedPages: files.length,
       completedAt: job.finishedAt,
+      pagesDirUri: null,
     });
 
     completedSinceIdle += 1;
@@ -419,6 +485,9 @@ async function runJob(
       await updateDownload(job.id, { status: "failed", error: message });
     }
   } finally {
+    // Temporary work files never become a second long-lived page cache.
+    removeChapterCache(job.pagesDirUri ?? null);
+    job.pagesDirUri = null;
     emit();
     syncNotification();
   }
@@ -606,19 +675,73 @@ export async function retryDownload(id: string): Promise<void> {
   void pump();
 }
 
-/** Stops a job and deletes its archive + cached pages + row. */
-export async function removeDownload(id: string): Promise<void> {
+export interface RemoveDownloadResult {
+  deleted: boolean;
+  warning: string | null;
+}
+
+/**
+ * Stops a job and deletes its archive, cached pages and database row. A SAF
+ * failure keeps the row (marked failed) so the delete can be retried instead
+ * of pretending the file is gone.
+ */
+export async function removeDownload(
+  id: string,
+): Promise<RemoveDownloadResult> {
   const control = running.get(id);
   if (control) control.cancel = true;
   waiting = waiting.filter((waitingId) => waitingId !== id);
   const job = jobs.get(id);
   jobs.delete(id);
   emit();
-  if (job?.fileUri) await deleteSafArchive(job.fileUri);
-  removeChapterCache(job?.pagesDirUri ?? null);
+  const row = job ? null : await getDownload(id).catch(() => null);
+  const fileUri = job?.fileUri ?? row?.fileUri ?? null;
+  let warning: string | null = null;
+  if (fileUri) {
+    try {
+      await deleteSafDocumentStrict(fileUri);
+    } catch (error) {
+      warning =
+        "The archive could not be deleted. Check the download folder permission and try again. " +
+        (error instanceof Error ? error.message : "");
+      console.warn("[downloader] archive delete failed", error);
+    }
+  }
+  if (warning) {
+    await updateDownload(id, {
+      status: "failed",
+      error: warning.trim(),
+    }).catch(() => {});
+    syncNotification();
+    if (running.size === 0 && waiting.length === 0) stopNetworkWatcher();
+    return { deleted: false, warning };
+  }
+
+  removeChapterCache(job?.pagesDirUri ?? row?.pagesDirUri ?? null);
+  await removeReaderCacheChapter(id).catch((error) => {
+    console.warn("[downloader] reader cache entry was not removed", error);
+  });
+  const metadataWarning = await removeCatalogEntry(id);
   await deleteDownloadRow(id);
   syncNotification();
   if (running.size === 0 && waiting.length === 0) stopNetworkWatcher();
+  return { deleted: true, warning: metadataWarning };
+}
+
+/** Removes one chapter from metadata.json and reports a stale catalog. */
+async function removeCatalogEntry(id: string): Promise<string | null> {
+  try {
+    const state = await getFolderState();
+    if (!state) return null;
+    await removeDownloadMetadataEntries(state.downloadsDirUri, [id]);
+    return null;
+  } catch (error) {
+    console.warn("[downloader] metadata entry was not removed", error);
+    return (
+      "The chapter was deleted, but metadata.json could not be updated: " +
+      (error instanceof Error ? error.message : "unknown error")
+    );
+  }
 }
 
 

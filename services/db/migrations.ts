@@ -49,6 +49,12 @@ const migrations: MigrationConfig = {
         tag: "0005_download_library",
         breakpoints: true,
       },
+      {
+        idx: 6,
+        when: 1792550000000,
+        tag: "0006_reader_cache",
+        breakpoints: true,
+      },
     ],
   },
   migrations: {
@@ -236,6 +242,28 @@ CREATE INDEX \`downloads_manga_index\` ON \`downloads\` (\`manga_id\`);--> state
 CREATE INDEX \`downloads_provider_index\` ON \`downloads\` (\`provider\`);--> statement-breakpoint
 CREATE INDEX \`downloads_status_index\` ON \`downloads\` (\`status\`);--> statement-breakpoint
 CREATE INDEX \`downloads_updated_index\` ON \`downloads\` (\`updated_at\`);`,
+  m0006: `CREATE TABLE \`reader_cache_chapters\` (
+\t\`id\` text PRIMARY KEY NOT NULL,
+\t\`source\` text NOT NULL,
+\t\`provider_manga_id\` text NOT NULL,
+\t\`provider_chapter_id\` text NOT NULL,
+\t\`manga_id\` text NOT NULL,
+\t\`chapter_id\` text NOT NULL,
+\t\`manga_title\` text,
+\t\`chapter_title\` text,
+\t\`manga_key\` text NOT NULL,
+\t\`chapter_key\` text NOT NULL,
+\t\`directory_uri\` text NOT NULL,
+\t\`page_count\` integer DEFAULT 0 NOT NULL,
+\t\`byte_size\` integer DEFAULT 0 NOT NULL,
+\t\`complete\` integer DEFAULT false NOT NULL,
+\t\`last_accessed_at\` integer NOT NULL,
+\t\`created_at\` integer NOT NULL,
+\t\`updated_at\` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX \`reader_cache_chapter_identity_unique\` ON \`reader_cache_chapters\` (\`chapter_id\`);--> statement-breakpoint
+CREATE INDEX \`reader_cache_last_accessed_index\` ON \`reader_cache_chapters\` (\`last_accessed_at\`);`,
   },
 };
 

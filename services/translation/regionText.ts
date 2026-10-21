@@ -182,12 +182,27 @@ export function buildTranslationSlots(detection: DetectionResult): TranslationSl
 
   for (const bubble of boxes) {
     if (bubble.classId !== 2) continue;
-    const bubbleBox = boxFromDetection(bubble);
+    // Segmentation detections carry a page-space contour. Use its tight
+    // bounds and keep the mask on the slot so the overlay can erase and fit
+    // against the real bubble shape instead of a rectangle.
+    const mask = bubble.mask;
+    const bubbleBox = mask?.bounds ?? boxFromDetection(bubble);
     // Some pages return the same bubble twice; one overlay is enough.
     if (acceptedBubbles.some((accepted) => nearDuplicate(accepted, bubbleBox))) {
       continue;
     }
     acceptedBubbles.push(bubbleBox);
+    if (mask) {
+      slots.push({
+        id: slots.length,
+        kind: "bubble",
+        pasteBox: bubbleBox,
+        eraseBoxes: [],
+        mask,
+        sourceText: "",
+      });
+      continue;
+    }
     const padded = inflate(bubbleBox, 0.1);
     const cleanInside = boxes
       .filter((box) => box.classId === 0 && centerInside(padded, boxFromDetection(box)))
@@ -342,11 +357,25 @@ export function fillSlotTexts(
         y2: item.y2,
       }));
     }
+    const lineCount = countTextRows(items);
 
     return {
       ...slot,
       eraseBoxes,
+      lineCount: lineCount > 0 ? lineCount : slot.lineCount,
       sourceText: assembleSlotText(items, sourceIsCjk),
     };
   });
+}
+
+/** Number of distinct reading rows in an OCR item set. */
+export function countTextRows(items: OcrTextItem[]): number {
+  const sorted = [...items].sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
+  const rows: OcrTextItem[][] = [];
+  for (const item of sorted) {
+    const row = rows.find((candidate) => overlapsRow(candidate, item));
+    if (row) row.push(item);
+    else rows.push([item]);
+  }
+  return rows.length;
 }

@@ -1,26 +1,39 @@
 /**
  * PageTranslationOverlay.tsx
  * ---------------------------------------------------------------------------
- * Draws the translation result over one reader page:
- *   1. White strips erase the original text (clean_text boxes inside bubbles,
- *      the full messy box for free text).
- *   2. The translated text is pasted on top - centred inside ~90% of the
- *      bubble box for speech bubbles, or the full messy box for free text.
+ * Draws the translation result over one reader page.
  *
- * All geometry arrives in natural page pixels and is mapped to display px
- * with the same sx/sy scale used by the page image itself.
+ * Bubble regions produced by the Manga109 segmenter carry a page-space mask:
+ *   1. The mask interior (trimmed to preserve the inked outline) is filled
+ *      white with an SVG path, erasing the source text inside the bubble.
+ *   2. Translated text is laid out line by line against the mask's width at
+ *      each line height, so it follows curved and tapered bubbles instead of
+ *      overflowing a rectangle.
+ *
+ * Legacy YOLO / cache regions without a mask keep the previous rectangle
+ * erase + rectangular fit behaviour. All geometry arrives in natural page
+ * pixels and is mapped to display pixels with the page's sx/sy scale.
  * ---------------------------------------------------------------------------
  */
 
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, View, type TextStyle } from "react-native";
+import Svg, { Path } from "react-native-svg";
 
 import type {
   Box,
   PageTranslationState,
+  Point,
   TranslationRegionState,
 } from "@/services/translation/translation.types";
 
+import {
+  insetMaskPolygon,
+  layoutTextInMask,
+  polygonBounds,
+  polygonToPath,
+  type MaskTextLayout,
+} from "./maskTextLayout";
 import type { ReaderOverlayFont } from "./readerChrome";
 import {
   overlayFontFamily,
@@ -31,7 +44,7 @@ import {
 } from "./overlayFonts";
 import { fitTextFontSize } from "./textFit";
 
-/** Usable paste area = 85% of the detected bubble area. */
+/** Usable paste area = 75% of the detected bubble area (legacy rectangles). */
 const BUBBLE_CONTENT_AREA_RATIO = 0.75;
 const BUBBLE_LINEAR_SCALE = Math.sqrt(BUBBLE_CONTENT_AREA_RATIO);
 /** Tiny detections still get a readable minimum box. */
@@ -56,7 +69,7 @@ function normalizedText(text: string): string {
 
 /**
  * Drops a region when another region already pasted text into the same spot.
- * Duplicate YOLO boxes and duplicate cached regions both land here.
+ * Duplicate detections and duplicate cached regions both land here.
  */
 function isDuplicatePaste(
   candidate: TranslationRegionState,
@@ -87,6 +100,29 @@ function toDisplay(box: Box, sx: number, sy: number) {
   };
 }
 
+function scalePolygon(polygon: Point[], sx: number, sy: number): Point[] {
+  return polygon.map((point) => ({ x: point.x * sx, y: point.y * sy }));
+}
+
+function canErase(region: TranslationRegionState): boolean {
+  return (
+    region.status === "processing" ||
+    (region.status === "done" && !!region.translatedText?.trim())
+  );
+}
+
+interface MaskRender {
+  region: TranslationRegionState;
+  erasePath: string;
+  layout: MaskTextLayout | null;
+}
+
+interface PreparedOverlay {
+  legacyStrips: { key: string; box: Box }[];
+  legacyTexts: TranslationRegionState[];
+  maskRenders: MaskRender[];
+}
+
 interface PageTranslationOverlayProps {
   translation: PageTranslationState;
   displayWidth: number;
@@ -112,42 +148,135 @@ export default function PageTranslationOverlay({
   const fontFamily = overlayFontFamily(overlayFont, fontsLoaded, weight);
   const fontWeight = String(weight) as TextStyle["fontWeight"];
   const lineHeightMultiplier = overlayFontLineHeight(overlayFont);
+  const widthScale =
+    overlayWeightWidthFactor(weight) * overlayFontFitWidthFactor(overlayFont);
   const imageWidth = translation.imageWidth || 1;
   const imageHeight = translation.imageHeight || 1;
   const sx = displayWidth / imageWidth;
   const sy = displayHeight / imageHeight;
+  const fontScale = Math.min(1.5, Math.max(0.5, overlayFontScale || 1));
 
-  const strips: { key: string; box: Box }[] = [];
-  const texts: { key: string; region: TranslationRegionState }[] = [];
-  const placedTexts: TranslationRegionState[] = [];
-  for (const region of translation.regions) {
-    if (
-      region.status === "processing" ||
-      region.status === "done"
-    ) {
-      region.eraseBoxes.forEach((box, index) => {
-        strips.push({ key: `${region.id}-erase-${index}`, box });
-      });
+  const prepared = useMemo<PreparedOverlay>(() => {
+    const legacyStrips: { key: string; box: Box }[] = [];
+    const maskRegions: TranslationRegionState[] = [];
+    const allMaskRegions = translation.regions.filter(
+      (region) => region.mask && region.mask.polygon.length >= 3,
+    );
+
+    for (const region of translation.regions) {
+      if (!canErase(region)) continue;
+      if (region.mask && region.mask.polygon.length >= 3) {
+        maskRegions.push(region);
+      } else {
+        region.eraseBoxes.forEach((box, index) => {
+          legacyStrips.push({ key: `${region.id}-erase-${index}`, box });
+        });
+      }
     }
-    if (region.status === "done" && region.translatedText) {
-      if (isDuplicatePaste(region, placedTexts)) continue;
-      placedTexts.push(region);
-      texts.push({ key: `${region.id}-text`, region });
+
+    const placed: TranslationRegionState[] = [];
+    const visibleIds = new Set<number>();
+    for (const region of translation.regions) {
+      if (region.status !== "done" || !region.translatedText) continue;
+      if (isDuplicatePaste(region, placed)) continue;
+      placed.push(region);
+      visibleIds.add(region.id);
     }
-  }
+
+    const legacyTexts = translation.regions.filter(
+      (region) =>
+        visibleIds.has(region.id) && !(region.mask && region.mask.polygon.length >= 3),
+    );
+
+    // Scanlations keep one font size across a page. A median of each bubble's
+    // short side tracks the artwork scale while staying stable for oversized
+    // bubbles. The user's overlay scale remains an explicit multiplier.
+    const bubbleShortSides = allMaskRegions
+      .map((region) => {
+        const bounds = polygonBounds(scalePolygon(region.mask!.polygon, sx, sy));
+        return Math.min(bounds.x2 - bounds.x1, bounds.y2 - bounds.y1);
+      })
+      .filter((size) => size > 1)
+      .sort((a, b) => a - b);
+    const medianShortSide =
+      bubbleShortSides.length > 0
+        ? bubbleShortSides[Math.floor(bubbleShortSides.length / 2)]
+        : 0;
+    const pageFont = Math.max(
+      5,
+      Math.min(28, medianShortSide * 0.135 * fontScale),
+    );
+
+    const maskRenders = maskRegions.map((region) => {
+      const polygon = scalePolygon(region.mask!.polygon, sx, sy);
+      const bounds = polygonBounds(polygon);
+      const pad = Math.max(
+        1.5,
+        Math.min(
+          10,
+          Math.min(bounds.x2 - bounds.x1, bounds.y2 - bounds.y1) * 0.045,
+        ),
+      );
+      const erasePolygon = insetMaskPolygon(polygon, pad, pad, pad, 64);
+      const layout =
+        visibleIds.has(region.id) && region.translatedText
+          ? layoutTextInMask({
+              text: region.translatedText,
+              polygon,
+              lineHeightMultiplier,
+              widthScale,
+              maxFont: 160 * fontScale,
+              minFont: 5,
+              preferredLineCount: region.lineCount,
+              preferredFont: pageFont,
+              padRatio: 0.08,
+              fillRatio: 0.86,
+            })
+          : null;
+      return {
+        region,
+        erasePath: polygonToPath(erasePolygon),
+        layout,
+      };
+    });
+
+    return { legacyStrips, legacyTexts, maskRenders };
+  }, [
+    translation.regions,
+    sx,
+    sy,
+    lineHeightMultiplier,
+    widthScale,
+    fontScale,
+  ]);
 
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {strips.map(({ key, box }) => {
+      {prepared.maskRenders.length > 0 ? (
+        <Svg
+          pointerEvents="none"
+          width={displayWidth}
+          height={displayHeight}
+          style={StyleSheet.absoluteFill}
+        >
+          {prepared.maskRenders.map(({ region, erasePath }) =>
+            erasePath ? (
+              <Path
+                key={`${region.id}-mask-erase`}
+                d={erasePath}
+                fill="#ffffff"
+              />
+            ) : null,
+          )}
+        </Svg>
+      ) : null}
+
+      {prepared.legacyStrips.map(({ key, box }) => {
         const display = toDisplay(box, sx, sy);
-        return (
-          <View
-            key={key}
-            style={[styles.eraseStrip, { ...display }]}
-          />
-        );
+        return <View key={key} style={[styles.eraseStrip, display]} />;
       })}
-      {texts.map(({ key, region }) => {
+
+      {prepared.legacyTexts.map((region) => {
         const paste = toDisplay(region.pasteBox, sx, sy);
         const isBubble = region.kind === "bubble";
         const contentWidth = Math.max(
@@ -162,19 +291,15 @@ export default function PageTranslationOverlay({
         const contentTop = paste.top + (paste.height - contentHeight) / 2;
         const fitted = fitTextFontSize({
           text: region.translatedText ?? "",
-          width:
-            contentWidth *
-            overlayWeightWidthFactor(weight) *
-            overlayFontFitWidthFactor(overlayFont),
+          width: contentWidth * widthScale,
           height: contentHeight,
           lineHeightMultiplier,
           maxFont: Math.max(24, Math.min(160, contentHeight)),
         });
-        const scale = Math.min(1.5, Math.max(0.5, overlayFontScale || 1));
-        const fontSize = Math.max(6, fitted * scale);
+        const fontSize = Math.max(6, fitted * fontScale);
         return (
           <View
-            key={key}
+            key={`${region.id}-text`}
             style={{
               position: "absolute",
               left: contentLeft,
@@ -201,6 +326,35 @@ export default function PageTranslationOverlay({
             </Text>
           </View>
         );
+      })}
+
+      {prepared.maskRenders.map(({ region, layout }) => {
+        if (!layout) return null;
+        return layout.lines.map((line, index) => (
+          <Text
+            key={`${region.id}-line-${index}`}
+            allowFontScaling={false}
+            adjustsFontSizeToFit
+            minimumFontScale={0.72}
+            numberOfLines={1}
+            ellipsizeMode="clip"
+            style={{
+              position: "absolute",
+              left: line.left,
+              top: line.top,
+              width: line.width,
+              color: overlayTextColor,
+              fontSize: layout.fontSize,
+              lineHeight: layout.lineHeight,
+              textAlign: "center",
+              fontFamily,
+              fontWeight,
+              includeFontPadding: false,
+            }}
+          >
+            {line.text}
+          </Text>
+        ));
       })}
     </View>
   );

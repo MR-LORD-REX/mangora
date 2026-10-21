@@ -110,3 +110,59 @@ async function translateWithFreeGoogle(
 /** Engine-agnostic translate implementation used by the reader for now. */
 export const localTranslate: TranslateTextFn = async (from, to, text, options) =>
   translateWithFreeGoogle(from, to, text, options?.timeout);
+
+
+export interface FreeBatchRegion {
+  regionId: number;
+  text: string;
+}
+
+export interface FreeBatchPage {
+  label: string;
+  pageIndex: number;
+  regions: FreeBatchRegion[];
+}
+
+export interface FreeBatchResult {
+  label: string;
+  regionId: number;
+  text: string;
+}
+
+/**
+ * Translates one page batch through the free Google endpoint.
+ *
+ * Mirrors translateGeminiBatch's request/response shape so the reader and the
+ * pre-translation queue can share one page-batch pipeline for both engines.
+ * Free translation is stateless, so history is accepted but not sent.
+ */
+export async function translateFreeBatch(opts: {
+  sourceCode: string;
+  targetCode: string;
+  history: FreeBatchPage[];
+  batch: FreeBatchPage[];
+  timeoutMs?: number;
+}): Promise<{ results: FreeBatchResult[] }> {
+  const { sourceCode, targetCode, batch, timeoutMs } = opts;
+  const results: FreeBatchResult[] = [];
+  for (const page of batch) {
+    for (const region of page.regions) {
+      const text = (region.text ?? "").trim();
+      if (!text) continue;
+      const translated = await translateWithFreeGoogle(
+        sourceCode,
+        targetCode,
+        text,
+        timeoutMs,
+      );
+      if (translated.trim()) {
+        results.push({
+          label: page.label,
+          regionId: region.regionId,
+          text: translated,
+        });
+      }
+    }
+  }
+  return { results };
+}

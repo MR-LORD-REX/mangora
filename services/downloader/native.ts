@@ -33,8 +33,12 @@ interface MangoraDownloaderModule {
     sourcePath: string,
   ): Promise<string>;
   readSafDocument(uri: string, destPath: string): Promise<string>;
+  extractSafArchivePages(uri: string, destDirPath: string): Promise<string[]>;
   deleteSafPath(parentUri: string, segments: string[]): Promise<boolean>;
   deleteSafDocument(uri: string): Promise<boolean>;
+  findSafChild(parentUri: string, name: string): Promise<string | null>;
+  listSafChildren(parentUri: string): Promise<SafChild[]>;
+  renameSafDocument(uri: string, newName: string): Promise<string>;
   describeSafTree(uri: string): Promise<string>;
   zipPages(
     entries: ZipEntryInput[],
@@ -115,6 +119,88 @@ export async function describeSafTree(uri: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/** One entry inside a SAF folder. */
+export interface SafChild {
+  name: string;
+  uri: string;
+  size: number;
+  isDirectory: boolean;
+}
+
+/** Resolves a direct child document/folder of a SAF tree, or null. */
+export async function findSafChild(
+  parentUri: string,
+  name: string,
+): Promise<string | null> {
+  if (hasNativeDownloader()) {
+    try {
+      return await nativeModule!.findSafChild(parentUri, name);
+    } catch {
+      return null;
+    }
+  }
+  try {
+    const parent = new Directory(parentUri);
+    if (!parent.exists) return null;
+    const child = parent.list().find((entry) => entry.name === name);
+    return child?.uri ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Lists the direct children of a SAF folder. */
+export async function listSafChildren(parentUri: string): Promise<SafChild[]> {
+  if (hasNativeDownloader()) {
+    try {
+      return await nativeModule!.listSafChildren(parentUri);
+    } catch {
+      return [];
+    }
+  }
+  try {
+    const parent = new Directory(parentUri);
+    if (!parent.exists) return [];
+    return parent.list().map((entry) => ({
+      name: entry.name,
+      uri: entry.uri,
+      size: entry instanceof File ? entry.size : 0,
+      isDirectory: entry instanceof Directory,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** Renames a SAF document; returns its new uri. */
+export async function renameSafDocument(
+  uri: string,
+  newName: string,
+): Promise<string> {
+  if (hasNativeDownloader()) {
+    return nativeModule!.renameSafDocument(uri, newName);
+  }
+  const file = new File(uri);
+  file.rename(newName);
+  return file.uri;
+}
+
+/**
+ * Extracts the numbered page images of a downloaded CBZ into `destDirPath`
+ * and returns their file uris in archive order.
+ */
+export async function extractSafArchivePages(
+  uri: string,
+  destDirPath: string,
+): Promise<string[]> {
+  if (!hasNativeDownloader()) {
+    throw new Error(
+      "Extracting downloaded chapters needs the native download module. Rebuild the app and try again.",
+    );
+  }
+  return nativeModule!.extractSafArchivePages(uri, destDirPath);
 }
 
 /**
@@ -203,6 +289,23 @@ export async function deleteSafArchive(uri: string): Promise<void> {
   } catch {
     // Deleting is best effort: the archive may already be gone.
   }
+}
+
+/**
+ * Deletes a SAF document and reports the provider's result. Unlike
+ * deleteSafArchive this throws so bulk deletion can report exactly which
+ * files could not be removed.
+ */
+export async function deleteSafDocumentStrict(uri: string): Promise<void> {
+  if (hasNativeDownloader()) {
+    const deleted = await nativeModule!.deleteSafDocument(uri);
+    if (!deleted) {
+      throw new Error("The storage provider did not delete the file.");
+    }
+    return;
+  }
+  const file = new File(uri);
+  if (file.exists) file.delete();
 }
 
 /**

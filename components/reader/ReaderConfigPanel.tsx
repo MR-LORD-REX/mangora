@@ -22,11 +22,13 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import DotSlider from "./DotSlider";
 import {
   BACKGROUND_COLOR_OPTIONS,
+  IMAGE_SCALE_OPTIONS,
   INVERT_TAP_ZONE_OPTIONS,
   ORIENTATION_OPTIONS,
   READING_MODE_OPTIONS,
   TAP_ZONE_OPTIONS,
   isPagedMode,
+  isLongStripMode,
   type ReaderChromeSettings,
 } from "./readerChrome";
 import {
@@ -52,10 +54,6 @@ const GENERAL_TOGGLES: { key: keyof ReaderChromeSettings; label: string }[] = [
   { key: "showContentInCutout", label: "Show content in cutout area" },
   { key: "keepScreenOn", label: "Keep screen on" },
   { key: "showActionsOnLongTap", label: "Show actions on long tap" },
-  {
-    key: "alwaysShowChapterTransition",
-    label: "Always show chapter transition",
-  },
   { key: "animatePageTransitions", label: "Animate page transitions" },
   { key: "flashOnPageChange", label: "Flash on page change" },
 ];
@@ -125,8 +123,9 @@ function ReadingTab(props: ReaderConfigPanelProps) {
     scrollSpeed,
     onSelectScrollSpeed,
   } = props;
-  const { readingMode, pagedDirection, orientation, fitMode } = chrome;
+  const { readingMode, pagedDirection, orientation } = chrome;
   const paged = isPagedMode(readingMode);
+  const longStrip = isLongStripMode(readingMode);
 
   return (
     <View>
@@ -134,31 +133,24 @@ function ReadingTab(props: ReaderConfigPanelProps) {
       <View style={styles.pillGrid}>
         {READING_MODE_OPTIONS.map((option) => (
           <Pill
-            key={option.key}
+            key={option.id}
             label={option.label}
-            selected={readingMode === option.key}
-            onPress={() => onChangeChrome({ readingMode: option.key })}
+            selected={
+              readingMode === option.key &&
+              (option.key !== "pagedHorizontal" ||
+                pagedDirection === (option.direction ?? pagedDirection))
+            }
+            onPress={() =>
+              onChangeChrome({
+                readingMode: option.key,
+                ...(option.direction
+                  ? { pagedDirection: option.direction }
+                  : {}),
+              })
+            }
           />
         ))}
       </View>
-
-      {readingMode === "pagedHorizontal" && (
-        <>
-          <SectionLabel>Direction</SectionLabel>
-          <View style={styles.pillGrid}>
-            <Pill
-              label="Left to right"
-              selected={pagedDirection === "ltr"}
-              onPress={() => onChangeChrome({ pagedDirection: "ltr" })}
-            />
-            <Pill
-              label="Right to left"
-              selected={pagedDirection === "rtl"}
-              onPress={() => onChangeChrome({ pagedDirection: "rtl" })}
-            />
-          </View>
-        </>
-      )}
 
       <SectionLabel>Auto-scroll speed</SectionLabel>
       <DotSlider
@@ -190,40 +182,70 @@ function ReadingTab(props: ReaderConfigPanelProps) {
         ))}
       </View>
 
-      <SectionLabel>Fit</SectionLabel>
-      <View style={styles.pillGrid}>
-        <Pill
-          label="Fit to screen"
-          selected={fitMode === "fit"}
-          onPress={() => onChangeChrome({ fitMode: "fit" })}
-        />
-        <Pill
-          label="Original size (zoomable)"
-          selected={fitMode === "original"}
-          onPress={() => onChangeChrome({ fitMode: "original" })}
-        />
-      </View>
+      <SectionLabel>Image scale</SectionLabel>
+      {longStrip ? (
+        <HelperText>
+          Webtoon and continuous modes always fit the page to the strip width,
+          matching Mihon&apos;s long-strip viewer.
+        </HelperText>
+      ) : (
+        <View style={styles.pillGrid}>
+          {IMAGE_SCALE_OPTIONS.map((option) => (
+            <Pill
+              key={option.key}
+              label={option.label}
+              selected={chrome.imageScaleType === option.key}
+              onPress={() => onChangeChrome({ imageScaleType: option.key })}
+            />
+          ))}
+        </View>
+      )}
 
-      <SectionLabel>Default zoom scale</SectionLabel>
-      <DotSlider
-        value={defaultZoomScale}
-        min={0.1}
-        max={2}
-        step={0.01}
-        dotCount={21}
-        disabled={fitMode === "fit"}
-        leftLabel="0.1x"
-        rightLabel="2x"
-        onChange={onChangeDefaultZoomScale}
-      />
-      <HelperText>
-        Sets the starting scale for pages in Original size mode.
-      </HelperText>
+      {!longStrip && (
+        <>
+          <SectionLabel>Default zoom scale</SectionLabel>
+          <DotSlider
+            value={defaultZoomScale}
+            min={0.1}
+            max={2}
+            step={0.01}
+            dotCount={21}
+            disabled={chrome.imageScaleType !== "original"}
+            leftLabel="0.1x"
+            rightLabel="2x"
+            onChange={onChangeDefaultZoomScale}
+          />
+          <HelperText>
+            Sets the starting scale for pages in Original size mode.
+          </HelperText>
+        </>
+      )}
+
+      {longStrip && (
+        <>
+          <SectionLabel>Webtoon side padding</SectionLabel>
+          <DotSlider
+            value={chrome.sidePadding}
+            min={0}
+            max={25}
+            step={1}
+            dotCount={16}
+            leftLabel="0%"
+            rightLabel="25%"
+            onChange={(sidePadding) => onChangeChrome({ sidePadding })}
+          />
+          <HelperText>
+            Margins around the strip. Overlays move with the page because both
+            use the same fitted image rectangle.
+          </HelperText>
+        </>
+      )}
 
       <View style={styles.checkGroup}>
         <CheckRow
           label="Double tap to zoom"
           checked={chrome.doubleTapToZoom}
+          disabled={longStrip}
           onToggle={() =>
             onChangeChrome({ doubleTapToZoom: !chrome.doubleTapToZoom })
           }
@@ -231,6 +253,7 @@ function ReadingTab(props: ReaderConfigPanelProps) {
         <CheckRow
           label="Disable zoom out"
           checked={chrome.disableZoomOut}
+          disabled={longStrip}
           onToggle={() =>
             onChangeChrome({ disableZoomOut: !chrome.disableZoomOut })
           }

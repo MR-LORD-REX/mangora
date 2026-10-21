@@ -43,29 +43,32 @@ Mangora is an Android application for reading material obtained through extensio
 ### Text recognition and translation
 
 1. The reader obtains a page from the installed extension or local archive.
-2. The on-device YOLO model detects text regions.
+2. The on-device Manga109 speech-bubble segmenter finds bubbles and returns
+   their masks. The older YOLO text detector is used only as a fallback when a
+   page has no segmentable bubbles (for example, narration-only pages).
 3. The on-device OCR model for the selected language reads those regions.
 4. If translation is enabled, Mangora translates recognized text and displays it as an overlay.
 
-Translation is **off by default**. OCR runs entirely on-device with one of two downloadable models, chosen from the chapter language: **Baberu OCR** for Japanese, Chinese and English, or **PP-OCRv5 Korean** for Korean and Latin scripts. PP-OCRv5 pairs a DBNet text-line detector with the CTC recognizer (~18 MB total) so multi-line bubbles are split into lines before recognition. Download either pack from **Settings > OCR models**.
+Translation is **off by default**. OCR runs entirely on-device with one of two downloadable models, chosen from the chapter language: **PP-OCRv6 Medium** for Japanese, Chinese and English, or **PP-OCRv5 Korean** for Korean and Latin scripts. Both packs pair a DBNet text-line detector with a CTC recognizer, so multi-line bubbles are split into lines before recognition. PP-OCRv6 is about 82 MB; the Korean pack is about 18 MB. Download either pack from **Settings > OCR models**.
 
-Baberu can run several OCR workers in parallel. Each worker owns an independent ONNX engine set and uses about 121 MB of RAM, so the OCR settings slider goes from 1 to 5 and defaults to 3. PP-OCR stays at one worker until its detector + recognizer throughput has been measured on-device.
+Each PP-OCR pack runs one detector + recognizer engine. The OCR settings slider (1-8, default 8) is the recognizer **batch size** for both PP-OCRv6 and PP-OCRv5 Korean: it groups that many detected text lines into one forward pass, and falls back to smaller batches automatically if a device rejects a shape.
 
 There are two translation engines:
 
 - **Free:** sends each recognized bubble and language information to Google's public translation endpoints. It does not require an API key.
 - **AI:** sends recognized text, and optionally prior-page text context, to the Gemini API using the API key saved by the user.
 
-The reader provides four translation modes:
+The reader provides three translation modes:
 
 - **Off:** no OCR or translation pipeline is started.
 - **Single page:** translates only the current page on demand.
-- **Auto pages:** translates pages automatically as you read. It waits for the full page OCR pass, then sends the page to the selected engine.
-- **Auto bubbles:** an AI-only low-latency mode. Each bubble is emitted as soon as its OCR regions finish, then 1-5 bubbles (default 3) are sent in one Gemini request. Previously OCRed pages are attached as context so names and tone stay consistent. The buffer flushes when it reaches the configured batch size, when OCR goes idle, or after 900 ms without a new bubble. This produces the first translations sooner while batching keeps API requests bounded. Smaller batches show text sooner but use more requests; larger batches use fewer requests.
+- **Auto:** translates pages automatically as you read. Pages go into one OCR queue and the current page plus the look-ahead window are prepared in order.
 
 OCR and translation are distinct. Text recognition never leaves the device. Free or AI translation still sends recognized text to the respective translation service.
 
-Translation controls in the reader include **Bubbles per batch** (1-5, Auto bubbles only), **Bubble workers** (1-5, default 3, with the effective RAM estimate), **Max context**, AI worker count, a collapsible **API usage** meter for Gemini RPM/TPM/RPD, and a collapsible **Pipeline metrics** table for queue and result counts. Downloaded chapters can also be queued for background processing from **Settings > Translation queue**; pages with a cached result are skipped. Pre-translation processes one page at a time but uses its own **Bubble workers** slider (1-5, default 5) to OCR several bubbles inside that page concurrently. PP-OCR jobs are clamped to one worker. Paused jobs resume from their stored next-page index, so cached pages are not recounted or re-notified. Auto bubbles batching is reader-only.
+Reader panels are split into **Advance** and **Metrics**. Advance holds the look-ahead window (1-5, default 2), the AI model picker, the auto-model-switch toggle and this manga's translation cache. Metrics holds the pipeline queue table and, in AI mode, live Gemini RPM/TPM/RPD meters. Shared limits live in **Settings > Translation**: max context pages, OCR batch size, model selection and the Gemini API key. Downloaded chapters can also be queued for background processing from **Settings > Translation queue**; pages with a cached result are skipped. Pre-translation snapshots the current settings when a job is queued. Paused jobs resume from their stored next-page index, so cached pages are not recounted or re-notified.
+
+Speech-bubble masks drive both sides of the overlay. The mask interior is erased while the inked outline is preserved, and translated lines are laid out against the bubble's width at each line height. A page-consistent font target plus the source line count keeps the result close to a scanlation paste instead of stretching text to every bubble edge.
 
 Translation results and OCR text used for overlays may be cached in the local SQLite database. The user can clear the translation cache from Settings.
 
@@ -170,7 +173,7 @@ The project uses Expo SDK 54, React Native 0.81, React 19, Expo Router, TypeScri
 - `components/reader/ReaderTranslationPanel.tsx` - translation sheet, mode/engine controls, API usage, and pipeline metrics.
 - `components/settings/`, `components/translation/` - settings sections and the downloaded-chapter pre-translation dialog.
 - `utils/reader/useReaderTranslation.ts` - reader translation orchestrator, queues, workers, batching, and RAM page store.
-- `services/ocr/` - on-device OCR engine pool (`localOcr.ts`), Baberu/CTC engines, PP-OCR DBNet line detector (`paddleDetEngine.ts`), model catalog/downloads, ONNX Runtime setup, and crop types.
+- `services/ocr/` - on-device OCR engine pool (`localOcr.ts`), batched PP-OCR CTC recognizer (`paddleRecEngine.ts`), PP-OCR DBNet line detector (`paddleDetEngine.ts`), model catalog/downloads, ONNX Runtime setup, and crop types.
 - `services/yolo/` - text-region detection.
 - `services/translation/` - free and Gemini engines, page/bubble translation helpers, quota accounting, runtime lock, language mapping, pre-translation queue, and reusable work queue.
 - `services/extensions/` - repository catalog parsing, extension installation, and the native bridge.

@@ -4,7 +4,7 @@
  * Global pre-translate scheduler for downloaded chapters.
  *
  * One job runs at a time (OCR is expensive). Each page goes through the same
- * YOLO -> OCR -> free/AI translation flow as the reader, then is written to the
+ * segmentation -> OCR -> free/AI translation flow as the reader, then is written to the
  * translation cache so opening the chapter feels instant. Failed pages are
  * counted and skipped; the reader retry button still works on them.
  *
@@ -32,26 +32,37 @@ import {
   getLocalOcrModel,
   modelIdForLanguage,
 } from "@/services/ocr/ocrModels";
+import { preparePaddleRegions } from "@/services/ocr/pageOcr";
+import { detectPageRegions } from "@/services/detection/pageDetector";
+import { getDownloadedPageUris } from "@/services/downloader";
 import {
-  preparePaddleRegions,
-  prepareTextRegions,
-  type OcrRegion,
-} from "@/services/ocr/pageOcr";
+  pinReaderCacheChapter,
+  releaseReaderCacheChapter,
+} from "@/services/reader/readerCache";
 import {
   getSettings,
+  updateSettings,
   type AppSettings,
   type ReaderTranslationEngine,
 } from "@/services/settings/settingsStore";
-import { localTranslate } from "@/services/translation/freeGoogleTranslator";
+import { translateFreeBatch } from "@/services/translation/freeGoogleTranslator";
 import {
   GeminiApiError,
   translateGeminiBatch,
 } from "@/services/translation/geminiTranslator";
 import {
+  GEMINI_DEFAULT_MODEL,
+  type GeminiModelId,
+} from "@/services/translation/geminiModels";
+import {
+  fallbackModelChain,
+  nextAutoSwitchFailureState,
+  requestWithModelFallback,
+} from "@/services/translation/modelFallback";
+import {
   recordGeminiUsage,
   waitForRpmCapacity,
 } from "@/services/translation/geminiUsage";
-import { translateSingleText } from "@/services/translation/pageTranslate";
 import {
   assignItemsToSlots,
   buildTranslationSlots,
@@ -63,7 +74,6 @@ import {
   tryAcquireTranslationLock,
 } from "@/services/translation/translationRuntimeLock";
 import { isCjkLanguageCode } from "@/services/translation/translationLang";
-import { yoloDetector } from "@/services/yolo/yolo";
 import {
   notifyTranslationBackground,
   notifyTranslationProgress,
@@ -71,6 +81,23 @@ import {
 
 const MAX_CROPS_PER_PAGE = 24;
 const STORE_FILE = "trapp-translation-jobs.json";
+
+/** Consecutive failed model switches across queued pages. */
+let autoSwitchFailures = 0;
+
+/** Persistently disables auto-switch after repeated fallback failures. */
+function disableAutoModelSwitch(job: PretranslateJob): void {
+  autoSwitchFailures = 0;
+  job.autoModelSwitch = false;
+  for (const candidate of jobs) candidate.autoModelSwitch = false;
+  console.warn(
+    "[translation][queue][ai] auto model switch disabled after repeated failures",
+  );
+  void updateSettings({ readerAutoModelSwitch: false }).catch((error) => {
+    console.warn("[translation][queue] could not persist auto-switch setting", error);
+  });
+  publish();
+}
 
 export type PretranslateStatus =
   | "queued"
@@ -90,11 +117,10 @@ export interface PretranslateJob {
   sourceLanguage: string;
   targetLanguage: string;
   geminiModelId: string;
-  aiWorkerCount: number;
+  autoModelSwitch: boolean;
   aiMaxContextPages: number;
-  freeRequestConcurrency: number;
-  /** OCR bubble workers for this job (Baberu 1..5, PP-OCR clamped to 1). */
-  bubbleWorkers: number;
+  /** PP-OCR recognition batch size for this job. */
+  recognitionBatch: number;
   status: PretranslateStatus;
   pagesDone: number;
   pagesFailed: number;
@@ -183,12 +209,16 @@ function scheduleSave(): void {
 
 async function loadPersisted(): Promise<void> {
   try {
+    const currentSettings = await getSettings().catch(() => null);
     const file = storeFile();
     if (!file.exists) return;
     const parsed = JSON.parse(await file.text()) as PretranslateJob[];
     if (!Array.isArray(parsed)) return;
     jobs = parsed.map((job) => {
-      const pageCount = Array.isArray(job.pageUris) ? job.pageUris.length : 0;
+      const pageUris = Array.isArray(job.pageUris)
+        ? job.pageUris.filter((uri): uri is string => typeof uri === "string")
+        : [];
+      const pageCount = pageUris.length;
       const hasResumeIndex =
         typeof job.nextPageIndex === "number" &&
         Number.isFinite(job.nextPageIndex);
@@ -207,11 +237,37 @@ async function loadPersisted(): Promise<void> {
             Math.max(0, Math.round(job.pagesFailed ?? 0)),
           )
         : 0;
+      const geminiModelId =
+        typeof job.geminiModelId === "string" && job.geminiModelId
+          ? job.geminiModelId
+          : (currentSettings?.geminiModelId ?? GEMINI_DEFAULT_MODEL);
+      const autoModelSwitch =
+        typeof job.autoModelSwitch === "boolean"
+          ? job.autoModelSwitch
+          : (currentSettings?.readerAutoModelSwitch ?? false);
+      const aiMaxContextPages = Math.min(
+        50,
+        Math.max(
+          1,
+          Math.round(
+            typeof job.aiMaxContextPages === "number" &&
+              Number.isFinite(job.aiMaxContextPages)
+              ? job.aiMaxContextPages
+              : (currentSettings?.aiMaxContextPages ?? 10),
+          ),
+        ),
+      );
       return {
         ...job,
-        bubbleWorkers: clampOcrBubbleWorkers(
+        pageUris,
+        geminiModelId,
+        autoModelSwitch,
+        aiMaxContextPages,
+        recognitionBatch: clampOcrBubbleWorkers(
           modelIdForLanguage(job.sourceLanguage),
-          job.bubbleWorkers ?? 5,
+          typeof job.recognitionBatch === "number"
+            ? job.recognitionBatch
+            : (currentSettings?.ocrBubbleWorkers ?? 8),
         ),
         status: job.status === "running" ? "paused" : job.status,
         pagesDone,
@@ -266,12 +322,11 @@ function settingsSnapshot(settings: AppSettings) {
     sourceLanguage: settings.readerLanguage || "ja",
     targetLanguage: settings.readerTargetLanguage || "en",
     geminiModelId: settings.geminiModelId,
-    aiWorkerCount: settings.aiWorkerCount,
+    autoModelSwitch: settings.readerAutoModelSwitch,
     aiMaxContextPages: settings.aiMaxContextPages,
-    freeRequestConcurrency: settings.freeRequestConcurrency,
-    bubbleWorkers: clampOcrBubbleWorkers(
+    recognitionBatch: clampOcrBubbleWorkers(
       modelIdForLanguage(settings.readerLanguage || "ja"),
-      settings.pretranslateBubbleWorkers,
+      settings.ocrBubbleWorkers,
     ),
   };
 }
@@ -313,12 +368,11 @@ export async function enqueuePretranslateJob(input: {
     sourceLanguage: input.sourceLanguage ?? snap.sourceLanguage,
     targetLanguage: input.targetLanguage ?? snap.targetLanguage,
     geminiModelId: snap.geminiModelId,
-    aiWorkerCount: snap.aiWorkerCount,
+    autoModelSwitch: snap.autoModelSwitch,
     aiMaxContextPages: snap.aiMaxContextPages,
-    freeRequestConcurrency: snap.freeRequestConcurrency,
-    bubbleWorkers: clampOcrBubbleWorkers(
+    recognitionBatch: clampOcrBubbleWorkers(
       modelIdForLanguage(input.sourceLanguage ?? snap.sourceLanguage),
-      snap.bubbleWorkers,
+      snap.recognitionBatch,
     ),
     status: paused ? "paused" : "queued",
     pagesDone: 0,
@@ -359,25 +413,6 @@ function pump(): void {
   });
 }
 
-async function mapLimit<T>(
-  items: T[],
-  limit: number,
-  work: (item: T, index: number) => Promise<void>,
-): Promise<void> {
-  let cursor = 0;
-  const workers = Array.from(
-    { length: Math.max(1, Math.min(limit, items.length)) },
-    async () => {
-      while (cursor < items.length) {
-        const index = cursor;
-        cursor += 1;
-        await work(items[index], index);
-      }
-    },
-  );
-  await Promise.all(workers);
-}
-
 async function translatePage(
   job: PretranslateJob,
   pageUri: string,
@@ -392,19 +427,13 @@ async function translatePage(
     );
   }
 
-  const detection = await yoloDetector.detectFromUri(pageUri);
+  const detection = await detectPageRegions(pageUri);
   const slots = buildTranslationSlots(detection).filter(
     (slot) =>
       slot.pasteBox.x2 > slot.pasteBox.x1 &&
       slot.pasteBox.y2 > slot.pasteBox.y1,
   );
-  const ocrModel = getLocalOcrModel(modelId);
-  let regions: OcrRegion[];
-  if (ocrModel?.engine === "ctc") {
-    regions = preparePaddleRegions(detection.boxes, MAX_CROPS_PER_PAGE);
-  } else {
-    regions = prepareTextRegions(detection.boxes, MAX_CROPS_PER_PAGE);
-  }
+  const regions = preparePaddleRegions(detection.boxes, MAX_CROPS_PER_PAGE);
   if (slots.length === 0 || regions.length === 0) {
     throw new Error(`No text regions found on page ${pageIndex + 1}.`);
   }
@@ -416,7 +445,7 @@ async function translatePage(
     regions,
     language: job.sourceLanguage,
     maxCrops: MAX_CROPS_PER_PAGE,
-    concurrency: job.bubbleWorkers,
+    concurrency: job.recognitionBatch,
   });
   const assigned = assignItemsToSlots(slots, ocr.items);
   const filled = fillSlotTexts(
@@ -433,19 +462,29 @@ async function translatePage(
 
   let modelIdUsed: string | null = null;
   if (job.engine === "free") {
-    await mapLimit(bubbles, job.freeRequestConcurrency, async (bubble) => {
-      try {
-        bubble.translatedText = await translateSingleText(
-          localTranslate,
-          job.sourceLanguage,
-          job.targetLanguage,
-          bubble.sourceText,
-        );
-      } catch (error) {
-        console.warn("[translation][queue][free] bubble failed", error);
-        bubble.translatedText = "";
-      }
+    const response = await translateFreeBatch({
+      sourceCode: job.sourceLanguage,
+      targetCode: job.targetLanguage,
+      history: [],
+      batch: [
+        {
+          label: "page_0",
+          pageIndex,
+          regions: bubbles.map((bubble) => ({
+            regionId: bubble.id,
+            text: bubble.sourceText,
+          })),
+        },
+      ],
     });
+    const byRegion = new Map<number, string>();
+    for (const item of response.results) {
+      if (item.label === "page_0") byRegion.set(item.regionId, item.text);
+    }
+    for (const bubble of bubbles) {
+      bubble.translatedText = byRegion.get(bubble.id)?.trim() ?? "";
+    }
+    modelIdUsed = "free-google";
   } else {
     const settings = await getSettings();
     const apiKey = settings.geminiApiKey.trim();
@@ -455,46 +494,73 @@ async function translatePage(
       Math.max(0, history.length),
     );
     const recent = history.slice(-context);
-    const response = await waitForRpmCapacity(job.geminiModelId as never)
-      .then(() =>
-        translateGeminiBatch({
+    const historyPayload = recent.map((item, index) => ({
+      label: "history_" + index,
+      pageIndex: item.pageIndex,
+      regions: item.bubbles.map((bubble) => ({
+        regionId: bubble.id,
+        text: bubble.text,
+      })),
+    }));
+    const batchPayload = [
+      {
+        label: "page_0",
+        pageIndex,
+        regions: bubbles.map((bubble) => ({
+          regionId: bubble.id,
+          text: bubble.sourceText,
+        })),
+      },
+    ];
+    const primary = job.geminiModelId as GeminiModelId;
+    const models: GeminiModelId[] = fallbackModelChain(
+      primary,
+      job.autoModelSwitch && settings.readerAutoModelSwitch,
+    );
+    const outcome = await requestWithModelFallback({
+      models,
+      request: async (model) => {
+        await waitForRpmCapacity(model);
+        return translateGeminiBatch({
           apiKey,
-          model: job.geminiModelId as never,
+          model,
           sourceCode: job.sourceLanguage,
           targetCode: job.targetLanguage,
-          history: recent.map((item, index) => ({
-            label: `history_${index}`,
-            pageIndex: item.pageIndex,
-            regions: item.bubbles.map((bubble) => ({
-              regionId: bubble.id,
-              text: bubble.text,
-            })),
-          })),
-          batch: [
-            {
-              label: "page_0",
-              pageIndex,
-              regions: bubbles.map((bubble) => ({
-                regionId: bubble.id,
-                text: bubble.sourceText,
-              })),
-            },
-          ],
-        }),
-      )
-      .catch((error) => {
-        void recordGeminiUsage({
-          model: job.geminiModelId as never,
-          success: false,
-          errorCode:
-            error instanceof GeminiApiError
-              ? String(error.code ?? error.status ?? "error")
-              : "network",
+          history: historyPayload,
+          batch: batchPayload,
         });
-        throw error;
+      },
+      onSwitch: (from, to) => {
+        console.warn("[translation][queue][ai] rate limited; fallback model", {
+          from,
+          to,
+        });
+      },
+    });
+    const response = outcome.value;
+    const usedModel = outcome.usedModel;
+    const lastError = outcome.lastError;
+    const failureState = nextAutoSwitchFailureState(
+      autoSwitchFailures,
+      outcome,
+    );
+    autoSwitchFailures = failureState.failures;
+    if (failureState.disable) disableAutoModelSwitch(job);
+    if (!response) {
+      void recordGeminiUsage({
+        model: usedModel,
+        success: false,
+        errorCode:
+          lastError instanceof GeminiApiError
+            ? String(lastError.code ?? lastError.status ?? "error")
+            : "network",
       });
+      throw lastError instanceof Error
+        ? lastError
+        : new Error("AI translation failed.");
+    }
     void recordGeminiUsage({
-      model: job.geminiModelId as never,
+      model: usedModel,
       success: true,
       inputTokens: response.usage.inputTokens,
       outputTokens: response.usage.outputTokens,
@@ -506,7 +572,7 @@ async function translatePage(
     for (const bubble of bubbles) {
       bubble.translatedText = byRegion.get(bubble.id)?.trim() ?? "";
     }
-    modelIdUsed = job.geminiModelId;
+    modelIdUsed = usedModel;
   }
 
   const translated = bubbles.filter((bubble) => bubble.translatedText.trim());
@@ -527,6 +593,8 @@ async function translatePage(
         translatedText: bubble.translatedText,
         pasteBox: bubble.pasteBox,
         eraseBoxes: bubble.eraseBoxes,
+        mask: bubble.mask,
+        lineCount: bubble.lineCount,
       })),
     });
     void pruneTranslationCache(job.mangaId);
@@ -540,8 +608,52 @@ async function translatePage(
   };
 }
 
+function pageFilesUsable(uris: string[]): boolean {
+  if (uris.length === 0) return false;
+  return uris.every((uri) => {
+    try {
+      const file = new File(uri);
+      return file.exists && file.size > 0;
+    } catch {
+      return false;
+    }
+  });
+}
+
+/**
+ * Restores the shared reader-cache pages for a job. Persisted page uris can be
+ * stale after an eviction or a cold-start cache clear, so re-materialise the
+ * downloaded chapter before the first page is read.
+ */
+async function refreshJobPageUris(job: PretranslateJob): Promise<string[]> {
+  if (pageFilesUsable(job.pageUris)) return job.pageUris;
+  console.log("[translation][queue] re-materialising reader cache", {
+    id: job.id,
+    chapterId: job.chapterId,
+  });
+  const pages = await getDownloadedPageUris(job.chapterId);
+  if (pages.length > 0) {
+    const resumeIndex = Math.round(job.nextPageIndex ?? 0);
+    job.pageUris = pages;
+    job.nextPageIndex = Math.min(Math.max(0, resumeIndex), pages.length);
+  }
+  return pages;
+}
+
 async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
   void lockKey;
+  pinReaderCacheChapter(job.chapterId);
+  const refreshedPages = await refreshJobPageUris(job).catch(() => []);
+  if (refreshedPages.length === 0) {
+    job.status = "failed";
+    job.error =
+      "The downloaded chapter pages are no longer available. Download the chapter again.";
+    job.currentPage = null;
+    job.finishedAt = Date.now();
+    releaseReaderCacheChapter(job.chapterId);
+    publish();
+    return;
+  }
   job.status = "running";
   job.startedAt = Date.now();
   job.error = null;
@@ -631,6 +743,7 @@ async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
       void notifyTranslationProgress(job, index + 1, totalPages);
     }
   } finally {
+    releaseReaderCacheChapter(job.chapterId);
     job.currentPage = null;
     if (cancelRequested.delete(job.id)) {
       jobs = jobs.filter((item) => item.id !== job.id);

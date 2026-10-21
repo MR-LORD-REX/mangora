@@ -1,24 +1,17 @@
 /**
  * localOcr.ts
  * ---------------------------------------------------------------------------
- * Page-level OCR for the two on-device providers.
+ * Page-level on-device OCR using PP-OCR only.
  *
- * For every page YOLO detected, the shared pageOcr helpers crop each
- * messy_text / text_bubble region, the selected provider reads the crop, and
- * the resulting text is mapped back to page pixels as one line item per crop.
+ * Every detected speech bubble is cropped once, the PP-OCR DBNet detector
+ * finds text lines inside that crop, and the CTC recognizer reads all lines
+ * from the page in batches. The bubble-worker setting is the recognizer batch
+ * size, not a pool of duplicate engines: one detector + one recognizer serve
+ * the whole page.
  *
- * Engines are pooled per provider. A single ONNX session cannot run two
- * forwards concurrently, so real parallelism needs independent engine sets:
- *
- *   baberu        - up to 5 lazy engine sets (3 ONNX sessions each, ~121 MB
- *                   resident per worker). Every bubble worker gets its own
- *                   decoder, so N workers actually run N recognitions.
- *   paddle-korean - exactly 1 engine set (DBNet detector + CTC recognizer)
- *                   until PP-OCR throughput has been measured on-device.
- *
- * The pool grows on demand, keeps excess slots alive when the requested worker
- * count shrinks, and releases every loaded session from
- * `releaseLocalOcrEngines()` when the reader unmounts.
+ * Recognized line boxes are mapped back to natural page pixels. Keeping
+ * per-line items (instead of one merged item per bubble) gives the overlay an
+ * accurate source line count for fitting translated text.
  * ---------------------------------------------------------------------------
  */
 
@@ -26,31 +19,29 @@ import {
   MIN_CROP_PX,
   cropRegionToLocalFile,
   deleteCropFile,
-  downloadPageToCache,
+  ensureDecodablePageUri,
   emptyPageOutput,
   makePageItem,
   preparePaddleRegions,
-  prepareTextRegions,
   runConcurrently,
   type OcrCrop,
+  type OcrRegion,
   type OcrTextItem,
   type PageOcrOptions,
   type PageOcrOutput,
 } from "./pageOcr";
-import { createBaberuEngine, type BaberuEngine } from "./baberuEngine";
-import { createCtcEngine, type CtcEngine } from "./paddleRecEngine";
+import { createCtcEngine, type CtcEngine, type CtcResult } from "./paddleRecEngine";
 import { isModelDownloaded, modelDirectoryUri } from "./modelStore";
 import {
-  clampOcrBubbleWorkers,
   getLocalOcrModel,
   modelIdForLanguage,
+  ocrRecognitionBatchSize,
   type LocalOcrModelId,
 } from "./ocrModels";
 import { loadOcrRuntime } from "./onnxRuntime";
 
 const CROP_UPSCALE_MIN = 48;
 const MAX_CROP_DIMENSION = 1400;
-const BABERU_CROP_DIMENSION = 256;
 
 export interface LocalOcrPageOptions extends PageOcrOptions {
   /** Reader language code; selects the provider. */
@@ -58,32 +49,21 @@ export interface LocalOcrPageOptions extends PageOcrOptions {
   /** Optional override (used by diagnostics). */
   modelId?: LocalOcrModelId;
   maxCrops?: number;
-  /**
-   * Requested recognition concurrency. The pool is clamped to the provider's
-   * maximum (Baberu 5, PP-OCR 1). Reader calls pass one region per request but
-   * still use this to size the shared pool.
-   */
+  /** Bubble workers = number of text lines per recognizer forward pass. */
   concurrency?: number;
 }
 
-interface RecognizeResult {
-  text: string;
-  confidence: number;
-}
-
-type Engine = BaberuEngine | CtcEngine;
-
 interface EngineSlot {
-  engine: Engine | null;
-  loading: Promise<Engine> | null;
+  engine: CtcEngine | null;
+  loading: Promise<CtcEngine> | null;
   busy: boolean;
 }
 
-interface CropOutcome {
-  item: OcrTextItem | null;
-  recognized: boolean;
-  failed: boolean;
+interface PreparedRegion {
+  region: OcrRegion;
+  crop: OcrCrop | null;
   skipped: boolean;
+  failed: boolean;
 }
 
 export class LocalOcrError extends Error {
@@ -94,7 +74,6 @@ export class LocalOcrError extends Error {
 }
 
 const enginePools = new Map<LocalOcrModelId, EngineSlot[]>();
-const poolLimits = new Map<LocalOcrModelId, number>();
 const poolWaiters = new Map<LocalOcrModelId, Set<() => void>>();
 /**
  * Incremented by `releaseLocalOcrEngines`. An acquire that was waiting across
@@ -135,25 +114,17 @@ function missingModelMessage(id: LocalOcrModelId): string {
   return `${label} is not downloaded yet. Open Settings > OCR models and download it once.`;
 }
 
-async function loadEngine(id: LocalOcrModelId): Promise<Engine> {
+async function loadEngine(id: LocalOcrModelId): Promise<CtcEngine> {
   if (!(await isModelDownloaded(id))) {
     throw new LocalOcrError(missingModelMessage(id));
   }
   const runtime = loadOcrRuntime();
-  const dirUri = modelDirectoryUri(id);
-  const model = getLocalOcrModel(id);
-  if (!model) throw new LocalOcrError(`Unknown OCR model: ${id}`);
-  return model.engine === "baberu"
-    ? createBaberuEngine(dirUri, runtime)
-    : createCtcEngine(dirUri, runtime);
+  return createCtcEngine(modelDirectoryUri(id), runtime);
 }
 
 async function acquireEngine(
   id: LocalOcrModelId,
-  requestedLimit: number,
-): Promise<{ slot: EngineSlot; engine: Engine }> {
-  const limit = clampOcrBubbleWorkers(id, requestedLimit);
-  poolLimits.set(id, limit);
+): Promise<{ slot: EngineSlot; engine: CtcEngine }> {
   const generation = poolGeneration;
 
   for (;;) {
@@ -162,22 +133,24 @@ async function acquireEngine(
     }
 
     const slots = slotsFor(id);
-    const idle = slots.find((slot) => slot.engine !== null && !slot.busy);
-    if (idle?.engine) {
-      idle.busy = true;
-      return { slot: idle, engine: idle.engine };
-    }
-
-    const activeLimit = poolLimits.get(id) ?? limit;
-    if (slots.length < activeLimit) {
-      const slot: EngineSlot = { engine: null, loading: null, busy: true };
+    let slot = slots[0];
+    if (!slot) {
+      slot = { engine: null, loading: null, busy: true };
       slots.push(slot);
+    }
+    if (slot.engine && !slot.busy) {
+      slot.busy = true;
+      return { slot, engine: slot.engine };
+    }
+    if (!slot.engine && !slot.loading) {
+      slot.busy = true;
       const loading = loadEngine(id);
       slot.loading = loading;
       try {
         const engine = await loading;
         slot.loading = null;
         if (generation !== poolGeneration) {
+          await engine.release().catch(() => {});
           throw new LocalOcrError(
             "The OCR engine pool was released while loading.",
           );
@@ -199,10 +172,9 @@ async function acquireEngine(
 
 async function withPooledEngine<T>(
   id: LocalOcrModelId,
-  limit: number,
-  work: (engine: Engine) => Promise<T>,
+  work: (engine: CtcEngine) => Promise<T>,
 ): Promise<T> {
-  const lease = await acquireEngine(id, limit);
+  const lease = await acquireEngine(id);
   try {
     return await work(lease.engine);
   } finally {
@@ -211,19 +183,173 @@ async function withPooledEngine<T>(
   }
 }
 
-async function recognizeCrop(
-  engine: Engine,
-  uri: string,
-): Promise<RecognizeResult> {
-  const result = await engine.recognize(uri);
-  if (typeof result === "string") {
-    return { text: result, confidence: 1 };
-  }
-  return result;
-}
-
 function normalizeText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
+}
+
+function clampConfidence(value: number): number {
+  return Math.min(1, Math.max(0, value || 1));
+}
+
+/**
+ * Crops every detected region first, then lets the CTC engine batch lines
+ * across all bubbles. One engine session serves the whole page.
+ */
+async function recognizeCtcPageRegions(args: {
+  modelId: LocalOcrModelId;
+  textRegions: OcrRegion[];
+  localPageUri: string;
+  pageUrl: string;
+  imageWidth: number;
+  imageHeight: number;
+  batchSize: number;
+}): Promise<PageOcrOutput> {
+  const {
+    modelId,
+    textRegions,
+    localPageUri,
+    pageUrl,
+    imageWidth,
+    imageHeight,
+    batchSize,
+  } = args;
+
+  // Two crop workers keep expo-image-manipulator busy without competing with
+  // the single recognizer session for memory.
+  const prepared = await runConcurrently(
+    textRegions,
+    2,
+    async (region): Promise<PreparedRegion> => {
+      const regionWidth = region.x2 - region.x1;
+      const regionHeight = region.y2 - region.y1;
+      if (regionWidth < MIN_CROP_PX || regionHeight < MIN_CROP_PX) {
+        return { region, crop: null, skipped: true, failed: false };
+      }
+      try {
+        const crop = await cropRegionToLocalFile(
+          localPageUri,
+          region,
+          imageWidth,
+          imageHeight,
+          {
+            upscaleMinDim: CROP_UPSCALE_MIN,
+            maxDimension: MAX_CROP_DIMENSION,
+          },
+        );
+        return { region, crop, skipped: false, failed: false };
+      } catch (error) {
+        console.warn("Local OCR crop failed:", { region, modelId, error });
+        return { region, crop: null, skipped: false, failed: true };
+      }
+    },
+  );
+
+  const usable = prepared.filter(
+    (entry): entry is PreparedRegion & { crop: OcrCrop } =>
+      entry.crop !== null,
+  );
+  const indexByEntry = new Map<PreparedRegion, number>();
+  usable.forEach((entry, index) => indexByEntry.set(entry, index));
+
+  let results: CtcResult[] = [];
+  let engineFailed = false;
+  try {
+    if (usable.length > 0) {
+      results = await withPooledEngine(modelId, (engine) =>
+        engine.recognizeBatch(
+          usable.map((entry) => entry.crop.uri),
+          batchSize,
+        ),
+      );
+    }
+  } catch (error) {
+    console.warn("Local OCR page batch failed:", { modelId, error });
+    engineFailed = true;
+  }
+
+  const items: OcrTextItem[] = [];
+  let cropsRecognized = 0;
+  let cropsFailed = 0;
+  let cropsSkipped = 0;
+
+  try {
+    for (const entry of prepared) {
+      if (entry.skipped) {
+        cropsSkipped += 1;
+        continue;
+      }
+      if (entry.failed || !entry.crop) {
+        cropsFailed += 1;
+        continue;
+      }
+      if (engineFailed) {
+        cropsFailed += 1;
+        continue;
+      }
+      const result = results[indexByEntry.get(entry) ?? -1];
+      if (!result) {
+        cropsFailed += 1;
+        continue;
+      }
+
+      if (result.lines && result.lines.length > 0) {
+        let emitted = 0;
+        for (const line of result.lines) {
+          const text = normalizeText(line.text);
+          if (!text) continue;
+          items.push(
+            makePageItem({
+              text,
+              confidence: clampConfidence(line.confidence),
+              level: "line",
+              classId: entry.region.classId,
+              x1: line.x1,
+              y1: line.y1,
+              x2: line.x2,
+              y2: line.y2,
+              crop: entry.crop,
+            }),
+          );
+          emitted += 1;
+        }
+        if (emitted > 0) cropsRecognized += 1;
+        continue;
+      }
+
+      const text = normalizeText(result.text);
+      if (!text) continue;
+      items.push(
+        makePageItem({
+          text,
+          confidence: clampConfidence(result.confidence),
+          level: "line",
+          classId: entry.region.classId,
+          x1: 0,
+          y1: 0,
+          x2: entry.crop.width,
+          y2: entry.crop.height,
+          crop: entry.crop,
+        }),
+      );
+      cropsRecognized += 1;
+    }
+  } finally {
+    await Promise.allSettled(
+      prepared
+        .filter((entry) => entry.crop !== null)
+        .map((entry) => deleteCropFile(entry.crop!.uri)),
+    );
+  }
+
+  return {
+    pageUrl,
+    imageWidth,
+    imageHeight,
+    items,
+    cropsRecognized,
+    cropsFailed,
+    cropsSkipped,
+  };
 }
 
 /** Releases every loaded engine (call when leaving the reader for good). */
@@ -252,7 +378,6 @@ export async function releaseLocalOcrEngines(): Promise<void> {
   }
 
   enginePools.clear();
-  poolLimits.clear();
   await Promise.allSettled(pending);
 }
 
@@ -275,11 +400,7 @@ export async function recognizePageRegions(
     maxCrops = 24,
   } = options;
   const modelId = options.modelId ?? modelIdForLanguage(language);
-  const model = getLocalOcrModel(modelId);
-  const textRegions =
-    model?.engine === "ctc"
-      ? preparePaddleRegions(options.regions, maxCrops)
-      : prepareTextRegions(options.regions, maxCrops);
+  const textRegions = preparePaddleRegions(options.regions, maxCrops);
   const empty = emptyPageOutput({
     pageUrl,
     imageWidth,
@@ -288,103 +409,18 @@ export async function recognizePageRegions(
   });
   if (textRegions.length === 0) return empty;
 
-  const concurrency = clampOcrBubbleWorkers(
+  const batchSize = ocrRecognitionBatchSize(
     modelId,
     options.concurrency ?? 1,
   );
-  const localPageUri = await downloadPageToCache(pageUrl, headers);
-
-  const outcomes = await runConcurrently(
+  const localPageUri = await ensureDecodablePageUri(pageUrl, { headers });
+  return recognizeCtcPageRegions({
+    modelId,
     textRegions,
-    concurrency,
-    async (region): Promise<CropOutcome> => {
-      const regionWidth = region.x2 - region.x1;
-      const regionHeight = region.y2 - region.y1;
-      if (regionWidth < MIN_CROP_PX || regionHeight < MIN_CROP_PX) {
-        return {
-          item: null,
-          recognized: false,
-          failed: false,
-          skipped: true,
-        };
-      }
-
-      let crop: OcrCrop | null = null;
-      try {
-        crop = await cropRegionToLocalFile(
-          localPageUri,
-          region,
-          imageWidth,
-          imageHeight,
-          {
-            upscaleMinDim: CROP_UPSCALE_MIN,
-            maxDimension:
-              model?.engine === "baberu"
-                ? BABERU_CROP_DIMENSION
-                : MAX_CROP_DIMENSION,
-          },
-        );
-        const result = await withPooledEngine(modelId, concurrency, (engine) =>
-          recognizeCrop(engine, crop!.uri),
-        );
-        const text = normalizeText(result.text);
-        if (!text) {
-          return {
-            item: null,
-            recognized: false,
-            failed: false,
-            skipped: false,
-          };
-        }
-
-        return {
-          item: makePageItem({
-            text,
-            confidence: Math.min(1, Math.max(0, result.confidence || 1)),
-            level: "line",
-            classId: region.classId,
-            x1: 0,
-            y1: 0,
-            x2: crop.width,
-            y2: crop.height,
-            crop,
-          }),
-          recognized: true,
-          failed: false,
-          skipped: false,
-        };
-      } catch (error) {
-        console.warn("Local OCR crop failed:", { region, modelId, error });
-        return {
-          item: null,
-          recognized: false,
-          failed: true,
-          skipped: false,
-        };
-      } finally {
-        if (crop) await deleteCropFile(crop.uri);
-      }
-    },
-  );
-
-  const items: OcrTextItem[] = [];
-  let cropsRecognized = 0;
-  let cropsFailed = 0;
-  let cropsSkipped = 0;
-  for (const outcome of outcomes) {
-    if (outcome.item) items.push(outcome.item);
-    if (outcome.recognized) cropsRecognized += 1;
-    if (outcome.failed) cropsFailed += 1;
-    if (outcome.skipped) cropsSkipped += 1;
-  }
-
-  return {
+    localPageUri,
     pageUrl,
     imageWidth,
     imageHeight,
-    items,
-    cropsRecognized,
-    cropsFailed,
-    cropsSkipped,
-  };
+    batchSize,
+  });
 }

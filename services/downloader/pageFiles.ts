@@ -15,6 +15,7 @@ import { Directory, File } from "expo-file-system";
 
 import { downloadToFile } from "@/services/net/browserFetch";
 import { fetchExtensionPageImage } from "@/services/extensions/native";
+import { isDecodableImageUri } from "@/services/images/decode";
 import {
   extensionPageUrlFor,
   imageHeadersForPage,
@@ -144,12 +145,23 @@ export async function downloadChapterPages({
 
       const name = names[index];
       const existing = new File(directory, name);
-      if (existing.exists && existing.size > 0) {
+      if (
+        existing.exists &&
+        existing.size > 0 &&
+        (await isDecodableImageUri(existing.uri))
+      ) {
         pages[index] = { path: existing.uri, name, bytes: existing.size };
         pagesDone += 1;
         bytes += existing.size;
         onProgress(pagesDone, bytes);
         continue;
+      }
+      if (existing.exists) {
+        try {
+          existing.delete();
+        } catch {
+          // The download below replaces it anyway.
+        }
       }
 
       try {
@@ -211,6 +223,9 @@ async function downloadPage(
       }
       if (!temp.exists || temp.size <= 0) {
         throw new Error("Empty page payload");
+      }
+      if (!(await isDecodableImageUri(temp.uri))) {
+        throw new Error("Downloaded page is not a decodable image");
       }
       const target = new File(directory, name);
       if (target.exists) target.delete();

@@ -33,6 +33,61 @@ export interface LoadChapterPagesOptions {
   onAdjacent?: (adjacent: AdjacentChapters) => void;
 }
 
+export interface LoadAdjacentChaptersOptions {
+  source: string;
+  chapterId: string;
+  mangaId: string;
+  onAdjacent?: (adjacent: AdjacentChapters) => void;
+}
+
+/**
+ * Resolves the previous/next chapter ids without touching the page list.
+ * Cached chapters use this so navigation still works on a warm open without
+ * asking the extension for the pages again.
+ */
+export function loadAdjacentChapters({
+  source,
+  chapterId,
+  mangaId,
+  onAdjacent,
+}: LoadAdjacentChaptersOptions): void {
+  if (!source.startsWith("ext:")) {
+    onAdjacent?.({ prev: null, next: null });
+    return;
+  }
+  if (!mangaId) {
+    onAdjacent?.({ prev: null, next: null });
+    return;
+  }
+  const sourceId = source.slice(4);
+  let chapterUrl: string;
+  let mangaUrl: string;
+  try {
+    chapterUrl = decodeURIComponent(chapterId);
+    mangaUrl = decodeURIComponent(mangaId);
+  } catch {
+    onAdjacent?.({ prev: null, next: null });
+    return;
+  }
+  getExtensionChapters(sourceId, mangaUrl)
+    .then(({ chapters }) => {
+      const index = chapters.findIndex(
+        (chapter) => chapter.url === chapterUrl,
+      );
+      if (index < 0) {
+        onAdjacent?.({ prev: null, next: null });
+        return;
+      }
+      const prev = index > 0 ? chapters[index - 1] : null;
+      const next = index < chapters.length - 1 ? chapters[index + 1] : null;
+      onAdjacent?.({
+        prev: prev ? encodeURIComponent(prev.url) : null,
+        next: next ? encodeURIComponent(next.url) : null,
+      });
+    })
+    .catch((error) => console.error(error));
+}
+
 /**
  * Loads the page list for one chapter and reports it through `onPages`.
  * Adjacent chapters are reported later through `onAdjacent` when available.
@@ -44,11 +99,10 @@ export async function loadChapterPages({
   chapterMemo,
   onPages,
   onAdjacent,
-}: LoadChapterPagesOptions): Promise<void> {
+}: LoadChapterPagesOptions): Promise<string[]> {
   const reportAdjacent = (adjacent: AdjacentChapters) => {
     onAdjacent?.(adjacent);
   };
-  const reportAdjacentError = (error: unknown) => console.error(error);
 
   if (!source.startsWith("ext:")) {
     throw new Error(
@@ -69,28 +123,14 @@ export async function loadChapterPages({
     registerExtensionHeaders(page.imageUrl, res.headers);
     registerExtensionPageUrl(page.imageUrl, page.url);
   });
-  onPages(res.pages.map((page) => page.imageUrl));
+  const imageUrls = res.pages.map((page) => page.imageUrl);
+  onPages(imageUrls);
 
-  if (mangaId) {
-    const mangaUrl = decodeURIComponent(mangaId);
-    getExtensionChapters(sourceId, mangaUrl)
-      .then(({ chapters }) => {
-        const index = chapters.findIndex(
-          (chapter) => chapter.url === chapterUrl,
-        );
-        if (index < 0) {
-          reportAdjacent({ prev: null, next: null });
-          return;
-        }
-        const prev = index > 0 ? chapters[index - 1] : null;
-        const next = index < chapters.length - 1 ? chapters[index + 1] : null;
-        reportAdjacent({
-          prev: prev ? encodeURIComponent(prev.url) : null,
-          next: next ? encodeURIComponent(next.url) : null,
-        });
-      })
-      .catch(reportAdjacentError);
-  } else {
-    reportAdjacent({ prev: null, next: null });
-  }
+  loadAdjacentChapters({
+    source,
+    chapterId,
+    mangaId,
+    onAdjacent: reportAdjacent,
+  });
+  return imageUrls;
 }

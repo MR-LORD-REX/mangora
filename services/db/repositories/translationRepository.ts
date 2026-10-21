@@ -28,11 +28,14 @@ import {
   translationRegions,
   translationUsage,
 } from "../schema";
-import type { Box } from "@/services/translation/translation.types";
+import type {
+  Box,
+  BubbleMask,
+} from "@/services/translation/translation.types";
 import type { GeminiModelId } from "@/services/translation/geminiModels";
 
 /** Bump when the stored geometry/prompt contract changes. */
-export const TRANSLATION_CACHE_PROMPT_VERSION = "v2";
+export const TRANSLATION_CACHE_PROMPT_VERSION = "v3";
 
 export interface StoredTranslationRegion {
   regionId: number;
@@ -41,6 +44,8 @@ export interface StoredTranslationRegion {
   kind: "bubble" | "messy";
   pasteBox: Box;
   eraseBoxes: Box[];
+  mask?: BubbleMask;
+  lineCount?: number;
 }
 
 export interface SaveTranslationPageInput {
@@ -104,6 +109,8 @@ function regionGeometry(region: StoredTranslationRegion): string {
     kind: region.kind,
     pasteBox: region.pasteBox,
     eraseBoxes: region.eraseBoxes,
+    mask: region.mask,
+    lineCount: region.lineCount,
   });
 }
 
@@ -111,16 +118,32 @@ function parseRegionGeometry(raw: string): {
   kind: StoredTranslationRegion["kind"];
   pasteBox: Box;
   eraseBoxes: Box[];
+  mask?: BubbleMask;
+  lineCount?: number;
 } {
   const parsed = JSON.parse(raw) as {
     kind?: StoredTranslationRegion["kind"];
     pasteBox?: Box;
     eraseBoxes?: Box[];
+    mask?: BubbleMask;
+    lineCount?: number;
   };
+  const mask =
+    parsed.mask &&
+    Array.isArray(parsed.mask.polygon) &&
+    parsed.mask.polygon.length >= 3 &&
+    parsed.mask.bounds
+      ? parsed.mask
+      : undefined;
   return {
     kind: parsed.kind === "messy" ? "messy" : "bubble",
     pasteBox: parsed.pasteBox ?? { x1: 0, y1: 0, x2: 0, y2: 0 },
     eraseBoxes: Array.isArray(parsed.eraseBoxes) ? parsed.eraseBoxes : [],
+    mask,
+    lineCount:
+      typeof parsed.lineCount === "number" && parsed.lineCount > 0
+        ? Math.round(parsed.lineCount)
+        : undefined,
   };
 }
 
@@ -283,7 +306,7 @@ export async function clearTranslationCache(): Promise<number> {
   return removed;
 }
 
-/** Cached page count for one manga, shown by TR settings. */
+/** Cached page count for one manga, shown in Settings > Translation. */
 export async function countTranslationCachePagesForManga(
   mangaId: string,
 ): Promise<number> {

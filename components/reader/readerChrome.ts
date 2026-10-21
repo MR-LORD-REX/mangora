@@ -10,12 +10,21 @@
 import { OrientationLock } from "expo-screen-orientation";
 
 export type ReaderReadingMode =
+  | "webtoon"
+  | "continuousVertical"
   | "scrollVertical"
   | "scrollHorizontal"
   | "pagedVertical"
   | "pagedHorizontal";
 
 export type ReaderPagedDirection = "ltr" | "rtl";
+
+/** Mihon's image scale choices for paged readers. */
+export type ReaderImageScaleType =
+  | "fitWidth"
+  | "fitHeight"
+  | "fitScreen"
+  | "original";
 
 export type ReaderOrientation =
   | "default"
@@ -28,7 +37,19 @@ export type ReaderOrientation =
 
 export type ReaderFitMode = "fit" | "original";
 
-export type ReaderTapZoneLayout = "topBottom" | "leftRight" | "both";
+/**
+ * Mihon navigation presets. The legacy names (`topBottom`, `leftRight`,
+ * `both`) stay valid so older settings keep working.
+ */
+export type ReaderTapZoneLayout =
+  | "l"
+  | "kindlish"
+  | "edge"
+  | "rightLeft"
+  | "disabled"
+  | "topBottom"
+  | "leftRight"
+  | "both";
 
 export type ReaderInvertTapZones = "none" | "horizontal" | "vertical" | "both";
 
@@ -42,6 +63,8 @@ export interface ReaderChromeSettings {
   pagedDirection: ReaderPagedDirection;
   orientation: ReaderOrientation;
   fitMode: ReaderFitMode;
+  /** Paged-viewer image scale, mirroring Mihon's image scale type. */
+  imageScaleType: ReaderImageScaleType;
   doubleTapToZoom: boolean;
   disableZoomOut: boolean;
   splitWidePages: boolean;
@@ -50,6 +73,8 @@ export interface ReaderChromeSettings {
   tapZoneLayout: ReaderTapZoneLayout;
   invertTapZones: ReaderInvertTapZones;
   sidePadding: number;
+  /** Webtoon spacing between pages in dp; 0 for continuous vertical. */
+  webtoonPageGap: number;
   backgroundColor: ReaderBackgroundColor;
   showPageNumber: boolean;
   fullscreen: boolean;
@@ -72,18 +97,20 @@ export interface ReaderChromeSettings {
 }
 
 export const DEFAULT_READER_CHROME: ReaderChromeSettings = {
-  readingMode: "scrollVertical",
+  readingMode: "webtoon",
   pagedDirection: "ltr",
   orientation: "default",
   fitMode: "fit",
+  imageScaleType: "fitScreen",
   doubleTapToZoom: true,
   disableZoomOut: true,
   splitWidePages: false,
   rotateWidePagesToFit: false,
   cropBorders: false,
-  tapZoneLayout: "topBottom",
+  tapZoneLayout: "l",
   invertTapZones: "none",
   sidePadding: 0,
+  webtoonPageGap: 15,
   backgroundColor: "black",
   showPageNumber: true,
   fullscreen: false,
@@ -126,11 +153,51 @@ export function applyFilterExclusivity(
   return next;
 }
 
-export const READING_MODE_OPTIONS: { key: ReaderReadingMode; label: string }[] = [
-  { key: "scrollVertical", label: "Scroll \u2195 (vertical)" },
-  { key: "scrollHorizontal", label: "Scroll \u2194 (horizontal)" },
-  { key: "pagedVertical", label: "Paged \u2195 (vertical)" },
-  { key: "pagedHorizontal", label: "Paged \u2194 (horizontal)" },
+export interface ReaderReadingModeOption {
+  id: string;
+  key: ReaderReadingMode;
+  direction?: ReaderPagedDirection;
+  label: string;
+  description: string;
+}
+
+/**
+ * Mihon's reading modes in the same order as its mode picker. LTR and RTL are
+ * both the horizontal pager, distinguished by `direction`.
+ */
+export const READING_MODE_OPTIONS: ReaderReadingModeOption[] = [
+  {
+    id: "ltr",
+    key: "pagedHorizontal",
+    direction: "ltr",
+    label: "Left to right",
+    description: "Paged, swipe left for the next page",
+  },
+  {
+    id: "rtl",
+    key: "pagedHorizontal",
+    direction: "rtl",
+    label: "Right to left",
+    description: "Paged, swipe right for the next page",
+  },
+  {
+    id: "vertical",
+    key: "pagedVertical",
+    label: "Vertical",
+    description: "Paged, swipe up for the next page",
+  },
+  {
+    id: "webtoon",
+    key: "webtoon",
+    label: "Webtoon",
+    description: "Continuous long strip with page gaps",
+  },
+  {
+    id: "continuous",
+    key: "continuousVertical",
+    label: "Continuous vertical",
+    description: "Continuous long strip without gaps",
+  },
 ];
 
 export const ORIENTATION_OPTIONS: { key: ReaderOrientation; label: string }[] = [
@@ -144,9 +211,24 @@ export const ORIENTATION_OPTIONS: { key: ReaderOrientation; label: string }[] = 
 ];
 
 export const TAP_ZONE_OPTIONS: { key: ReaderTapZoneLayout; label: string }[] = [
+  { key: "l", label: "L-shaped" },
+  { key: "kindlish", label: "Kindlish" },
+  { key: "edge", label: "Edge" },
+  { key: "rightLeft", label: "Right & left" },
+  { key: "disabled", label: "Disabled" },
   { key: "topBottom", label: "Top & bottom" },
   { key: "leftRight", label: "Left & right" },
   { key: "both", label: "Both (all sides)" },
+];
+
+export const IMAGE_SCALE_OPTIONS: {
+  key: ReaderImageScaleType;
+  label: string;
+}[] = [
+  { key: "fitScreen", label: "Fit screen" },
+  { key: "fitWidth", label: "Fit width" },
+  { key: "fitHeight", label: "Fit height" },
+  { key: "original", label: "Original" },
 ];
 
 export const INVERT_TAP_ZONE_OPTIONS: {
@@ -175,6 +257,36 @@ export function isPagedMode(mode: ReaderReadingMode): boolean {
 
 export function isHorizontalMode(mode: ReaderReadingMode): boolean {
   return mode === "scrollHorizontal" || mode === "pagedHorizontal";
+}
+
+/** Long-strip modes render pages top-to-bottom in one continuous column. */
+export function isLongStripMode(mode: ReaderReadingMode): boolean {
+  return (
+    mode === "webtoon" ||
+    mode === "continuousVertical" ||
+    mode === "scrollVertical"
+  );
+}
+
+/** Webtoon keeps a Mihon-style gap; continuous vertical removes it. */
+export function isGapLessMode(mode: ReaderReadingMode): boolean {
+  return mode === "continuousVertical";
+}
+
+export function readingModeOptionFor(
+  mode: ReaderReadingMode,
+  direction: ReaderPagedDirection,
+): ReaderReadingModeOption {
+  const match = READING_MODE_OPTIONS.find(
+    (option) =>
+      option.key === mode &&
+      (option.direction ?? direction) === direction,
+  );
+  return (
+    match ??
+    READING_MODE_OPTIONS.find((option) => option.key === mode) ??
+    READING_MODE_OPTIONS[0]
+  );
 }
 
 export function orientationToLock(

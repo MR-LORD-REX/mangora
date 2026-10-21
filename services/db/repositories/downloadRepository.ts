@@ -238,6 +238,89 @@ export async function deleteDownload(id: string): Promise<void> {
   await db.delete(downloads).where(eq(downloads.id, id));
 }
 
+/**
+ * Restores a completed download discovered by the metadata recovery flow.
+ * Unlike queueDownload this keeps the completed state and archive identity.
+ */
+export async function importCompletedDownload(input: {
+  id: string;
+  mangaId: string;
+  provider: string;
+  providerMangaId: string;
+  providerChapterId: string;
+  mangaTitle: string;
+  chapterTitle: string;
+  chapterIndex?: string | null;
+  chapterNumber?: number | null;
+  scanlationGroup?: string | null;
+  chapterGroupKey?: string | null;
+  languageCode?: string | null;
+  pageCount: number;
+  byteSize: number;
+  fileUri: string;
+  fileName: string;
+  folderUri: string;
+  completedAt: number;
+}): Promise<void> {
+  const now = Date.now();
+  await db
+    .insert(downloads)
+    .values({
+      id: input.id,
+      mangaId: input.mangaId,
+      provider: input.provider,
+      providerMangaId: input.providerMangaId,
+      providerChapterId: input.providerChapterId,
+      mangaTitle: input.mangaTitle,
+      thumbnailUrl: null,
+      thumbnailPath: null,
+      chapterTitle: input.chapterTitle,
+      chapterIndex: input.chapterIndex ?? null,
+      chapterNumber: input.chapterNumber ?? null,
+      scanlationGroup: input.scanlationGroup ?? null,
+      chapterGroupKey: input.chapterGroupKey ?? null,
+      languageCode: input.languageCode ?? null,
+      pageCount: input.pageCount,
+      downloadedPages: input.pageCount,
+      byteSize: input.byteSize,
+      status: "completed",
+      error: null,
+      fileUri: input.fileUri,
+      fileName: input.fileName,
+      folderUri: input.folderUri,
+      pagesDirUri: null,
+      createdAt: now,
+      updatedAt: now,
+      completedAt: input.completedAt,
+    })
+    .onConflictDoUpdate({
+      target: downloads.id,
+      set: {
+        mangaId: input.mangaId,
+        provider: input.provider,
+        providerMangaId: input.providerMangaId,
+        providerChapterId: input.providerChapterId,
+        mangaTitle: input.mangaTitle,
+        chapterTitle: input.chapterTitle,
+        chapterIndex: input.chapterIndex ?? null,
+        chapterNumber: input.chapterNumber ?? null,
+        scanlationGroup: input.scanlationGroup ?? null,
+        chapterGroupKey: input.chapterGroupKey ?? null,
+        languageCode: input.languageCode ?? null,
+        pageCount: input.pageCount,
+        downloadedPages: input.pageCount,
+        byteSize: input.byteSize,
+        status: "completed",
+        error: null,
+        fileUri: input.fileUri,
+        fileName: input.fileName,
+        folderUri: input.folderUri,
+        updatedAt: now,
+        completedAt: input.completedAt,
+      },
+    });
+}
+
 /** Removes every row of one manga (used by "delete all" in the download manager). */
 export async function deleteDownloadsForManga(mangaId: string): Promise<void> {
   await db.delete(downloads).where(eq(downloads.mangaId, mangaId));

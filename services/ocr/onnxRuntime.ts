@@ -146,21 +146,42 @@ export function readPaddedRgba(
   image: SkiaImage,
   surfaceWidth: number,
   height: number,
+  rotate90 = false,
 ): { pixels: Uint8Array; contentWidth: number } {
   const { Skia, ColorType, AlphaType } = runtime.skia;
-  const ratio = image.width() / Math.max(1, image.height());
+  // PaddleOCR rotates tall (vertical) text lines before recognition.
+  const ratio = rotate90
+    ? image.height() / Math.max(1, image.width())
+    : image.width() / Math.max(1, image.height());
   const contentWidth = Math.max(1, Math.min(surfaceWidth, Math.ceil(height * ratio)));
 
   const surface = Skia.Surface.MakeOffscreen(contentWidth, height);
   if (!surface) throw new OcrRuntimeError("Could not create an OCR surface.");
   const canvas = surface.getCanvas();
-  canvas.drawImageRect(
-    image,
-    Skia.XYWHRect(0, 0, image.width(), image.height()),
-    Skia.XYWHRect(0, 0, contentWidth, height),
-    Skia.Paint(),
-    true,
-  );
+  if (rotate90) {
+    canvas.save();
+    // PIL's ROTATE_90 (used by PaddleOCR) is counter-clockwise. The local
+    // draw rect is transposed so the rotated tall line fills contentWidth x
+    // height exactly.
+    canvas.translate(0, height);
+    canvas.rotate(-90, 0, 0);
+    canvas.drawImageRect(
+      image,
+      Skia.XYWHRect(0, 0, image.width(), image.height()),
+      Skia.XYWHRect(0, 0, height, contentWidth),
+      Skia.Paint(),
+      true,
+    );
+    canvas.restore();
+  } else {
+    canvas.drawImageRect(
+      image,
+      Skia.XYWHRect(0, 0, image.width(), image.height()),
+      Skia.XYWHRect(0, 0, contentWidth, height),
+      Skia.Paint(),
+      true,
+    );
+  }
 
   const raw = surface.makeImageSnapshot().readPixels(0, 0, {
     width: contentWidth,

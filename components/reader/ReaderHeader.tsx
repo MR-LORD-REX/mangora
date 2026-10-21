@@ -32,6 +32,8 @@ export interface ReaderHeaderProps {
   onClose: () => void;
   /** Extra header control (the chapter downloader button). */
   downloadSlot?: React.ReactNode;
+  /** Library/bookmark control, styled like Mihon's reader app bar. */
+  bookmarkSlot?: React.ReactNode;
 }
 
 export default function ReaderHeader({
@@ -45,6 +47,7 @@ export default function ReaderHeader({
   onBack,
   onClose,
   downloadSlot,
+  bookmarkSlot,
 }: ReaderHeaderProps) {
   return (
     <View style={styles.header}>
@@ -70,6 +73,7 @@ export default function ReaderHeader({
         </Text>
       </View>
 
+      {bookmarkSlot}
       {downloadSlot}
 
       {showTranslateToggle ? (

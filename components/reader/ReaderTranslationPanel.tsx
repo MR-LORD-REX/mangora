@@ -6,9 +6,9 @@
  *
  *   Language       - source (OCR) + target language pickers
  *   Translation engine - free / AI picker
- *   Translation mode   - off / single page / auto pages / auto bubbles
- *   TR settings    - engine sliders, Gemini key, API usage, metrics, cache
- *   OCR settings   - staged page / bubble worker and look-ahead sliders
+ *   Translation mode   - off / single page / auto
+ *   Advance        - look ahead, translation model, auto model switch, cache
+ *   Metrics        - pipeline metrics and AI quota usage
  *   Overlay        - paste text size, font and color
  *
  * The general reader config (reading / general / filter) stays behind the
@@ -20,20 +20,17 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  KeyRound,
   Trash2,
   X,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
   type TextStyle,
 } from "react-native";
@@ -42,12 +39,7 @@ import type {
   ReaderTranslationEngine,
   ReaderTranslationMode,
 } from "@/services/settings/settingsStore";
-import {
-  getLocalOcrModel,
-  maxOcrBubbleWorkers,
-  modelIdForLanguage,
-  ocrBubbleRamMb,
-} from "@/services/ocr/ocrModels";
+import MenuSheet from "@/components/common/MenuSheet";
 import type { ReaderPipelineMetrics } from "@/utils/reader/useReaderTranslation";
 import {
   GEMINI_MODELS,
@@ -74,8 +66,8 @@ import { READER_PANEL_BG, READER_PILL_BORDER } from "./readerTheme";
 export type ReaderTranslationTab =
   | "language"
   | "trMode"
-  | "trSettings"
-  | "ocrSettings"
+  | "advance"
+  | "metrics"
   | "overlay";
 
 /** Full tab list; every tab stays visible regardless of TR mode. */
@@ -85,8 +77,8 @@ export const READER_TRANSLATION_TABS: {
 }[] = [
   { key: "language", label: "Language" },
   { key: "trMode", label: "Modes" },
-  { key: "trSettings", label: "Translation" },
-  { key: "ocrSettings", label: "OCR" },
+  { key: "advance", label: "Advance" },
+  { key: "metrics", label: "Metrics" },
   { key: "overlay", label: "Overlay" },
 ];
 
@@ -128,22 +120,11 @@ const MODE_OPTIONS: {
   },
   {
     value: "auto",
-    label: "Auto pages",
+    label: "Auto",
     description:
       "The current page and look-ahead pages are translated automatically as you read. A page waits for its full OCR pass before translation starts.",
   },
-  {
-    value: "autoBubbles",
-    label: "Auto bubbles",
-    description:
-      "AI translation only. Bubbles are sent as soon as a small batch is ready instead of waiting for the whole page - faster first translations while batching keeps API usage efficient. Already-OCRed pages are still attached as context so tone and names stay consistent.",
-  },
 ];
-function maskKey(key: string): string {
-  const trimmed = key.trim();
-  if (trimmed.length <= 8) return "\u2022\u2022\u2022\u2022";
-  return `\u2022\u2022\u2022\u2022${trimmed.slice(-4)}`;
-}
 
 export interface ReaderTranslationPanelProps {
   tab: ReaderTranslationTab;
@@ -164,32 +145,17 @@ export interface ReaderTranslationPanelProps {
   translationMode: ReaderTranslationMode;
   onSelectTranslationMode: (mode: ReaderTranslationMode) => void;
 
-  // TR settings tab.
-  geminiApiKey: string;
-  /** Validates the key with one Gemini request, then persists it. Throws on failure. */
-  onValidateAndSaveKey: (apiKey: string) => Promise<void>;
-  freeRequestConcurrency: number;
-  onChangeFreeConcurrency: (value: number) => void;
-  aiWorkerCount: number;
-  onChangeAiWorkerCount: (value: number) => void;
-  aiMaxContextPages: number;
-  onChangeMaxContextPages: (pages: number) => void;
-  /** Auto bubbles: how many bubbles one Gemini request may carry (1..5). */
-  aiBubbleBatchSize: number;
-  onChangeAiBubbleBatchSize: (value: number) => void;
+  // Advance tab.
   geminiModelId: GeminiModelId;
-  metrics: ReaderPipelineMetrics;
+  onSelectGeminiModel: (model: GeminiModelId) => void;
+  autoModelSwitch: boolean;
+  onChangeAutoModelSwitch: (value: boolean) => void;
+  ocrLookahead: number;
+  onChangeLookahead: (value: number) => void;
   onClearTrCache: () => Promise<number>;
 
-  // OCR settings tab.
-  ocrPageWorkers: number;
-  ocrBubbleWorkers: number;
-  ocrLookahead: number;
-  onApplyOcrSettings: (patch: {
-    pageWorkers: number;
-    bubbleWorkers: number;
-    lookahead: number;
-  }) => void;
+  // Metrics tab.
+  metrics: ReaderPipelineMetrics;
 
   // Overlay tab.
   overlayFont: ReaderOverlayFont;
@@ -231,8 +197,8 @@ export default function ReaderTranslationPanel(
       >
         {tab === "language" && <LanguageTab {...props} />}
         {tab === "trMode" && <ModeTab {...props} />}
-        {tab === "trSettings" && <TrSettingsTab {...props} />}
-        {tab === "ocrSettings" && <OcrSettingsTab {...props} />}
+        {tab === "advance" && <AdvanceTab {...props} />}
+        {tab === "metrics" && <MetricsTab {...props} />}
         {tab === "overlay" && <OverlayTab {...props} />}
       </ScrollView>
     </View>
@@ -451,39 +417,31 @@ function ModeTab(props: ReaderTranslationPanelProps) {
           </Pressable>
         );
       })}
-      {translationMode === "autoBubbles" && translationEngine === "free" ? (
-        <HelperText>
-          Auto bubbles uses the AI pipeline. Switch Translation engine to AI
-          translation to enable bubble batching.
-        </HelperText>
-      ) : null}
     </View>
   );
 }
-function TrSettingsTab(props: ReaderTranslationPanelProps) {
+function AdvanceTab(props: ReaderTranslationPanelProps) {
   const {
     translationEngine,
     translationMode,
-    geminiApiKey,
-    onValidateAndSaveKey,
-    freeRequestConcurrency,
-    onChangeFreeConcurrency,
-    aiWorkerCount,
-    onChangeAiWorkerCount,
-    aiMaxContextPages,
-    onChangeMaxContextPages,
-    aiBubbleBatchSize,
-    onChangeAiBubbleBatchSize,
     geminiModelId,
-    metrics,
+    onSelectGeminiModel,
+    autoModelSwitch,
+    onChangeAutoModelSwitch,
+    ocrLookahead,
+    onChangeLookahead,
     onClearTrCache,
   } = props;
-  const [keyModalOpen, setKeyModalOpen] = useState(false);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [clearState, setClearState] = useState<
     "idle" | "confirm" | "clearing" | "done"
   >("idle");
   const [clearedPages, setClearedPages] = useState(0);
   const [clearError, setClearError] = useState<string | null>(null);
+
+  const selectedModel =
+    GEMINI_MODELS.find((model) => model.id === geminiModelId) ??
+    GEMINI_MODELS[0];
 
   const clearCache = async () => {
     setClearState("clearing");
@@ -492,18 +450,97 @@ function TrSettingsTab(props: ReaderTranslationPanelProps) {
       const removed = await onClearTrCache();
       setClearedPages(removed);
       setClearState("done");
-      console.log("[reader][tr settings] cache cleared", { removed });
+      console.log("[reader][advance] cache cleared", { removed });
     } catch (error) {
       setClearState("idle");
       setClearError(
         error instanceof Error ? error.message : "Could not clear TR cache.",
       );
-      console.warn("[reader][tr settings] cache clear failed", error);
+      console.warn("[reader][advance] cache clear failed", error);
     }
   };
 
   return (
     <View>
+      {translationMode !== "off" ? (
+        <>
+          <SectionLabel>Look ahead</SectionLabel>
+          <View style={styles.sliderValueRow}>
+            <Text style={styles.sliderValueLabel}>
+              Pages kept ready in the scan window
+            </Text>
+            <Text style={styles.sliderValue}>{ocrLookahead}</Text>
+          </View>
+          <DotSlider
+            value={ocrLookahead}
+            min={1}
+            max={5}
+            step={1}
+            dotCount={5}
+            leftLabel="Visible page"
+            rightLabel="Visible + 4"
+            onChange={onChangeLookahead}
+          />
+          <HelperText>
+            Upcoming pages are queued for OCR and translation as you read. Two
+            is the default.
+          </HelperText>
+        </>
+      ) : (
+        <HelperText>
+          Turn translation on in the Modes tab to configure look ahead.
+        </HelperText>
+      )}
+
+      {translationEngine === "ai" ? (
+        <>
+          <SectionLabel>Translation model</SectionLabel>
+          <Pressable
+            style={styles.dropdown}
+            onPress={() => setModelMenuOpen(true)}
+          >
+            <View style={styles.dropdownHeader}>
+              <View style={styles.dropdownTitleWrap}>
+                <Text style={styles.dropdownTitle}>{selectedModel.label}</Text>
+                <Text style={styles.dropdownSubtitle}>
+                  Used for new AI translation requests
+                </Text>
+              </View>
+              <ChevronDown size={18} color="#94a3b8" />
+            </View>
+          </Pressable>
+          <MenuSheet
+            visible={modelMenuOpen}
+            title="Translation model"
+            onClose={() => setModelMenuOpen(false)}
+            options={GEMINI_MODELS.map((model) => ({
+              key: model.id,
+              label: model.label,
+              selected: model.id === geminiModelId,
+              onPress: () => onSelectGeminiModel(model.id),
+            }))}
+          />
+
+          <SectionLabel>Auto model switch</SectionLabel>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleTextWrap}>
+              <Text style={styles.toggleLabel}>Switch on rate limits</Text>
+              <Text style={styles.toggleDetail}>
+                When Gemini reports a rate limit, retry the page with the other
+                model. Two failed switches turn this off until you enable it
+                again.
+              </Text>
+            </View>
+            <Switch
+              value={autoModelSwitch}
+              onValueChange={onChangeAutoModelSwitch}
+              trackColor={{ false: "#334155", true: "#0ea5e9" }}
+              thumbColor="#f8fafc"
+            />
+          </View>
+        </>
+      ) : null}
+
       <SectionLabel>TR cache</SectionLabel>
       <HelperText>
         Cached translations for this manga are stored in the database.
@@ -553,146 +590,6 @@ function TrSettingsTab(props: ReaderTranslationPanelProps) {
         </Text>
       ) : null}
       {clearError ? <Text style={styles.modalError}>{clearError}</Text> : null}
-
-      {translationEngine === "free" && translationMode !== "off" ? (
-        <>
-          <SectionLabel>Concurrent requests</SectionLabel>
-          <View style={styles.sliderValueRow}>
-            <Text style={styles.sliderValueLabel}>Free TR workers</Text>
-            <Text style={styles.sliderValue}>{freeRequestConcurrency}</Text>
-          </View>
-          <DotSlider
-            value={freeRequestConcurrency}
-            min={1}
-            max={5}
-            step={1}
-            dotCount={5}
-            leftLabel="1 request"
-            rightLabel="5 requests"
-            onChange={onChangeFreeConcurrency}
-          />
-          <HelperText>
-            Number of bubbles translated concurrently through the free Google
-            endpoint.
-          </HelperText>
-        </>
-      ) : null}
-
-      {translationEngine === "ai" && translationMode !== "off" ? (
-        <>
-          <SectionLabel>Gemini API key</SectionLabel>
-          {geminiApiKey.trim() ? (
-            <View style={styles.keySavedRow}>
-              <KeyRound color="#34d399" size={18} />
-              <Text style={styles.keySavedText}>
-                API key saved ({maskKey(geminiApiKey)})
-              </Text>
-              <Pressable
-                onPress={() => setKeyModalOpen(true)}
-                style={styles.smallButton}
-              >
-                <Text style={styles.smallButtonText}>Replace</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <View style={styles.keyNeededRow}>
-              <Text style={styles.rowDetail}>
-                AI translation needs a Gemini API key. The key is validated with
-                one request before it is saved.
-              </Text>
-              <Pressable
-                onPress={() => setKeyModalOpen(true)}
-                style={styles.primaryButton}
-              >
-                <KeyRound color="#0b1120" size={16} />
-                <Text style={styles.primaryButtonText}>Set API key</Text>
-              </Pressable>
-            </View>
-          )}
-
-          <SectionLabel>Translation workers</SectionLabel>
-          <View style={styles.sliderValueRow}>
-            <Text style={styles.sliderValueLabel}>AI workers</Text>
-            <Text style={styles.sliderValue}>{aiWorkerCount}</Text>
-          </View>
-          <DotSlider
-            value={aiWorkerCount}
-            min={1}
-            max={2}
-            step={1}
-            dotCount={2}
-            leftLabel="1 model"
-            rightLabel="2 models"
-            onChange={onChangeAiWorkerCount}
-          />
-          <HelperText>
-            One worker uses one Gemini model. Two workers run both catalogue
-            models concurrently, one per queue slot.
-          </HelperText>
-
-          {translationMode === "autoBubbles" ? (
-            <>
-              <SectionLabel>Bubbles per batch</SectionLabel>
-              <View style={styles.sliderValueRow}>
-                <Text style={styles.sliderValueLabel}>
-                  Bubbles collected before one request
-                </Text>
-                <Text style={styles.sliderValue}>{aiBubbleBatchSize}</Text>
-              </View>
-              <DotSlider
-                value={aiBubbleBatchSize}
-                min={1}
-                max={5}
-                step={1}
-                dotCount={5}
-                leftLabel="1 bubble"
-                rightLabel="5 bubbles"
-                onChange={onChangeAiBubbleBatchSize}
-              />
-              <HelperText>
-                Auto bubbles waits for this many OCR-ready bubbles, then sends
-                them together. Smaller batches show text sooner and use more
-                API requests; larger batches use fewer requests.
-              </HelperText>
-            </>
-          ) : null}
-
-          <SectionLabel>Max context</SectionLabel>
-          <View style={styles.sliderValueRow}>
-            <Text style={styles.sliderValueLabel}>Pages sent as context</Text>
-            <Text style={styles.sliderValue}>{aiMaxContextPages}</Text>
-          </View>
-          <DotSlider
-            value={aiMaxContextPages}
-            min={1}
-            max={50}
-            step={1}
-            dotCount={25}
-            leftLabel="1 page"
-            rightLabel="50 pages"
-            onChange={onChangeMaxContextPages}
-          />
-
-          <ApiUsageSection
-            geminiModelId={geminiModelId}
-            aiWorkerCount={aiWorkerCount}
-          />
-        </>
-      ) : null}
-
-      {translationMode !== "off" ? (
-        <PipelineMetrics metrics={metrics} mode={translationEngine} />
-      ) : null}
-
-      <ApiKeyModal
-        visible={keyModalOpen}
-        currentKey={geminiApiKey}
-        onCancel={() => setKeyModalOpen(false)}
-        onSave={async (key) => {
-          await onValidateAndSaveKey(key);
-          setKeyModalOpen(false);
-        }}
-      />
     </View>
   );
 }
@@ -737,20 +634,20 @@ function UsageMeter({
 /** Live Gemini quota meters (rolling 60s RPM/TPM, Pacific-day RPD). */
 function ApiUsageSection({
   geminiModelId,
-  aiWorkerCount,
+  includeFallbackModel,
 }: {
   geminiModelId: GeminiModelId;
-  aiWorkerCount: number;
+  includeFallbackModel: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<GeminiUsageSnapshot[]>([]);
   const [error, setError] = useState<string | null>(null);
   const modelIds = useMemo(
     () =>
-      aiWorkerCount >= 2
+      includeFallbackModel
         ? GEMINI_MODELS.map((model) => model.id)
         : [geminiModelId],
-    [aiWorkerCount, geminiModelId],
+    [includeFallbackModel, geminiModelId],
   );
 
   useEffect(() => {
@@ -763,7 +660,7 @@ function ApiUsageSection({
         setError(null);
       } catch (err) {
         if (active) setError("Usage meters unavailable.");
-        console.warn("[reader][tr settings] usage refresh failed", err);
+        console.warn("[reader][metrics] usage refresh failed", err);
       }
     };
     void refresh();
@@ -935,221 +832,28 @@ function PipelineMetrics({
   );
 }
 
-function OcrSettingsTab(props: ReaderTranslationPanelProps) {
+function MetricsTab(props: ReaderTranslationPanelProps) {
   const {
-    ocrPageWorkers,
-    ocrBubbleWorkers,
-    ocrLookahead,
-    ocrLanguage,
-    onApplyOcrSettings,
+    translationEngine,
+    geminiModelId,
+    autoModelSwitch,
+    metrics,
   } = props;
-  const ocrModelId = modelIdForLanguage(ocrLanguage);
-  const ocrModel = getLocalOcrModel(ocrModelId);
-  const maxBubbleWorkers = maxOcrBubbleWorkers(ocrModelId);
-  const [pageWorkers, setPageWorkers] = useState(ocrPageWorkers);
-  const [bubbleWorkers, setBubbleWorkers] = useState(ocrBubbleWorkers);
-  const [lookahead, setLookahead] = useState(ocrLookahead);
-
-  const effectiveBubbleWorkers = Math.min(
-    maxBubbleWorkers,
-    Math.max(1, bubbleWorkers),
-  );
-  const ramMb = ocrBubbleRamMb(ocrModelId, effectiveBubbleWorkers);
-
-  useEffect(() => {
-    setPageWorkers(ocrPageWorkers);
-    setBubbleWorkers(ocrBubbleWorkers);
-    setLookahead(ocrLookahead);
-  }, [ocrPageWorkers, ocrBubbleWorkers, ocrLookahead]);
-
-  useEffect(() => {
-    setBubbleWorkers((current) =>
-      Math.min(maxBubbleWorkers, Math.max(1, current)),
-    );
-  }, [maxBubbleWorkers]);
-
-  const dirty =
-    pageWorkers !== ocrPageWorkers ||
-    effectiveBubbleWorkers !== ocrBubbleWorkers ||
-    lookahead !== ocrLookahead;
-
-  const apply = () => {
-    console.log("[reader][ocr settings] apply", {
-      pageWorkers,
-      bubbleWorkers: effectiveBubbleWorkers,
-      lookahead,
-    });
-    onApplyOcrSettings({
-      pageWorkers,
-      bubbleWorkers: effectiveBubbleWorkers,
-      lookahead,
-    });
-  };
 
   return (
     <View>
-      <SectionLabel>Page workers</SectionLabel>
-      <View style={styles.sliderValueRow}>
-        <Text style={styles.sliderValueLabel}>Pages scanned at once</Text>
-        <Text style={styles.sliderValue}>{pageWorkers}</Text>
-      </View>
-      <DotSlider
-        value={pageWorkers}
-        min={1}
-        max={2}
-        step={1}
-        dotCount={2}
-        leftLabel="1 page"
-        rightLabel="2 pages"
-        onChange={setPageWorkers}
-      />
-
-      <SectionLabel>Bubble workers</SectionLabel>
-      <View style={styles.sliderValueRow}>
-        <Text style={styles.sliderValueLabel}>Bubbles OCRed at once</Text>
-        <Text style={styles.sliderValue}>
-          {effectiveBubbleWorkers}
-          {ramMb !== null ? ` \u00b7 ~${ramMb} MB` : " \u00b7 1 engine"}
-        </Text>
-      </View>
-      <DotSlider
-        value={effectiveBubbleWorkers}
-        min={1}
-        max={maxBubbleWorkers}
-        step={1}
-        dotCount={maxBubbleWorkers}
-        disabled={maxBubbleWorkers <= 1}
-        leftLabel="1 bubble"
-        rightLabel={`${maxBubbleWorkers} bubble${maxBubbleWorkers === 1 ? "" : "s"}`}
-        onChange={setBubbleWorkers}
-      />
-      <HelperText>
-        {ocrModel?.engine === "baberu"
-          ? " Budget about 121 MB per worker: 3 is the default, while 4-5 suit devices with 4 GB+ RAM and good CPU."
-          : "Default is 1"}
-      </HelperText>
-
-      <SectionLabel>Look ahead</SectionLabel>
-      <View style={styles.sliderValueRow}>
-        <Text style={styles.sliderValueLabel}>Pages in the scan window</Text>
-        <Text style={styles.sliderValue}>{lookahead}</Text>
-      </View>
-      <DotSlider
-        value={lookahead}
-        min={1}
-        max={3}
-        step={1}
-        dotCount={3}
-        leftLabel="Visible page"
-        rightLabel="Visible + 2"
-        onChange={setLookahead}
-      />
-      
-
-      <Pressable
-        onPress={apply}
-        disabled={!dirty}
-        style={[styles.primaryButton, !dirty && styles.primaryButtonDisabled]}
-      >
-        <Text style={styles.primaryButtonText}>
-          {dirty ? "Apply changes" : "Applied"}
-        </Text>
-      </Pressable>
+      <PipelineMetrics metrics={metrics} mode={translationEngine} />
+      {translationEngine === "ai" ? (
+        <ApiUsageSection
+          geminiModelId={geminiModelId}
+          includeFallbackModel={autoModelSwitch}
+        />
+      ) : (
+        <HelperText>
+          API usage is available when the AI translation engine is selected.
+        </HelperText>
+      )}
     </View>
-  );
-}
-
-function ApiKeyModal(props: {
-  visible: boolean;
-  currentKey: string;
-  onCancel: () => void;
-  onSave: (key: string) => Promise<void>;
-}) {
-  const { visible, currentKey, onCancel, onSave } = props;
-  const [key, setKey] = useState(currentKey);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (visible) {
-      setKey(currentKey);
-      setError(null);
-      setSaving(false);
-    }
-  }, [visible, currentKey]);
-
-  const confirm = async () => {
-    const trimmed = key.trim();
-    if (!trimmed) {
-      setError("Enter your Gemini API key.");
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      await onSave(trimmed);
-    } catch (saveError) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "Could not save the key.",
-      );
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onCancel}
-    >
-      <View style={styles.modalBackdrop}>
-        <View style={styles.modalCard}>
-          <Text style={styles.modalTitle}>Gemini API key</Text>
-          <Text style={styles.rowDetail}>
-            Paste your key from Google AI Studio. We send one test request to
-            check that it works before saving.
-          </Text>
-          <TextInput
-            style={styles.keyInput}
-            value={key}
-            onChangeText={setKey}
-            placeholder="AIza..."
-            placeholderTextColor="#64748b"
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!saving}
-          />
-          {error ? <Text style={styles.modalError}>{error}</Text> : null}
-          <View style={styles.modalActions}>
-            <Pressable
-              onPress={onCancel}
-              disabled={saving}
-              style={[styles.modalButton, styles.cancelButton]}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </Pressable>
-            <Pressable
-              onPress={confirm}
-              disabled={saving}
-              style={[
-                styles.modalButton,
-                styles.confirmButton,
-                saving && { opacity: 0.6 },
-              ]}
-            >
-              {saving ? (
-                <ActivityIndicator color="#0b1120" size="small" />
-              ) : (
-                <Text style={styles.confirmButtonText}>Confirm</Text>
-              )}
-            </Pressable>
-          </View>
-        </View>
-      </View>
-    </Modal>
   );
 }
 

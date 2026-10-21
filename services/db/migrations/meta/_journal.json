@@ -43,6 +43,13 @@
       "when": 1789291591838,
       "tag": "0005_download_library",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1792550000000,
+      "tag": "0006_reader_cache",
+      "breakpoints": true
     }
   ]
 }

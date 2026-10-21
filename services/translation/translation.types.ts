@@ -7,6 +7,8 @@
  * ---------------------------------------------------------------------------
  */
 
+import type { ReaderTranslationEngine } from "@/services/settings/settingsStore";
+
 /** Axis-aligned box in natural page pixels. */
 export interface Box {
   x1: number;
@@ -15,7 +17,25 @@ export interface Box {
   y2: number;
 }
 
-import type { ReaderTranslationEngine } from "@/services/settings/settingsStore";
+/** A point in natural page pixels. */
+export interface Point {
+  x: number;
+  y: number;
+}
+
+/**
+ * Speech-bubble mask produced by the Manga109 segmentation model.
+ *
+ * `polygon` is the outer contour in natural page pixels (closed implicitly).
+ * `bounds` is its tight axis-aligned box. The overlay uses the polygon for
+ * mask-clipped erasing and to compute the text width at each line's height.
+ */
+export interface BubbleMask {
+  polygon: Point[];
+  bounds: Box;
+  /** 0..1 segmentation confidence. */
+  confidence: number;
+}
 
 /** Engine used for one translated page. */
 export type ReaderTranslateMode = ReaderTranslationEngine;
@@ -35,6 +55,14 @@ export interface TranslationSlot {
   pasteBox: Box;
   /** Boxes painted white to erase the original text before pasting. */
   eraseBoxes: Box[];
+  /**
+   * Segmentation mask for speech bubbles. When present the overlay erases a
+   * mask-clipped interior (preserving the bubble outline) and lays translated
+   * lines out against the mask's width at each line's height.
+   */
+  mask?: BubbleMask;
+  /** Number of source text lines, used as a hint for the translated layout. */
+  lineCount?: number;
   /** OCR text assembled for this slot (reading order). */
   sourceText: string;
 }

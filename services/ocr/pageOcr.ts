@@ -10,7 +10,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { Directory, File, Paths } from "expo-file-system";
+import { File, Paths } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 
 import { downloadToFile } from "@/services/net/browserFetch";
@@ -84,82 +84,6 @@ export class OcrError extends Error {
 }
 
 
-const CACHE_DIR_NAME = "trapp-ocr-pages";
-const pageFileCache = new Map<string, Promise<string>>();
-let pagesDirectoryPromise: Promise<Directory> | null = null;
-
-async function getPagesDirectory(): Promise<Directory> {
-  if (!pagesDirectoryPromise) {
-    pagesDirectoryPromise = (async () => {
-      const dir = new Directory(Paths.cache, CACHE_DIR_NAME);
-      dir.create({ idempotent: true, intermediates: true });
-      if (!dir.exists) {
-        throw new OcrError(`Could not create the OCR page cache directory: ${dir.uri}`);
-      }
-      return dir;
-    })();
-  }
-  return pagesDirectoryPromise;
-}
-
-/** Compact stable hash used for cache file names. */
-function hashString(input: string): string {
-  let h1 = 0xdeadbeef;
-  let h2 = 0x41c6ce57;
-  for (let i = 0; i < input.length; i++) {
-    const ch = input.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
-}
-
-/**
- * Ensures `pageUrl` is stored as a local file and returns its file:// uri.
- * Concurrent/repeated calls for the same URL share one download.
- */
-export async function downloadPageToCache(
-  pageUrl: string,
-  headers?: Record<string, string>
-): Promise<string> {
-  if (pageUrl.startsWith("file://")) {
-    return isAvifUri(pageUrl) ? transcodeAvifToPng(pageUrl) : pageUrl;
-  }
-  const pending = pageFileCache.get(pageUrl);
-  if (pending) return pending;
-
-  const download = (async () => {
-    const dir = await getPagesDirectory();
-    const avif = isAvifUri(pageUrl);
-    const target = new File(
-      dir,
-      `page-${hashString(pageUrl)}.${avif ? "avif" : "img"}`,
-    );
-    if (!target.exists) {
-      await downloadToFile(pageUrl, target, headers);
-      if (!target.exists) {
-        throw new OcrError(`Downloading the page image failed: ${pageUrl}`);
-      }
-    }
-    if (avif) {
-      // Skia / ImageManipulator cannot open AVIF; hand every downstream
-      // consumer a normal PNG instead.
-      return transcodeAvifToPng(target.uri);
-    }
-    return target.uri;
-  })();
-
-  pageFileCache.set(pageUrl, download);
-  try {
-    return await download;
-  } catch (error) {
-    pageFileCache.delete(pageUrl);
-    throw error;
-  }
-}
-
 export interface DecodablePageOptions {
   headers?: Record<string, string>;
   /** Extension source id: image bytes go through its OkHttp client. */
@@ -173,20 +97,25 @@ export interface DecodablePageOptions {
   force?: boolean;
 }
 
+let tempPageSeq = 0;
+
 /**
- * Returns a uri the reader / YOLO / OCR can actually decode. Normal images are
- * returned untouched; AVIF pages are downloaded (through the extension client
- * when one is supplied) and transcoded to a cached PNG.
+ * Returns a uri the reader / YOLO / OCR can actually decode.
+ *
+ * The reader now hands every consumer the same local reader-cache file:// uri.
+ * This helper therefore does not keep a page cache of its own: local files are
+ * returned as-is (AVIF is transcoded), and a remote url only falls back to a
+ * short-lived temporary download for legacy callers.
  */
 export async function ensureDecodablePageUri(
   uri: string,
   options: DecodablePageOptions = {},
 ): Promise<string> {
   const avif = isAvifUri(uri);
-  if (!avif && !options.force) return uri;
   if (uri.startsWith("file://")) {
-    return transcodeAvifToPng(uri);
+    return avif ? transcodeAvifToPng(uri) : uri;
   }
+  if (!avif && !options.force) return uri;
   if (options.extensionSourceId) {
     const image = await fetchExtensionPageImage(
       options.extensionSourceId,
@@ -196,21 +125,17 @@ export async function ensureDecodablePageUri(
     const localAvif = image.mime === "image/avif" || isAvifUri(image.path);
     return localAvif ? transcodeAvifToPng(image.path) : image.path;
   }
-  return downloadPageToCache(uri, options.headers);
-}
-
-/** Removes every cached page download (best effort). */
-export async function clearPageCache(): Promise<void> {
-  pageFileCache.clear();
-  pagesDirectoryPromise = null;
-  try {
-    const dir = new Directory(Paths.cache, CACHE_DIR_NAME);
-    if (dir.exists) dir.delete();
-  } catch {
-    // Cache cleanup is best effort.
+  tempPageSeq += 1;
+  const target = new File(
+    Paths.cache,
+    "ocr-page-" + Date.now() + "-" + tempPageSeq + ".img",
+  );
+  await downloadToFile(uri, target, options.headers);
+  if (!target.exists || target.size <= 0) {
+    throw new OcrError("Downloading the page image failed: " + uri);
   }
+  return avif ? transcodeAvifToPng(target.uri) : target.uri;
 }
-
 
 export const MIN_CROP_PX = 6;
 

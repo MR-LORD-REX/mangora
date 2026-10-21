@@ -9,26 +9,24 @@
  */
 
 import {
-  ArrowLeftRight,
-  ArrowUpDown,
   Crop,
-  Expand,
-  GalleryHorizontal,
-  GalleryVertical,
   PauseCircle,
   PlayCircle,
-  RotateCw,
   Settings,
   SkipBack,
   SkipForward,
+  Smartphone,
+  Tablet,
 } from "lucide-react-native";
 import React, { useEffect, useRef } from "react";
 import { Animated, Pressable, StyleSheet, View } from "react-native";
 
 import type {
-  ReaderFitMode,
+  ReaderOrientation,
+  ReaderPagedDirection,
   ReaderReadingMode,
 } from "./readerChrome";
+import ReaderModeIcon from "./ReaderModeIcon";
 import { READER_ACCENT, READER_BORDER } from "./readerTheme";
 import DotSlider from "./DotSlider";
 
@@ -92,13 +90,15 @@ export interface ReaderBottomBarProps {
   onPrevChapter: () => void;
   onNextChapter: () => void;
   readingMode: ReaderReadingMode;
+  pagedDirection: ReaderPagedDirection;
   onOpenReadingModeSheet: () => void;
+  orientation: ReaderOrientation;
   onOpenRotationSheet: () => void;
+  cropEnabled: boolean;
+  onToggleCrop: () => void;
   autoScrollActive: boolean;
   autoScrollDisabled: boolean;
   onToggleAutoScroll: () => void;
-  fitMode: ReaderFitMode;
-  onToggleFit: () => void;
   onOpenSettings: () => void;
 }
 
@@ -111,23 +111,21 @@ export default function ReaderBottomBar({
   onPrevChapter,
   onNextChapter,
   readingMode,
+  pagedDirection,
   onOpenReadingModeSheet,
+  orientation,
   onOpenRotationSheet,
+  cropEnabled,
+  onToggleCrop,
   autoScrollActive,
   autoScrollDisabled,
   onToggleAutoScroll,
-  fitMode,
-  onToggleFit,
   onOpenSettings,
 }: ReaderBottomBarProps) {
-  const ReadingModeIcon =
-    readingMode === "scrollVertical"
-      ? GalleryVertical
-      : readingMode === "scrollHorizontal"
-        ? GalleryHorizontal
-        : readingMode === "pagedVertical"
-          ? ArrowUpDown
-          : ArrowLeftRight;
+  const OrientationIcon =
+    orientation === "landscape" || orientation === "lockedLandscape"
+      ? Tablet
+      : Smartphone;
 
   return (
     <View style={styles.bottomBar}>
@@ -175,11 +173,16 @@ export default function ReaderBottomBar({
 
       <View style={styles.toolbarRow}>
         <Pressable style={styles.toolbarBtn} onPress={onOpenReadingModeSheet}>
-          <ReadingModeIcon color="#fff" size={22} />
+          <ReaderModeIcon
+            mode={readingMode}
+            direction={pagedDirection}
+            size={23}
+            color="#fff"
+          />
         </Pressable>
 
         <Pressable style={styles.toolbarBtn} onPress={onOpenRotationSheet}>
-          <RotateCw color="#fff" size={22} />
+          <OrientationIcon color="#fff" size={22} />
         </Pressable>
 
         <AutoScrollButton
@@ -188,12 +191,8 @@ export default function ReaderBottomBar({
           onPress={onToggleAutoScroll}
         />
 
-        <Pressable style={styles.toolbarBtn} onPress={onToggleFit}>
-          {fitMode === "fit" ? (
-            <Crop color="#fff" size={22} />
-          ) : (
-            <Expand color={READER_ACCENT} size={22} />
-          )}
+        <Pressable style={styles.toolbarBtn} onPress={onToggleCrop}>
+          <Crop color={cropEnabled ? READER_ACCENT : "#fff"} size={22} />
         </Pressable>
 
         <Pressable style={styles.toolbarBtn} onPress={onOpenSettings}>

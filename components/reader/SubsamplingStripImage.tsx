@@ -10,15 +10,15 @@
  * that is actually on screen at full resolution, so fit rows stay sharp and
  * giant pages never need to be decoded in one piece.
  *
- * The page is first downloaded once into the app cache (reusing the OCR page
- * cache, keyed by URL), then handed to the native tiled view. If the native
- * module is not present (Expo Go, non-rebuilt client, web/iOS) or the file
- * cannot be fetched, the component silently falls back to the regular RN
- * <Image> so the reader keeps working everywhere.
+ * The page URI comes from the shared reader cache (a local file for a normal
+ * open), so this component never maintains a second URL-keyed page cache. If
+ * the native module is not present (Expo Go, non-rebuilt client, web/iOS) or
+ * the file cannot be decoded, it silently falls back to the regular RN <Image>
+ * so the reader keeps working everywhere.
  * ---------------------------------------------------------------------------
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -29,13 +29,15 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import {
-  downloadPageToCache,
-  ensureDecodablePageUri,
-} from "@/services/ocr/pageOcr";
+import { ensureDecodablePageUri } from "@/services/ocr/pageOcr";
 import { fetchExtensionPageImage } from "@/services/extensions/native";
 import { isAvifUri } from "@/services/images/avif";
 import { extensionPageUrlFor } from "@/utils/reader/imageHeaders";
+import {
+  detectBorderCrop,
+  shouldAnalyzeBorderCrop,
+  type BorderCrop,
+} from "@/utils/reader/borderCrop";
 
 const TILED_EXTENSIONS = /\.(jpe?g|png|webp|avif)(\?|#|$)/i;
 
@@ -56,6 +58,10 @@ export interface SubsamplingStripImageProps {
   imageFilter?: ViewStyle["filter"];
   /** `#rrggbb` tint composited over the page with overlay blending. */
   colorTint?: string | null;
+  /** Reports the natural image size once the file is available. */
+  onLoadDims?: (width: number, height: number) => void;
+  /** Receives crop insets in natural-image fractions (null = no crop). */
+  onBorderCrop?: (crop: BorderCrop | null) => void;
   onFallbackLoad?: (event: {
     nativeEvent: { source: { width?: number; height?: number } };
   }) => void;
@@ -70,6 +76,8 @@ export default function SubsamplingStripImage({
   backgroundColor,
   imageFilter,
   colorTint,
+  onLoadDims,
+  onBorderCrop,
   onFallbackLoad,
 }: SubsamplingStripImageProps) {
   const [localUri, setLocalUri] = useState<string | null>(null);
@@ -81,6 +89,10 @@ export default function SubsamplingStripImage({
     TILED_EXTENSIONS.test(uri);
   const tintSupported =
     Platform.OS !== "android" || Number(Platform.Version) >= 29;
+  const onLoadDimsRef = useRef(onLoadDims);
+  onLoadDimsRef.current = onLoadDims;
+  const onBorderCropRef = useRef(onBorderCrop);
+  onBorderCropRef.current = onBorderCrop;
 
   const frameStyle = [
     { width, height, backgroundColor, overflow: "hidden" as const },
@@ -149,7 +161,7 @@ export default function SubsamplingStripImage({
           uri,
           extensionPageUrlFor(uri) ?? "",
         ).then((image) => image.path)
-      : downloadPageToCache(uri, headers);
+      : ensureDecodablePageUri(uri, { headers, force: true });
     load
       .then((fileUri) => ensureDecodablePageUri(fileUri))
       .then((fileUri) => {
@@ -169,6 +181,46 @@ export default function SubsamplingStripImage({
       cancelled = true;
     };
   }, [uri, headers, tiledSupported, extensionSourceId]);
+
+  // The tiled native view never fires the RN Image onLoad event. Measuring
+  // the cached file gives the screen the real aspect ratio, so the strip row
+  // does not start with a placeholder height and then jump after decode.
+  // The same file is the input for optional border-crop detection.
+  useEffect(() => {
+    if (!localUri) {
+      onBorderCropRef.current?.(null);
+      return;
+    }
+    let cancelled = false;
+    Image.getSize(
+      localUri,
+      (width, height) => {
+        if (cancelled || width <= 0 || height <= 0) return;
+        onLoadDimsRef.current?.(width, height);
+        if (!shouldAnalyzeBorderCrop(width, height)) {
+          onBorderCropRef.current?.(null);
+          return;
+        }
+        // Always analyse while the page is rendered. The result is cached and
+        // tiny (160px thumbnail), and having it ready means the crop toggle
+        // applies on the first frame instead of waiting and flashing the
+        // uncropped page.
+        detectBorderCrop(localUri)
+          .then((crop) => {
+            if (!cancelled) onBorderCropRef.current?.(crop);
+          })
+          .catch(() => {
+            if (!cancelled) onBorderCropRef.current?.(null);
+          });
+      },
+      () => {
+        if (!cancelled) onBorderCropRef.current?.(null);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [localUri]);
 
   if (tiledSupported && localUri && !localFailed && NativeTiledImage) {
     const TiledView = NativeTiledImage;

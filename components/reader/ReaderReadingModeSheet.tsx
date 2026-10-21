@@ -1,28 +1,30 @@
 /**
  * ReaderReadingModeSheet.tsx
  * ---------------------------------------------------------------------------
- * Compact bottom sheet opened from the bottom-bar reading-mode button. Stages
- * a selection locally; nothing is committed until Apply (Revert resets to the
- * defaults scrollVertical + ltr). Lifted from demo.tsx.
+ * Mihon-style reading-mode picker: five icon rows, staged locally and
+ * committed with Apply. LTR and RTL are separate entries even though both
+ * use the horizontal pager.
  * ---------------------------------------------------------------------------
  */
 
 import { Check } from "lucide-react-native";
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import type {
   ReaderPagedDirection,
   ReaderReadingMode,
 } from "./readerChrome";
 import { READING_MODE_OPTIONS } from "./readerChrome";
+import ReaderModeIcon from "./ReaderModeIcon";
 import {
   READER_ACCENT,
   READER_ON_ACCENT,
   READER_PANEL_BG,
+  READER_PILL_BG,
   READER_PILL_BORDER,
+  READER_TEXT_MUTED,
 } from "./readerTheme";
-import { Pill, SectionLabel } from "./ReaderPanelPrimitives";
 
 export interface ReaderReadingModeSheetProps {
   value: ReaderReadingMode;
@@ -41,39 +43,62 @@ export default function ReaderReadingModeSheet({
   onApply,
   onRevert,
 }: ReaderReadingModeSheetProps) {
-  const showDirection = value === "pagedHorizontal";
   return (
     <View style={styles.sheet}>
       <View style={styles.sheetHandle} />
       <Text style={styles.sheetTitle}>Reading mode</Text>
-      <View style={styles.pillGrid}>
-        {READING_MODE_OPTIONS.map((option) => (
-          <Pill
-            key={option.key}
-            label={option.label}
-            selected={value === option.key}
-            onPress={() => onSelect(option.key)}
-          />
-        ))}
-      </View>
-
-      {showDirection && (
-        <>
-          <SectionLabel>Direction</SectionLabel>
-          <View style={styles.pillGrid}>
-            <Pill
-              label="Left to right"
-              selected={pagedDirection === "ltr"}
-              onPress={() => onSelectDirection("ltr")}
-            />
-            <Pill
-              label="Right to left"
-              selected={pagedDirection === "rtl"}
-              onPress={() => onSelectDirection("rtl")}
-            />
-          </View>
-        </>
-      )}
+      <ScrollView
+        style={styles.modeScroll}
+        contentContainerStyle={styles.modeList}
+        showsVerticalScrollIndicator={false}
+      >
+        {READING_MODE_OPTIONS.map((option) => {
+          const direction = option.direction ?? pagedDirection;
+          const selected =
+            value === option.key &&
+            (option.key !== "pagedHorizontal" ||
+              pagedDirection === direction);
+          return (
+            <Pressable
+              key={option.id}
+              onPress={() => {
+                onSelect(option.key);
+                if (option.direction) onSelectDirection(option.direction);
+              }}
+              style={[styles.modeRow, selected && styles.modeRowSelected]}
+            >
+              <View
+                style={[
+                  styles.modeIconBox,
+                  selected && styles.modeIconBoxSelected,
+                ]}
+              >
+                <ReaderModeIcon
+                  id={option.id as "ltr" | "rtl" | "vertical" | "webtoon" | "continuous"}
+                  size={24}
+                  color={selected ? READER_ON_ACCENT : "#e5e7eb"}
+                />
+              </View>
+              <View style={styles.modeText}>
+                <Text
+                  style={[
+                    styles.modeLabel,
+                    selected && styles.modeLabelSelected,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+                <Text style={styles.modeDescription}>
+                  {option.description}
+                </Text>
+              </View>
+              {selected ? (
+                <Check color={READER_ACCENT} size={20} />
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
 
       <View style={styles.sheetFooter}>
         <Pressable style={styles.sheetSecondaryBtn} onPress={onRevert}>
@@ -100,7 +125,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 10,
     paddingBottom: 24,
-    maxHeight: "70%",
+    maxHeight: "78%",
     zIndex: 70,
   },
   sheetHandle: {
@@ -117,16 +142,44 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 12,
   },
-  pillGrid: {
+  modeScroll: { flexGrow: 0 },
+  modeList: { gap: 8, paddingBottom: 12 },
+  modeRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 14,
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: READER_PILL_BORDER,
+    backgroundColor: READER_PILL_BG,
+  },
+  modeRowSelected: {
+    borderColor: READER_ACCENT,
+    backgroundColor: "rgba(251,191,36,0.10)",
+  },
+  modeIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#313347",
+  },
+  modeIconBoxSelected: { backgroundColor: READER_ACCENT },
+  modeText: { flex: 1, minWidth: 0 },
+  modeLabel: { color: "#f1f5f9", fontSize: 14, fontWeight: "700" },
+  modeLabelSelected: { color: "#fff" },
+  modeDescription: {
+    color: READER_TEXT_MUTED,
+    fontSize: 11,
+    marginTop: 2,
   },
   sheetFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 8,
+    marginTop: 4,
   },
   sheetSecondaryBtn: {
     paddingHorizontal: 16,

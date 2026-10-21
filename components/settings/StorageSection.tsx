@@ -9,6 +9,7 @@
 import {
   CloudUpload,
   DatabaseBackup,
+  Eraser,
   FolderOpen,
   HardDrive,
 } from "lucide-react-native";
@@ -31,6 +32,7 @@ import {
   SettingsRow,
   SettingsSection,
   SettingsValue,
+  ToggleRow,
 } from "./SettingsPrimitives";
 
 type Feedback = { title: string; message: string } | null;
@@ -186,6 +188,13 @@ export default function StorageSection({
           />
         }
         onPress={restoring ? undefined : () => void onRestore()}
+      />
+      <ToggleRow
+        icon={Eraser}
+        title="Clear reader cache on app start"
+        subtitle="On a cold app start, removes only the reader image cache. Downloads, translations and OCR models are kept."
+        value={settings.readerClearCacheOnStart}
+        onChange={(value) => onChange({ readerClearCacheOnStart: value })}
         last
       />
       <View style={styles.usageWrap}>

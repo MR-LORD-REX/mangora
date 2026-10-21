@@ -1,34 +1,53 @@
 /**
  * TranslationSection.tsx
  * ---------------------------------------------------------------------------
- * Settings -> Translation: the Gemini key used by AI translation and the
- * cached page translations stored in the database.
+ * Settings -> Translation: engine-agnostic batch/context limits, Gemini model
+ * selection and credentials, and the cached page translations.
  * ---------------------------------------------------------------------------
  */
 
-import { KeyRound, Languages, Trash2 } from "lucide-react-native";
+import {
+  BookOpen,
+  Cpu,
+  KeyRound,
+  Languages,
+  Layers,
+  Repeat,
+  Trash2,
+} from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
+import MenuSheet from "@/components/common/MenuSheet";
 import { ConfirmDialog, PromptDialog } from "@/components/common/Dialogs";
 import { colors } from "@/constants/theme";
 import {
   clearTranslationCache,
   countTranslationCachePages,
 } from "@/services/db/repositories/translationRepository";
+import {
+  maxOcrBubbleWorkers,
+  modelIdForLanguage,
+} from "@/services/ocr/ocrModels";
 import type { AppSettings } from "@/services/settings/settingsStore";
+import {
+  GEMINI_MODELS,
+  type GeminiModelId,
+} from "@/services/translation/geminiModels";
 import { validateGeminiApiKey } from "@/services/translation/geminiTranslator";
 
 import {
   SettingsRow,
   SettingsSection,
   SettingsValue,
+  SliderRow,
+  ToggleRow,
 } from "./SettingsPrimitives";
 
 function maskKey(key: string): string {
   if (!key) return "Not set";
-  if (key.length <= 8) return "••••••••";
-  return `${key.slice(0, 4)}••••${key.slice(-4)}`;
+  if (key.length <= 8) return "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
+  return key.slice(0, 4) + "\u2022\u2022\u2022\u2022" + key.slice(-4);
 }
 
 export default function TranslationSection({
@@ -41,11 +60,19 @@ export default function TranslationSection({
   standalone?: boolean;
 }) {
   const [keyOpen, setKeyOpen] = useState(false);
+  const [modelOpen, setModelOpen] = useState(false);
   const [keyBusy, setKeyBusy] = useState(false);
   const [cachePages, setCachePages] = useState<number | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const selectedModel =
+    GEMINI_MODELS.find((model) => model.id === settings.geminiModelId) ??
+    GEMINI_MODELS[0];
+  const ocrModelId = modelIdForLanguage(settings.readerLanguage || "ja");
+  const maxBatch = maxOcrBubbleWorkers(ocrModelId);
+  const batchValue = Math.min(maxBatch, Math.max(1, settings.ocrBubbleWorkers));
 
   const refreshCache = useCallback(() => {
     void countTranslationCachePages()
@@ -71,7 +98,7 @@ export default function TranslationSection({
     } catch (error) {
       setNotice(
         error instanceof Error
-          ? `Key rejected: ${error.message}`
+          ? "Key rejected: " + error.message
           : "The key could not be validated.",
       );
     } finally {
@@ -87,7 +114,7 @@ export default function TranslationSection({
       setNotice(
         removed === 0
           ? "The translation cache was already empty."
-          : `Removed ${removed} cached page${removed === 1 ? "" : "s"}.`,
+          : "Removed " + removed + " cached page" + (removed === 1 ? "" : "s") + ".",
       );
       refreshCache();
     } catch (error) {
@@ -102,16 +129,52 @@ export default function TranslationSection({
   return (
     <SettingsSection
       title="Translation"
-      subtitle="AI translation credentials and the stored page cache."
+      subtitle="Models, batch limits and the stored page cache."
       icon={Languages}
       standalone={standalone}
     >
       <SettingsRow
         icon={KeyRound}
         title="Gemini API key"
-        subtitle="Used by AI translation for both OCR cleanup and bubbles."
+        subtitle="Used by AI translation. Free translation needs no key."
         right={<SettingsValue text={maskKey(settings.geminiApiKey)} accent />}
         onPress={() => setKeyOpen(true)}
+      />
+      <SettingsRow
+        icon={Cpu}
+        title="Translation model"
+        subtitle="Primary Gemini model for AI translation."
+        right={<SettingsValue text={selectedModel.label} accent />}
+        onPress={() => setModelOpen(true)}
+      />
+      <ToggleRow
+        icon={Repeat}
+        title="Auto model switch"
+        subtitle="On a rate limit, retry with the other model. Two failed switches turn this off until you enable it again."
+        value={settings.readerAutoModelSwitch}
+        onChange={(value) => onChange({ readerAutoModelSwitch: value })}
+      />
+      <SliderRow
+        icon={BookOpen}
+        title="Max context pages"
+        subtitle="Already-translated pages sent as context to keep tone and names consistent."
+        value={settings.aiMaxContextPages}
+        min={1}
+        max={50}
+        onChange={(value) => onChange({ aiMaxContextPages: value })}
+      />
+      <SliderRow
+        icon={Layers}
+        title="Batch size"
+        subtitle={
+          "Detected text lines grouped into one OCR forward pass. " +
+          maxBatch +
+          " is the maximum for the selected language model."
+        }
+        value={batchValue}
+        min={1}
+        max={maxBatch}
+        onChange={(value) => onChange({ ocrBubbleWorkers: value })}
       />
       <SettingsRow
         icon={Trash2}
@@ -119,13 +182,13 @@ export default function TranslationSection({
         subtitle={
           cachePages == null
             ? "Removes every cached translated page from the database."
-            : `${cachePages} cached page${cachePages === 1 ? "" : "s"} stored right now.`
+            : cachePages +
+              " cached page" +
+              (cachePages === 1 ? "" : "s") +
+              " stored right now."
         }
         right={
-          <SettingsValue
-            text={clearing ? "Working..." : "Clear"}
-            accent
-          />
+          <SettingsValue text={clearing ? "Working..." : "Clear"} accent />
         }
         destructive
         last
@@ -133,6 +196,17 @@ export default function TranslationSection({
       />
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
+      <MenuSheet
+        visible={modelOpen}
+        title="Translation model"
+        onClose={() => setModelOpen(false)}
+        options={GEMINI_MODELS.map((model) => ({
+          key: model.id,
+          label: model.label,
+          selected: model.id === settings.geminiModelId,
+          onPress: () => onChange({ geminiModelId: model.id as GeminiModelId }),
+        }))}
+      />
       <PromptDialog
         visible={keyOpen}
         title="Gemini API key"

@@ -36,6 +36,7 @@ export interface ZoomablePageProps {
   onSingleTap?: () => void;
   /** Tap callback that also receives the tap point inside the page box. */
   onTapAt?: (x: number, y: number) => void;
+  onLongPress?: () => void;
   children: React.ReactNode;
   defScale?: number;
 }
@@ -54,6 +55,7 @@ export default function ZoomablePage({
   disableZoomOut,
   onSingleTap,
   onTapAt,
+  onLongPress,
   children,
   defScale,
 }: ZoomablePageProps) {
@@ -186,6 +188,7 @@ export default function ZoomablePage({
   const singleTap = Gesture.Tap()
     .numberOfTaps(1)
     .maxDelay(260)
+    .maxDuration(250)
     .onEnd((event) => {
       if (onTapAt) {
         runOnJS(onTapAt)(event.x, event.y);
@@ -196,10 +199,18 @@ export default function ZoomablePage({
       }
     });
 
+  const longPress = Gesture.LongPress()
+    .minDuration(450)
+    .maxDistance(14)
+    .enabled(Boolean(onLongPress))
+    .onStart(() => {
+      if (onLongPress) runOnJS(onLongPress)();
+    });
+
   const composed = Gesture.Simultaneous(
     pinch,
     pan,
-    Gesture.Exclusive(doubleTap, singleTap),
+    Gesture.Exclusive(doubleTap, longPress, singleTap),
   );
 
   const animatedStyle = useAnimatedStyle(() => ({

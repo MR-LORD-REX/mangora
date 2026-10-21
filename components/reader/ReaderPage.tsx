@@ -10,7 +10,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { memo } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -27,8 +27,12 @@ import type {
 } from "@/components/reader/readerChrome";
 import SubsamplingStripImage from "@/components/reader/SubsamplingStripImage";
 import ZoomablePage from "@/components/reader/ZoomablePage";
-import type { PageGeometry } from "@/utils/reader/pageGeometry";
+import type {
+  PageGeometry,
+  ReaderPageSplitHalf,
+} from "@/utils/reader/pageGeometry";
 import type { PageTranslationState } from "@/services/translation/translation.types";
+import type { BorderCrop } from "@/utils/reader/borderCrop";
 
 export interface ReaderPageProps {
   url: string;
@@ -42,6 +46,8 @@ export interface ReaderPageProps {
   chrome: ReaderChromeSettings;
   defaultZoomScale: number;
   pagedMode: boolean;
+  /** Render one half of a split wide page (the source URL is unchanged). */
+  splitHalf?: ReaderPageSplitHalf | null;
   translation: PageTranslationState | undefined;
   translationActive: boolean;
   showPageStatus: boolean;
@@ -53,6 +59,9 @@ export interface ReaderPageProps {
   onLoadDims: (url: string, width: number, height: number) => void;
   onToggleChrome: () => void;
   onTapAt: (x: number, y: number) => void;
+  onLongPress: () => void;
+  /** Vertical space after this page in webtoon mode. */
+  pageGap?: number;
   onRetryTranslation: (url: string) => void;
 }
 
@@ -66,6 +75,7 @@ function ReaderPage({
   chrome,
   defaultZoomScale,
   pagedMode,
+  splitHalf = null,
   translation,
   translationActive,
   showPageStatus,
@@ -77,6 +87,8 @@ function ReaderPage({
   onLoadDims,
   onToggleChrome,
   onTapAt,
+  onLongPress,
+  pageGap = 0,
   onRetryTranslation,
 }: ReaderPageProps) {
   const filters: ({ brightness: number } | { grayscale: number } | { invert: number })[] = [];
@@ -98,6 +110,28 @@ function ReaderPage({
     ? chrome.customColorFilter
     : null;
 
+  const onLoad = useCallback((event: {
+    nativeEvent: { source: { width?: number; height?: number } };
+  }) => {
+    const src = event.nativeEvent.source;
+    if (src && src.width && src.height) {
+      onLoadDims(url, src.width, src.height);
+    }
+  }, [onLoadDims, url]);
+
+  const onMeasured = useCallback(
+    (width: number, height: number) => {
+      if (width > 0 && height > 0) onLoadDims(url, width, height);
+    },
+    [onLoadDims, url],
+  );
+
+  const [borderCrop, setBorderCrop] = useState<BorderCrop | null>(null);
+
+  useEffect(() => {
+    setBorderCrop(null);
+  }, [url]);
+
   const statusBadge = showPageStatus ? (
     <PageTrStatusBadge
       stage={translation?.stage}
@@ -109,7 +143,7 @@ function ReaderPage({
     />
   ) : null;
 
-  const translationOverlay = () => {
+  const translationOverlay = (displayWidth: number, displayHeight: number) => {
     if (
       !translation ||
       !translation.visible ||
@@ -122,13 +156,123 @@ function ReaderPage({
     return (
       <PageTranslationOverlay
         translation={translation}
-        displayWidth={geometry.overlayW}
-        displayHeight={geometry.overlayH}
+        displayWidth={displayWidth}
+        displayHeight={displayHeight}
         overlayFont={overlayFont}
         overlayFontWeight={overlayFontWeight}
         overlayFontScale={overlayFontScale}
         overlayTextColor={overlayTextColor}
       />
+    );
+  };
+
+  const crop = chrome.cropBorders ? borderCrop : null;
+  const cropSpanX = crop ? Math.max(0.5, 1 - crop.left - crop.right) : 1;
+  const cropSpanY = crop ? Math.max(0.5, 1 - crop.top - crop.bottom) : 1;
+  // One uniform scale preserves the page aspect ratio. Scaling X and Y by
+  // different amounts would remove the margins but distort the artwork.
+  const cropScale = 1 / Math.max(cropSpanX, cropSpanY);
+  const preRotateW = geometry.rotate ? geometry.imgH : geometry.imgW;
+  const preRotateH = geometry.rotate ? geometry.imgW : geometry.imgH;
+  // For a split page the image layer is the full spread (2x the visible half);
+  // the outer clip below decides which half is on screen.
+  const sourceW = geometry.rotate ? preRotateW : geometry.overlayW;
+  const sourceH = geometry.rotate ? preRotateH : geometry.overlayH;
+  const drawW = Math.max(1, sourceW * cropScale);
+  const drawH = Math.max(1, sourceH * cropScale);
+  const visibleW = drawW * cropSpanX;
+  const visibleH = drawH * cropSpanY;
+  const cropOffsetX = crop
+    ? (sourceW - visibleW) / 2 - crop.left * drawW
+    : 0;
+  const cropOffsetY = crop
+    ? (sourceH - visibleH) / 2 - crop.top * drawH
+    : 0;
+
+  const renderFramedPage = () => {
+    const imageLayer = (
+      <View style={{ width: drawW, height: drawH }}>
+        <SubsamplingStripImage
+          uri={url}
+          headers={imageHeaders}
+          extensionSourceId={extensionSourceId}
+          width={drawW}
+          height={drawH}
+          backgroundColor={pageBackground}
+          imageFilter={imageFilter}
+          colorTint={colorTint}
+          onBorderCrop={setBorderCrop}
+          onLoadDims={onMeasured}
+          onFallbackLoad={onLoad}
+        />
+        {translationOverlay(drawW, drawH)}
+      </View>
+    );
+    // Always keep the same view nesting and the same SubsamplingStripImage
+    // instance. Toggling crop used to swap between one and two wrapper views,
+    // which remounted the native tiled image and re-fetched the page.
+    const framed = (
+      <View
+        style={{
+          width: sourceW,
+          height: sourceH,
+          overflow: "hidden",
+        }}
+      >
+        <View
+          style={{
+            position: "absolute",
+            left: cropOffsetX,
+            top: cropOffsetY,
+            width: drawW,
+            height: drawH,
+          }}
+        >
+          {imageLayer}
+        </View>
+      </View>
+    );
+    if (splitHalf && !geometry.rotate) {
+      return (
+        <View
+          style={{
+            width: geometry.imgW,
+            height: geometry.imgH,
+            overflow: "hidden",
+          }}
+        >
+          <View
+            style={{
+              position: "absolute",
+              left: splitHalf === "right" ? -geometry.imgW : 0,
+              top: 0,
+            }}
+          >
+            {framed}
+          </View>
+        </View>
+      );
+    }
+    if (!geometry.rotate) return framed;
+    return (
+      <View
+        style={{
+          width: geometry.imgW,
+          height: geometry.imgH,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <View
+          style={{
+            width: preRotateW,
+            height: preRotateH,
+            transform: [{ rotate: "90deg" }],
+          }}
+        >
+          {framed}
+        </View>
+      </View>
     );
   };
 
@@ -171,19 +315,10 @@ function ReaderPage({
           disableZoomOut={chrome.disableZoomOut}
           onSingleTap={pagedMode ? undefined : onToggleChrome}
           onTapAt={pagedMode ? onTapAt : undefined}
+          onLongPress={onLongPress}
           defScale={defaultZoomScale}
         >
-          <SubsamplingStripImage
-            uri={url}
-            headers={imageHeaders}
-            extensionSourceId={extensionSourceId}
-            width={geometry.imgW}
-            height={geometry.imgH}
-            backgroundColor={pageBackground}
-            imageFilter={imageFilter}
-            colorTint={colorTint}
-          />
-          {translationOverlay()}
+          {renderFramedPage()}
         </ZoomablePage>
       </View>
     );
@@ -197,15 +332,6 @@ function ReaderPage({
   const verticallyScrollable =
     (pagedMode || chrome.readingMode === "scrollHorizontal") &&
     geometry.imgH > geometry.itemH;
-
-  const onLoad = (event: {
-    nativeEvent: { source: { width?: number; height?: number } };
-  }) => {
-    const src = event.nativeEvent.source;
-    if (src && src.width && src.height) {
-      onLoadDims(url, src.width, src.height);
-    }
-  };
 
   const renderPageImage = () => {
     if (verticallyScrollable) {
@@ -221,35 +347,13 @@ function ReaderPage({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={true}
         >
-          <SubsamplingStripImage
-            uri={url}
-            headers={imageHeaders}
-            extensionSourceId={extensionSourceId}
-            width={geometry.imgW}
-            height={geometry.imgH}
-            backgroundColor={pageBackground}
-            imageFilter={imageFilter}
-            colorTint={colorTint}
-            onFallbackLoad={onLoad}
-          />
-          {translationOverlay()}
+          {renderFramedPage()}
         </ScrollView>
       );
     }
     return (
-      <View style={{ width: geometry.imgW, height: geometry.itemH }}>
-        <SubsamplingStripImage
-          uri={url}
-          headers={imageHeaders}
-          extensionSourceId={extensionSourceId}
-          width={geometry.imgW}
-          height={geometry.itemH > geometry.imgH ? geometry.itemH : geometry.imgH}
-          backgroundColor={pageBackground}
-          imageFilter={imageFilter}
-          colorTint={colorTint}
-          onFallbackLoad={onLoad}
-        />
-        {translationOverlay()}
+      <View style={{ width: geometry.imgW, height: geometry.imgH }}>
+        {renderFramedPage()}
       </View>
     );
   };
@@ -260,6 +364,7 @@ function ReaderPage({
         style={{
           width: geometry.itemW,
           height: geometry.itemH,
+          marginBottom: pageGap,
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: pageBackground,
@@ -273,16 +378,19 @@ function ReaderPage({
   return (
     <Pressable
       onPress={pageTap}
+      onLongPress={onLongPress}
+      delayLongPress={420}
       style={{
         width: geometry.itemW,
         height: geometry.itemH,
+        marginBottom: pageGap,
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: pageBackground,
       }}
     >
       {statusBadge}
-      <View style={{ width: geometry.imgW, height: geometry.itemH }}>
+      <View style={{ width: geometry.imgW, height: geometry.imgH }}>
         {renderPageImage()}
       </View>
     </Pressable>
@@ -297,7 +405,8 @@ function geometryEqual(a: PageGeometry, b: PageGeometry): boolean {
     a.imgH === b.imgH &&
     a.overlayW === b.overlayW &&
     a.overlayH === b.overlayH &&
-    a.zoom === b.zoom
+    a.zoom === b.zoom &&
+    a.rotate === b.rotate
   );
 }
 
@@ -313,8 +422,11 @@ export default memo(
     prev.chrome === next.chrome &&
     prev.defaultZoomScale === next.defaultZoomScale &&
     prev.pagedMode === next.pagedMode &&
+    prev.splitHalf === next.splitHalf &&
     prev.translation === next.translation &&
     prev.translationActive === next.translationActive &&
+    prev.showPageStatus === next.showPageStatus &&
+    prev.hideTranslated === next.hideTranslated &&
     prev.overlayFont === next.overlayFont &&
     prev.overlayFontWeight === next.overlayFontWeight &&
     prev.overlayFontScale === next.overlayFontScale &&
@@ -322,5 +434,7 @@ export default memo(
     prev.onLoadDims === next.onLoadDims &&
     prev.onToggleChrome === next.onToggleChrome &&
     prev.onTapAt === next.onTapAt &&
+    prev.onLongPress === next.onLongPress &&
+    prev.pageGap === next.pageGap &&
     prev.onRetryTranslation === next.onRetryTranslation,
 );

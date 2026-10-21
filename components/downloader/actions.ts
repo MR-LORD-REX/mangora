@@ -13,6 +13,8 @@
  * ---------------------------------------------------------------------------
  */
 
+import { Alert } from "react-native";
+
 import {
   addMangaToLibrary,
   isMangaInAnyLibrary,
@@ -264,6 +266,12 @@ export async function deleteChapterWithConfirm(input: {
     mangaTitle: input.mangaTitle,
   });
   if (!confirmed) return false;
-  await deleteDownloadedChapter(input.chapterId);
-  return true;
+  const result = await deleteDownloadedChapter(input.chapterId);
+  if (result.warning) {
+    Alert.alert(
+      result.deleted ? "Delete incomplete" : "Could not delete chapter",
+      result.warning,
+    );
+  }
+  return result.deleted;
 }

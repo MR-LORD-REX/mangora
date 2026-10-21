@@ -31,9 +31,11 @@ import {
 export type ReaderTranslationEngine = "free" | "ai";
 
 /** When translation runs in the reader. */
-export type ReaderTranslationMode = "off" | "single" | "auto" | "autoBubbles";
+export type ReaderTranslationMode = "off" | "single" | "auto";
 
 export type ReaderReadingMode =
+  | "webtoon"
+  | "continuousVertical"
   | "scrollVertical"
   | "scrollHorizontal"
   | "pagedVertical"
@@ -52,7 +54,15 @@ export type ReaderOrientation =
 
 export type ReaderFitMode = "fit" | "original";
 
-export type ReaderTapZoneLayout = "topBottom" | "leftRight" | "both";
+export type ReaderTapZoneLayout =
+  | "l"
+  | "kindlish"
+  | "edge"
+  | "rightLeft"
+  | "disabled"
+  | "topBottom"
+  | "leftRight"
+  | "both";
 
 export type ReaderInvertTapZones = "none" | "horizontal" | "vertical" | "both";
 
@@ -74,35 +84,20 @@ export interface AppSettings {
   readerLanguage: string;
   /** Translation engine: free Google endpoint or Gemini. */
   readerTranslationEngine: ReaderTranslationEngine;
-  /** Translation mode: off / single page / Auto pages / Auto bubbles. */
+  /** Translation mode: off / single page / auto. */
   readerTranslationMode: ReaderTranslationMode;
   /** Gemini API key used by AI translation ("" = not set). */
   geminiApiKey: string;
   /** Gemini model used by AI translation. */
   geminiModelId: GeminiModelId;
-  /**
-   * OCR pipeline: concurrent page scanner workers (1..2, default 2).
-   * Applied from Translation options -> OCR settings.
-   */
-  ocrPageWorkers: number;
-  /**
-   * OCR pipeline: concurrent bubble OCR workers (1..5, default 3). Baberu
-   * supports up to 5 independent engines (~121 MB each); PP-OCR is clamped
-   * to 1 until its detector + recognizer throughput has been measured.
-   */
+  /** OCR pipeline: PP-OCR recognition batch size (1..8, default 8). */
   ocrBubbleWorkers: number;
-  /** Pre-translate: concurrent bubble OCR workers (1..5, default 5). */
-  pretranslateBubbleWorkers: number;
-  /** OCR pipeline: pages queued ahead of the visible page (1..3, default 2). */
+  /** Pages queued ahead of the visible page (1..5, default 2). */
   ocrLookahead: number;
-  /** Free TR: concurrent Google Translate requests (1..5, default 2). */
-  freeRequestConcurrency: number;
-  /** AI TR: Gemini worker count; 2 uses both catalogue models (1..2, default 1). */
-  aiWorkerCount: number;
   /** AI TR: past OCRed pages attached to each request (1..50, default 10). */
   aiMaxContextPages: number;
-  /** AI TR Auto bubbles mode: bubble batch size per Gemini request (1..5, default 3). */
-  readerAiBubbleBatchSize: number;
+  /** AI TR: retry a rate-limited request with the next model (default off). */
+  readerAutoModelSwitch: boolean;
   /** Reader Config -> Language -> Target: translate-into language code. */
   readerTargetLanguage: string;
   /** Reading modes / orientation / fit & chrome toggles (new reader UI). */
@@ -110,6 +105,7 @@ export interface AppSettings {
   readerPagedDirection: ReaderPagedDirection;
   readerOrientation: ReaderOrientation;
   readerFitMode: ReaderFitMode;
+  readerImageScaleType: "fitWidth" | "fitHeight" | "fitScreen" | "original";
   /** Initial scale for zoomable pages (0.5..1.5, default 1). */
   readerDefaultZoomScale: number;
   /** Repositories the user explicitly added for extension discovery. */
@@ -182,6 +178,8 @@ export interface AppSettings {
   downloadConfirmSuppressedUntil: string | null;
   /** Data & storage: epoch millis of the last successful backup. */
   lastBackupAt: number | null;
+  /** Data & storage: clear reader-cache on a cold process start (default on). */
+  readerClearCacheOnStart: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -190,19 +188,16 @@ export const DEFAULT_SETTINGS: AppSettings = {
   readerTranslationMode: "off",
   geminiApiKey: "",
   geminiModelId: GEMINI_DEFAULT_MODEL,
-  ocrPageWorkers: 2,
-  ocrBubbleWorkers: 3,
-  pretranslateBubbleWorkers: 5,
+  ocrBubbleWorkers: 8,
   ocrLookahead: 2,
-  freeRequestConcurrency: 2,
-  aiWorkerCount: 1,
   aiMaxContextPages: 10,
-  readerAiBubbleBatchSize: 3,
+  readerAutoModelSwitch: false,
   readerTargetLanguage: "en",
-  readerReadingMode: "scrollVertical",
+  readerReadingMode: "webtoon",
   readerPagedDirection: "ltr",
   readerOrientation: "default",
   readerFitMode: "fit",
+  readerImageScaleType: "fitScreen",
   readerDefaultZoomScale: 1,
   extensionRepos: [],
   pinnedSourceIds: [],
@@ -216,7 +211,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   readerSplitWidePages: false,
   readerRotateWidePagesToFit: false,
   readerCropBorders: false,
-  readerTapZoneLayout: "topBottom",
+  readerTapZoneLayout: "l",
   readerInvertTapZones: "none",
   readerSidePadding: 0,
   readerBackgroundColor: "black",
@@ -249,6 +244,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   downloadWifiOnly: true,
   downloadConfirmSuppressedUntil: null,
   lastBackupAt: null,
+  readerClearCacheOnStart: true,
 };
 
 let cached: AppSettings | null = null;
@@ -264,6 +260,8 @@ function settingsFile(): File {
 }
 
 const READING_MODES: ReaderReadingMode[] = [
+  "webtoon",
+  "continuousVertical",
   "scrollVertical",
   "scrollHorizontal",
   "pagedVertical",
@@ -278,7 +276,22 @@ const ORIENTATIONS: ReaderOrientation[] = [
   "lockedLandscape",
   "reversePortrait",
 ];
-const TAP_ZONES: ReaderTapZoneLayout[] = ["topBottom", "leftRight", "both"];
+const TAP_ZONES: ReaderTapZoneLayout[] = [
+  "l",
+  "kindlish",
+  "edge",
+  "rightLeft",
+  "disabled",
+  "topBottom",
+  "leftRight",
+  "both",
+];
+const IMAGE_SCALES: AppSettings["readerImageScaleType"][] = [
+  "fitWidth",
+  "fitHeight",
+  "fitScreen",
+  "original",
+];
 const INVERTS: ReaderInvertTapZones[] = ["none", "horizontal", "vertical", "both"];
 const BACKGROUNDS: ReaderBackgroundColor[] = ["black", "gray", "white", "auto"];
 const OVERLAY_FONTS: ReaderOverlayFont[] = [
@@ -318,12 +331,11 @@ function sanitize(raw: unknown): AppSettings {
       : "free";
   const rawMode = value.readerTranslationMode as string | undefined;
   const mode: ReaderTranslationMode =
-    rawMode === "single" ||
-    rawMode === "auto" ||
-    rawMode === "autoBubbles" ||
-    rawMode === "off"
+    rawMode === "single" || rawMode === "auto" || rawMode === "off"
       ? rawMode
-      : rawLegacy === "free" ||
+      : rawMode === "autoBubbles"
+        ? "auto"
+        : rawLegacy === "free" ||
           rawLegacy === "ai" ||
           rawLegacy === "perBubble" ||
           rawLegacy === "perPage"
@@ -346,23 +358,20 @@ function sanitize(raw: unknown): AppSettings {
     geminiModelId: isGeminiModelId(value.geminiModelId)
       ? value.geminiModelId
       : GEMINI_DEFAULT_MODEL,
-    ocrPageWorkers: Math.round(num(value.ocrPageWorkers, 2, 1, 2)),
-    ocrBubbleWorkers: Math.round(num(value.ocrBubbleWorkers, 3, 1, 5)),
-    pretranslateBubbleWorkers: Math.round(
-      num(value.pretranslateBubbleWorkers, 5, 1, 5),
-    ),
-    ocrLookahead: Math.round(num(value.ocrLookahead, 2, 1, 3)),
-    freeRequestConcurrency: Math.round(
-      num(value.freeRequestConcurrency, 2, 1, 5),
-    ),
-    aiWorkerCount: Math.round(num(value.aiWorkerCount, 1, 1, 2)),
+    ocrBubbleWorkers: Math.round(num(value.ocrBubbleWorkers, 8, 1, 8)),
+    ocrLookahead: Math.round(num(value.ocrLookahead, 2, 1, 5)),
     aiMaxContextPages: Math.round(num(value.aiMaxContextPages, 10, 1, 50)),
-    readerAiBubbleBatchSize: Math.round(num(value.readerAiBubbleBatchSize, 3, 1, 5)),
-    readerReadingMode: oneOf(value.readerReadingMode, READING_MODES, "scrollVertical"),
+    readerAutoModelSwitch: bool(value.readerAutoModelSwitch, false),
+    readerReadingMode: oneOf(value.readerReadingMode, READING_MODES, "webtoon"),
     readerPagedDirection:
       value.readerPagedDirection === "rtl" ? "rtl" : "ltr",
     readerOrientation: oneOf(value.readerOrientation, ORIENTATIONS, "default"),
     readerFitMode: value.readerFitMode === "original" ? "original" : "fit",
+    readerImageScaleType: oneOf(
+      value.readerImageScaleType,
+      IMAGE_SCALES,
+      "fitScreen",
+    ),
     readerDefaultZoomScale: num(value.readerDefaultZoomScale, 1, 0.5, 1.5),
     extensionRepos: Array.isArray(value.extensionRepos)
       ? value.extensionRepos.filter(
@@ -400,7 +409,7 @@ function sanitize(raw: unknown): AppSettings {
     readerSplitWidePages: bool(value.readerSplitWidePages, false),
     readerRotateWidePagesToFit: bool(value.readerRotateWidePagesToFit, false),
     readerCropBorders: bool(value.readerCropBorders, false),
-    readerTapZoneLayout: oneOf(value.readerTapZoneLayout, TAP_ZONES, "topBottom"),
+    readerTapZoneLayout: oneOf(value.readerTapZoneLayout, TAP_ZONES, "l"),
     readerInvertTapZones: oneOf(value.readerInvertTapZones, INVERTS, "none"),
     readerSidePadding: Math.round(num(value.readerSidePadding, 0, 0, 100)),
     readerBackgroundColor: oneOf(
@@ -469,6 +478,7 @@ function sanitize(raw: unknown): AppSettings {
       typeof value.lastBackupAt === "number" && Number.isFinite(value.lastBackupAt)
         ? value.lastBackupAt
         : null,
+    readerClearCacheOnStart: bool(value.readerClearCacheOnStart, true),
   };
 }
 

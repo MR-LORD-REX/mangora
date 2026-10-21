@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import DownloadSheetHost from "@/components/downloader/DownloadSheetHost";
 import { colors } from "@/constants/theme";
 import { initializeDatabase } from "@/services/db/bootstrap";
+import { initializeReaderCache } from "@/services/reader/readerCache";
 import { initializeNotifications } from "@/services/notifications/notifications";
 import { initPretranslateQueue } from "@/services/translation/pretranslateQueue";
 import {
@@ -33,11 +34,14 @@ export default function RootLayout() {
   const initialize = () => {
     setDatabaseState("loading");
     initializeDatabase()
-      .then(() =>
-          initDownloadScheduler().catch((error) => {
-            console.warn("Download queue failed to start:", error);
-          }),
-        )
+      .then(async () => {
+        await initializeReaderCache().catch((error) => {
+          console.warn("Reader cache failed to initialise:", error);
+        });
+        await initDownloadScheduler().catch((error) => {
+          console.warn("Download queue failed to start:", error);
+        });
+      })
       .then(() => setDatabaseState("ready"))
       .catch(() => setDatabaseState("error"));
   };

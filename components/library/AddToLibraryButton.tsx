@@ -1,4 +1,4 @@
-import { Check, Heart } from "lucide-react-native";
+import { Bookmark, Check, Heart } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -25,6 +25,8 @@ interface AddToLibraryButtonProps {
   providerMangaAliases?: string[];
   /** "button" renders a full width CTA, "icon" renders a heart icon button. */
   variant?: "button" | "icon";
+  /** Icon used by the compact variant. */
+  iconVariant?: "heart" | "bookmark";
   accent?: string;
   onAdded?: (added: boolean) => void;
 }
@@ -42,6 +44,7 @@ export default function AddToLibraryButton({
   description,
   providerMangaAliases = [],
   variant = "button",
+  iconVariant = "heart",
   accent = colors.accent,
   onAdded,
 }: AddToLibraryButtonProps) {
@@ -207,11 +210,19 @@ export default function AddToLibraryButton({
             pressed && styles.iconPressed,
           ]}
         >
-          <Heart
-            size={24}
-            color={added ? colors.heart : colors.textMuted}
-            fill={added ? colors.heart : "transparent"}
-          />
+          {iconVariant === "bookmark" ? (
+            <Bookmark
+              size={20}
+              color={added ? colors.accent : "#fff"}
+              fill={added ? colors.accent : "transparent"}
+            />
+          ) : (
+            <Heart
+              size={24}
+              color={added ? colors.heart : colors.textMuted}
+              fill={added ? colors.heart : "transparent"}
+            />
+          )}
         </Pressable>
         {message ? <Text style={styles.iconMessage}>{message}</Text> : null}
         <AddLibraryModal
@@ -341,8 +352,8 @@ function AddLibraryModal({
 
 const styles = StyleSheet.create({
   iconButton: {
-    width: 44,
-    height: 44,
+    width: 30,
+    height: 30,
     borderRadius: radius.full,
     alignItems: "center",
     justifyContent: "center",

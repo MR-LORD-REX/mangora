@@ -3,22 +3,27 @@
  * ---------------------------------------------------------------------------
  * Pure per-mode geometry for one reader page.
  *
- * Fit mode always sizes the page so its width covers the width budget (the
- * full viewport at 0% side padding), like a browser rendering an <img> at
- * width:100%. Original mode renders at 1:1 physical pixels (centred, like a
- * desktop browser) and is zoomable in paged / horizontal-scroll layouts.
+ * This mirrors Mihon's two viewer families:
+ *   - Pager readers use one viewport-sized slot per page and honour the
+ *     selected image scale (fit width / fit height / fit screen / original).
+ *   - Long-strip readers always fit the image to the available width, exactly
+ *     like Mihon's webtoon viewer. A very tall page is one strip row; the
+ *     native subsampling renderer only decodes the visible region.
  *
- * Scroll modes lay each page out along the strip axis: vertical strips get a
- * full-width row, horizontal pages get one full-screen slot each so narrow
- * pages no longer clump together on screen.
+ * Translation overlays are mapped against `overlayW/H`. For a normal page that
+ * is the rendered image box; for a split wide page it is the full spread while
+ * `imgW/H` describe the visible half. The renderer clips image and overlay
+ * together, so a geometry change can never pull them apart.
  * ---------------------------------------------------------------------------
  */
 
 import { Dimensions } from "react-native";
 
-import type {
-  ReaderChromeSettings,
-  ReaderReadingMode,
+import {
+  isHorizontalMode,
+  isLongStripMode,
+  type ReaderImageScaleType,
+  type ReaderReadingMode,
 } from "@/components/reader/readerChrome";
 
 export interface PageGeometry {
@@ -29,6 +34,8 @@ export interface PageGeometry {
   overlayW: number;
   overlayH: number;
   zoom: boolean;
+  /** The page is drawn rotated 90 degrees; imgW/imgH are the rotated box. */
+  rotate: boolean;
 }
 
 export interface PageDims {
@@ -36,16 +43,64 @@ export interface PageDims {
   height: number;
 }
 
+/** A half of a wide (double-page) image, used by Split wide pages. */
+export type ReaderPageSplitHalf = "left" | "right";
+
 const screenWidth = Dimensions.get("window").width;
 const screenHeight = Dimensions.get("window").height;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function widthBudget(bodyW: number, sidePadding: number): number {
+  const factor = 1 - clamp(sidePadding, 0, 100) / 100;
+  return Math.max(120, bodyW * factor);
+}
+
+function contain(
+  naturalW: number,
+  naturalH: number,
+  boxW: number,
+  boxH: number,
+): { width: number; height: number } {
+  const scale = Math.min(boxW / naturalW, boxH / naturalH);
+  return { width: naturalW * scale, height: naturalH * scale };
+}
+
+function scaled(
+  naturalW: number,
+  naturalH: number,
+  scaleType: ReaderImageScaleType,
+  budgetW: number,
+  budgetH: number,
+): { width: number; height: number } {
+  switch (scaleType) {
+    case "fitWidth": {
+      const width = budgetW;
+      return { width, height: (naturalH * width) / naturalW };
+    }
+    case "fitHeight": {
+      const height = budgetH;
+      return { width: (naturalW * height) / naturalH, height };
+    }
+    case "original":
+      return { width: naturalW, height: naturalH };
+    case "fitScreen":
+    default:
+      return contain(naturalW, naturalH, budgetW, budgetH);
+  }
+}
 
 export function pageGeometry(
   url: string,
   mode: ReaderReadingMode,
-  fitMode: ReaderChromeSettings["fitMode"],
   sidePadding: number,
   body: { width: number; height: number },
   dims: Record<string, PageDims>,
+  imageScaleType: ReaderImageScaleType = "fitScreen",
+  rotateWidePagesToFit = false,
+  splitHalf: ReaderPageSplitHalf | null = null,
 ): PageGeometry {
   const bodyW = body.width || screenWidth;
   const bodyH = body.height || screenHeight;
@@ -53,58 +108,51 @@ export function pageGeometry(
   const naturalW = measured?.width ?? 0;
   const naturalH = measured?.height ?? 0;
   const hasDims = naturalW > 0 && naturalH > 0;
-  // Fit-mode width budget: 0% padding = the page occupies the full screen
-  // width; higher values shrink the width the page covers.
-  const widthFactor = Math.max(
-    1 - Math.min(Math.max(sidePadding, 0), 100) / 100,
-    0.2,
-  );
-  const fitTargetW = bodyW * widthFactor;
+  const budgetW = widthBudget(bodyW, sidePadding);
+  const rotate = rotateWidePagesToFit && hasDims && naturalW > naturalH;
+  // Rotation and splitting are mutually exclusive, matching Mihon's page
+  // processing order (rotate wins when both are enabled).
+  const split = !rotate && splitHalf !== null && hasDims;
+  const targetNaturalW = rotate
+    ? naturalH
+    : split
+      ? naturalW / 2
+      : naturalW;
+  const targetNaturalH = rotate ? naturalW : naturalH;
+  const overlayMultiplier = split ? 2 : 1;
 
-  if (mode === "scrollVertical") {
+  // Mihon's webtoon and continuous viewers force fit-width. This is the key
+  // to stable long-strip columns: every page shares the same width and only
+  // its own aspect ratio decides the row height.
+  if (isLongStripMode(mode)) {
     if (!hasDims) {
-      // Dimensions not known yet (still loading or the measurement failed):
-      // reserve a portrait-ish slot; geometry self-corrects once onLoad
-      // reports the decoded size.
-      const placeholderH = bodyW * 1.4;
+      const placeholderH = budgetW * 1.4;
       return {
         itemW: bodyW,
         itemH: placeholderH,
-        imgW: bodyW,
+        imgW: budgetW,
         imgH: placeholderH,
-        overlayW: bodyW,
+        overlayW: budgetW,
         overlayH: placeholderH,
-        zoom: true,
-      };
-    }
-    if (fitMode === "fit") {
-      // Cover the width budget (upscaling a narrow webtoon strip is intended
-      // here - the Android tiled viewer keeps it crisp while scrolling).
-      const imgW = screenWidth;
-      const imgH = (naturalH * imgW) / naturalW;
-      return {
-        itemW: bodyW,
-        itemH: imgH,
-        imgW,
-        imgH,
-        overlayW: imgW,
-        overlayH: imgH,
         zoom: false,
+        rotate: false,
       };
     }
-      const imgW = screenWidth;
-      const imgH = (naturalH * imgW) / naturalW;
+    const imgW = budgetW;
+    const imgH = (targetNaturalH * imgW) / targetNaturalW;
     return {
       itemW: bodyW,
-      itemH: bodyH,
+      itemH: imgH,
       imgW,
       imgH,
-      overlayW: imgW,
+      overlayW: imgW * overlayMultiplier,
       overlayH: imgH,
-      zoom: true,
+      zoom: false,
+      rotate,
     };
   }
-  if (mode === "scrollHorizontal") {
+
+  if (isHorizontalMode(mode) && mode === "scrollHorizontal") {
     if (!hasDims) {
       const placeholderW = bodyH * 0.71;
       return {
@@ -115,61 +163,57 @@ export function pageGeometry(
         overlayW: placeholderW,
         overlayH: bodyH,
         zoom: false,
+        rotate: false,
       };
     }
-    if (fitMode === "fit") {
-      // One full-screen slot per page; the page is contained inside it and
-      // fills the width whenever its aspect ratio fits the viewport height.
-      const imgW = screenWidth;
-      const imgH = (naturalH * imgW) / naturalW;
-      return {
-        itemW: bodyW,
-        itemH: bodyH,
-        imgW,
-        imgH,
-        overlayW: imgW,
-        overlayH: imgH,
-        zoom: false,
-      };
-    }
-    const imgW = screenWidth;
-    const imgH = (naturalH * imgW) / naturalW;
+    const image = scaled(
+      targetNaturalW,
+      targetNaturalH,
+      imageScaleType,
+      budgetW,
+      bodyH,
+    );
     return {
       itemW: bodyW,
       itemH: bodyH,
-      imgW,
-      imgH,
-      overlayW: imgW,
-      overlayH: imgH,
-      zoom: true,
+      imgW: image.width,
+      imgH: image.height,
+      overlayW: image.width * overlayMultiplier,
+      overlayH: image.height,
+      zoom: imageScaleType === "original",
+      rotate,
     };
   }
-  const pagedNaturalW = hasDims ? naturalW : screenWidth * 0.9;
-  const pagedNaturalH = hasDims ? naturalH : screenWidth * 0.9;
-  if (fitMode === "original") {
-    const imgW = screenWidth;
-    const imgH = (naturalH * imgW) / naturalW;
+
+  if (!hasDims) {
+    const placeholder = contain(0.71, 1, budgetW, bodyH);
     return {
       itemW: bodyW,
       itemH: bodyH,
-      imgW: imgW,
-      imgH: imgH,
-      overlayW: imgW,
-      overlayH: imgH,
-      zoom: true,
+      imgW: placeholder.width,
+      imgH: placeholder.height,
+      overlayW: placeholder.width,
+      overlayH: placeholder.height,
+      zoom: false,
+      rotate: false,
     };
   }
-  // Fit pages like scroll mode: fill the width and let tall pages scroll
-  // inside their viewport-sized page slot.
-  const imgW =  ( fitTargetW * 0.9 ) < screenWidth ? screenWidth * 0.9 : fitTargetW * 0.9;
-  const imgH = ((pagedNaturalH * imgW) / pagedNaturalW) * 0.9;
+
+  const image = scaled(
+    targetNaturalW,
+    targetNaturalH,
+    imageScaleType,
+    budgetW,
+    bodyH,
+  );
   return {
     itemW: bodyW,
     itemH: bodyH,
-    imgW,
-    imgH,
-    overlayW: imgW,
-    overlayH: imgH,
-    zoom: false,
+    imgW: image.width,
+    imgH: image.height,
+    overlayW: image.width * overlayMultiplier,
+    overlayH: image.height,
+    zoom: imageScaleType === "original",
+    rotate,
   };
 }

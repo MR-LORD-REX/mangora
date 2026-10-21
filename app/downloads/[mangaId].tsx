@@ -11,6 +11,7 @@ import { BookOpen, RotateCcw, Trash2 } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Pressable,
@@ -41,6 +42,12 @@ type DownloadRow = Download;
 
 function statusLabel(row: DownloadRow): { text: string; color: string } {
   if (row.status === "completed") {
+    if (row.error) {
+      return {
+        text: `Downloaded - ${formatBytes(row.byteSize ?? 0)} - ${row.error}`,
+        color: colors.gold,
+      };
+    }
     return { text: `Downloaded - ${formatBytes(row.byteSize ?? 0)}`, color: colors.success };
   }
   if (row.status === "failed") {
@@ -90,9 +97,15 @@ export default function DownloadedMangaScreen() {
     setPendingDelete(null);
     setBusy(true);
     try {
-      await deleteDownloadedChapter(row.id);
+      const result = await deleteDownloadedChapter(row.id);
+      if (result.warning) {
+        Alert.alert(
+          result.deleted ? "Delete incomplete" : "Could not delete chapter",
+          result.warning,
+        );
+      }
       await load();
-      if (rows.length <= 1) router.back();
+      if (result.deleted && rows.length <= 1) router.back();
     } finally {
       setBusy(false);
     }
@@ -103,7 +116,19 @@ export default function DownloadedMangaScreen() {
     setBusy(true);
     try {
       const first = rows[0];
-      for (const row of rows) await deleteDownloadedChapter(row.id);
+      const warnings: string[] = [];
+      for (const row of rows) {
+        const result = await deleteDownloadedChapter(row.id);
+        if (result.warning) warnings.push(result.warning);
+      }
+      if (warnings.length > 0) {
+        Alert.alert(
+          "Some chapters were not deleted",
+          warnings.slice(0, 5).join("\n\n"),
+        );
+        await load();
+        return;
+      }
       await deleteDownloadsForManga(mangaId);
       if (first) {
         try {

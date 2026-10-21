@@ -20,7 +20,6 @@ import {
   View,
 } from "react-native";
 
-import DotSlider from "@/components/reader/DotSlider";
 import { READER_LANGUAGE_OPTIONS } from "@/components/reader/readerLanguages";
 import { colors, radius } from "@/constants/theme";
 import { getDownloadedPageUris } from "@/services/downloader";
@@ -30,13 +29,6 @@ import {
   updateSettings,
   type ReaderTranslationEngine,
 } from "@/services/settings/settingsStore";
-import {
-  clampOcrBubbleWorkers,
-  getLocalOcrModel,
-  maxOcrBubbleWorkers,
-  modelIdForLanguage,
-  ocrBubbleRamMb,
-} from "@/services/ocr/ocrModels";
 import {
   READER_TARGET_OPTIONS,
   isSameEngineLanguage,
@@ -66,10 +58,6 @@ export default function PretranslateDialog({
   const [engine, setEngine] = useState<ReaderTranslationEngine>("free");
   const [source, setSource] = useState("ja");
   const [target, setTarget] = useState("en");
-  const [freeConcurrency, setFreeConcurrency] = useState(2);
-  const [aiWorkers, setAiWorkers] = useState(1);
-  const [maxContext, setMaxContext] = useState(10);
-  const [bubbleWorkers, setBubbleWorkers] = useState(5);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -90,10 +78,6 @@ export default function PretranslateDialog({
         setEngine(settings.readerTranslationEngine);
         setSource(settings.readerLanguage || chapterLanguage || "ja");
         setTarget(settings.readerTargetLanguage || "en");
-        setFreeConcurrency(settings.freeRequestConcurrency);
-        setAiWorkers(settings.aiWorkerCount);
-        setMaxContext(settings.aiMaxContextPages);
-        setBubbleWorkers(settings.pretranslateBubbleWorkers);
         console.log("[pretranslate] dialog opened", {
           chapterId: candidate.target.chapterId,
           pages: uris.length,
@@ -113,14 +97,6 @@ export default function PretranslateDialog({
   if (!candidate) return null;
 
   const downloaded = pages.length > 0;
-  const ocrModelId = modelIdForLanguage(source);
-  const ocrModel = getLocalOcrModel(ocrModelId);
-  const maxBubbleWorkers = maxOcrBubbleWorkers(ocrModelId);
-  const effectiveBubbleWorkers = Math.min(
-    maxBubbleWorkers,
-    Math.max(1, bubbleWorkers),
-  );
-  const bubbleRamMb = ocrBubbleRamMb(ocrModelId, effectiveBubbleWorkers);
 
   const confirm = async () => {
     if (!downloaded) return;
@@ -136,13 +112,6 @@ export default function PretranslateDialog({
         readerLanguage:
           source === chapterLanguage ? settings.readerLanguage : source,
         readerTargetLanguage: target,
-        freeRequestConcurrency: freeConcurrency,
-        aiWorkerCount: aiWorkers,
-        aiMaxContextPages: maxContext,
-        pretranslateBubbleWorkers: clampOcrBubbleWorkers(
-          ocrModelId,
-          effectiveBubbleWorkers,
-        ),
       });
       if (engine === "ai" && !next.geminiApiKey.trim()) {
         setNotice(
@@ -307,75 +276,11 @@ export default function PretranslateDialog({
                     ))}
                   </ScrollView>
 
-                  {engine === "free" ? (
-                    <>
-                      <Text style={styles.sectionLabel}>
-                        Concurrent requests
-                      </Text>
-                      <DotSlider
-                        value={freeConcurrency}
-                        min={1}
-                        max={5}
-                        step={1}
-                        dotCount={5}
-                        leftLabel="1"
-                        rightLabel="5"
-                        onChange={setFreeConcurrency}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <Text style={styles.sectionLabel}>
-                        Translation workers
-                      </Text>
-                      <DotSlider
-                        value={aiWorkers}
-                        min={1}
-                        max={2}
-                        step={1}
-                        dotCount={2}
-                        leftLabel="1 model"
-                        rightLabel="2 models"
-                        onChange={setAiWorkers}
-                      />
-                      <Text style={styles.sectionLabel}>
-                        Max context pages
-                      </Text>
-                      <DotSlider
-                        value={maxContext}
-                        min={1}
-                        max={50}
-                        step={1}
-                        dotCount={25}
-                        leftLabel="1"
-                        rightLabel="50"
-                        onChange={setMaxContext}
-                      />
-                    </>
-                  )}
-
-                  <Text style={styles.sectionLabel}>Bubble workers</Text>
-                  <Text style={styles.bubbleWorkersValue}>
-                    {effectiveBubbleWorkers}
-                    {bubbleRamMb !== null
-                      ? ` \u00b7 ~${bubbleRamMb} MB`
-                      : " \u00b7 1 engine"}
-                  </Text>
-                  <DotSlider
-                    value={effectiveBubbleWorkers}
-                    min={1}
-                    max={maxBubbleWorkers}
-                    step={1}
-                    dotCount={maxBubbleWorkers}
-                    disabled={maxBubbleWorkers <= 1}
-                    leftLabel="1 bubble"
-                    rightLabel={`${maxBubbleWorkers} bubble${maxBubbleWorkers === 1 ? "" : "s"}`}
-                    onChange={setBubbleWorkers}
-                  />
                   <Text style={styles.settingsHint}>
-                    {ocrModel?.engine === "baberu"
-                      ? "Each worker loads its own Baberu engine, so OCR runs in parallel. Budget about 121 MB per worker."
-                      : "PP-OCR keeps one detector + recognizer worker until its throughput has been measured."}
+                    Translation model, auto model switch, max context and
+                    recognition batch come from Settings &gt; Translation; look
+                    ahead comes from the Advance tab in the reader. These
+                    values are snapshotted when this job is queued.
                   </Text>
                 </>
               ) : null}
@@ -451,12 +356,6 @@ const styles = StyleSheet.create({
   },
   cardScroll: { flexShrink: 1 },
   cardScrollContent: { paddingBottom: 6 },
-  bubbleWorkersValue: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: "800",
-    marginBottom: 6,
-  },
   settingsHint: {
     color: colors.textFaint,
     fontSize: 11,
