@@ -2,8 +2,8 @@
  * decode.ts
  * ---------------------------------------------------------------------------
  * Small, dependency-light image validation helpers shared by the downloader
- * and the reader cache. A file counts as an image only when the platform
- * decoder can actually open it (AVIF is transcoded first).
+ * and reader processing paths. A file counts as an image only when the
+ * platform decoder can actually open it (AVIF is transcoded first).
  */
 
 import { File } from "expo-file-system";

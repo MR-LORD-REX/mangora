@@ -89,7 +89,6 @@ import {
 import { chapterNumberLabel, chapterTitleFromId } from "@/utils/reader/chapterLabel";
 import { imageHeadersForPage } from "@/utils/reader/imageHeaders";
 import {
-  loadAdjacentChapters,
   loadChapterPages,
 } from "@/utils/reader/loadChapterPages";
 import { pageGeometry, type PageDims } from "@/utils/reader/pageGeometry";
@@ -100,9 +99,13 @@ import {
 } from "@/utils/reader/readerChromeSettings";
 import {
   getDownloadedChapter,
+  openDownloadedPageSession,
   readerTarget,
 } from "@/services/downloader";
-import type { DownloadCandidate } from "@/services/downloader";
+import type {
+  DownloadCandidate,
+  DownloadedPageSession,
+} from "@/services/downloader";
 import {
   buildReaderDisplayItems,
   type ReaderDisplayItem,
@@ -110,14 +113,6 @@ import {
 import { resolveReaderIdentity } from "@/utils/reader/readerIdentity";
 import { prepareReaderOpen } from "@/services/library/readerTracking";
 import { useReaderTranslation } from "@/utils/reader/useReaderTranslation";
-import {
-  enforceReaderCacheLimit,
-  materializeDownloadedReaderChapter,
-  materializeNetworkReaderChapter,
-  pinReaderCacheChapter,
-  readValidReaderCacheChapter,
-  releaseReaderCacheChapter,
-} from "@/services/reader/readerCache";
 
 function paramString(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -349,7 +344,6 @@ export default function GenericReader() {
   const [ocrLookahead, setOcrLookahead] = useState(2);
   const [aiMaxContextPages, setAiMaxContextPages] = useState(10);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const pinnedChapterRef = useRef<string | null>(null);
   const [translationOpen, setTranslationOpen] = useState(false);
   const [translationTab, setTranslationTab] =
     useState<ReaderTranslationTab>("trMode");
@@ -543,74 +537,68 @@ export default function GenericReader() {
 
   useEffect(() => {
     let cancelled = false;
+    let downloadedSession: DownloadedPageSession | null = null;
 
     const loadPages = async () => {
       if (!chapterId || !source) {
         setLoading(false);
         return;
       }
+      const startedAt = Date.now();
+      let stage = "starting";
+      let loadedPageCount = 0;
+      console.log("[reader][open] started", {
+        chapterId,
+        provider: source,
+        mangaId: mangaId || null,
+      });
       setLoading(true);
       setLoadError(null);
       setPrevChapterId(null);
       setNextChapterId(null);
+      lastPageIndexRef.current = 0;
+      lastDisplayIndexRef.current = 0;
+      setCurrentPageIndex(0);
+      setCurrentDisplayIndex(0);
+      setPages([]);
       setImageWindow(new Set([0, 1, 2, 3, 4]));
       setConfigOpen(false);
       resetTranslationPipeline();
-      if (pinnedChapterRef.current) {
-        releaseReaderCacheChapter(pinnedChapterRef.current);
-        pinnedChapterRef.current = null;
-      }
 
       try {
-        // Pin this chapter before any extraction/download so the LRU pass
-        // cannot remove pages while the reader is using them.
-        pinReaderCacheChapter(readerIdentity.chapterId);
-        pinnedChapterRef.current = readerIdentity.chapterId;
-
+        stage = "checking completed download";
         const download = await getDownloadedChapter(
           readerIdentity.chapterId,
           source,
           downloadTargetIdentity.providerChapterId,
         );
+        console.log("[reader][open] download lookup finished", {
+          chapterId,
+          found: Boolean(download),
+          status: download?.status ?? null,
+          hasArchive: Boolean(download?.fileUri),
+          pageCount: download?.pageCount ?? null,
+        });
         if (download?.status === "completed") {
-          const hit = await materializeDownloadedReaderChapter(
-            readerIdentity,
-            {
-              fileUri: download.fileUri ?? null,
-              pageCount: download.pageCount ?? null,
-              pagesDirUri: download.pagesDirUri ?? null,
-            },
-            {
-              mangaTitle: download.mangaTitle,
-              chapterTitle: download.chapterTitle,
-            },
-          );
-          if (!cancelled) setPages(hit.pages);
-          return;
-        }
-
-        // Warm open: the shared cache is the content authority, so reuse a
-        // complete entry without asking the extension for the page list.
-        const cached = await readValidReaderCacheChapter(readerIdentity);
-        if (cached) {
-          if (!cancelled) {
-            setPages(cached.pages);
-            loadAdjacentChapters({
-              source,
-              chapterId,
-              mangaId,
-              onAdjacent: (adjacent) => {
-                if (!cancelled) {
-                  setPrevChapterId(adjacent.prev);
-                  setNextChapterId(adjacent.next);
-                }
-              },
-            });
-            void enforceReaderCacheLimit();
+          stage = "opening downloaded page files";
+          downloadedSession = await openDownloadedPageSession(download);
+          loadedPageCount = downloadedSession.pages.length;
+          console.log("[reader][open] downloaded chapter ready", {
+            chapterId,
+            pages: downloadedSession.pages.length,
+            temporaryExtraction: Boolean(download.fileUri && !download.pagesDirUri),
+            elapsedMs: Date.now() - startedAt,
+          });
+          if (cancelled) {
+            await downloadedSession.cleanup();
+            downloadedSession = null;
+            return;
           }
+          setPages(downloadedSession.pages);
           return;
         }
 
+        stage = "loading network page list";
         const networkUrls = await loadChapterPages({
           source,
           chapterId,
@@ -628,14 +616,25 @@ export default function GenericReader() {
         if (!networkUrls || networkUrls.length === 0) {
           throw new Error("This chapter returned no pages.");
         }
-        const hit = await materializeNetworkReaderChapter(
-          readerIdentity,
-          networkUrls,
-          { mangaTitle, chapterTitle: title },
-        );
-        if (!cancelled) setPages(hit.pages);
+        console.log("[reader][open] network page list loaded", {
+          chapterId,
+          pages: networkUrls.length,
+        });
+        stage = "displaying network pages";
+        loadedPageCount = networkUrls.length;
+        console.log("[reader][open] displaying fetched page list", {
+          chapterId,
+          pages: networkUrls.length,
+        });
+        if (!cancelled) setPages(networkUrls);
       } catch (error) {
-        console.error("Failed to load chapter pages:", error);
+        console.error("[reader][open] failed", {
+          chapterId,
+          provider: source,
+          stage,
+          elapsedMs: Date.now() - startedAt,
+          error,
+        });
         if (!cancelled) {
           setLoadError(
             error instanceof Error
@@ -644,6 +643,13 @@ export default function GenericReader() {
           );
         }
       } finally {
+        console.log("[reader][open] finished", {
+          chapterId,
+          cancelled,
+          stage,
+          pages: loadedPageCount,
+          elapsedMs: Date.now() - startedAt,
+        });
         if (!cancelled) setLoading(false);
       }
     };
@@ -651,10 +657,7 @@ export default function GenericReader() {
     loadPages();
     return () => {
       cancelled = true;
-      if (pinnedChapterRef.current) {
-        releaseReaderCacheChapter(pinnedChapterRef.current);
-        pinnedChapterRef.current = null;
-      }
+      if (downloadedSession) void downloadedSession.cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterId, source]);

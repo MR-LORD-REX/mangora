@@ -8,10 +8,12 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import DownloadSheetHost from "@/components/downloader/DownloadSheetHost";
 import { colors } from "@/constants/theme";
 import { initializeDatabase } from "@/services/db/bootstrap";
-import { initializeReaderCache } from "@/services/reader/readerCache";
+import { removeLegacyReaderPageCache } from "@/services/reader/legacyCacheCleanup";
+import { clearAbandonedOcrPageSources } from "@/services/ocr/pageOcr";
 import { initializeNotifications } from "@/services/notifications/notifications";
 import { initPretranslateQueue } from "@/services/translation/pretranslateQueue";
 import {
+  clearAbandonedDownloadedPageSessions,
   initDownloadScheduler,
   refreshDownloadedMetadata,
 } from "@/services/downloader";
@@ -35,9 +37,11 @@ export default function RootLayout() {
     setDatabaseState("loading");
     initializeDatabase()
       .then(async () => {
-        await initializeReaderCache().catch((error) => {
-          console.warn("Reader cache failed to initialise:", error);
-        });
+        await Promise.all([
+          clearAbandonedDownloadedPageSessions(),
+          clearAbandonedOcrPageSources(),
+          removeLegacyReaderPageCache(),
+        ]);
         await initDownloadScheduler().catch((error) => {
           console.warn("Download queue failed to start:", error);
         });

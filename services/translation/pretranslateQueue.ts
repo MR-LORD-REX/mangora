@@ -34,11 +34,11 @@ import {
 } from "@/services/ocr/ocrModels";
 import { preparePaddleRegions } from "@/services/ocr/pageOcr";
 import { detectPageRegions } from "@/services/detection/pageDetector";
-import { getDownloadedPageUris } from "@/services/downloader";
 import {
-  pinReaderCacheChapter,
-  releaseReaderCacheChapter,
-} from "@/services/reader/readerCache";
+  cleanupDownloadedPageSession,
+  openDownloadedPageSessionForChapter,
+} from "@/services/downloader";
+import type { DownloadedPageSession } from "@/services/downloader";
 import {
   getSettings,
   updateSettings,
@@ -621,39 +621,57 @@ function pageFilesUsable(uris: string[]): boolean {
 }
 
 /**
- * Restores the shared reader-cache pages for a job. Persisted page uris can be
- * stale after an eviction or a cold-start cache clear, so re-materialise the
- * downloaded chapter before the first page is read.
+ * Reopens download-owned files or creates a temporary archive extraction when
+ * persisted job page URIs are stale after a process restart.
  */
-async function refreshJobPageUris(job: PretranslateJob): Promise<string[]> {
-  if (pageFilesUsable(job.pageUris)) return job.pageUris;
-  console.log("[translation][queue] re-materialising reader cache", {
+async function refreshJobPageSession(
+  job: PretranslateJob,
+): Promise<DownloadedPageSession> {
+  if (pageFilesUsable(job.pageUris)) {
+    return {
+      pages: job.pageUris,
+      cleanup: () => cleanupDownloadedPageSession(job.pageUris),
+    };
+  }
+  console.log("[translation][queue] opening downloaded page session", {
     id: job.id,
     chapterId: job.chapterId,
   });
-  const pages = await getDownloadedPageUris(job.chapterId);
-  if (pages.length > 0) {
-    const resumeIndex = Math.round(job.nextPageIndex ?? 0);
-    job.pageUris = pages;
-    job.nextPageIndex = Math.min(Math.max(0, resumeIndex), pages.length);
-  }
-  return pages;
+  return openDownloadedPageSessionForChapter(job.chapterId);
 }
 
 async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
   void lockKey;
-  pinReaderCacheChapter(job.chapterId);
-  const refreshedPages = await refreshJobPageUris(job).catch(() => []);
-  if (refreshedPages.length === 0) {
+  let pageSession: DownloadedPageSession;
+  try {
+    pageSession = await refreshJobPageSession(job);
+  } catch (error) {
+    console.warn("[translation][queue] downloaded pages unavailable", {
+      id: job.id,
+      chapterId: job.chapterId,
+      error,
+    });
     job.status = "failed";
     job.error =
       "The downloaded chapter pages are no longer available. Download the chapter again.";
     job.currentPage = null;
     job.finishedAt = Date.now();
-    releaseReaderCacheChapter(job.chapterId);
     publish();
     return;
   }
+  if (pageSession.pages.length === 0) {
+    await pageSession.cleanup();
+    job.status = "failed";
+    job.error =
+      "The downloaded chapter pages are no longer available. Download the chapter again.";
+    job.currentPage = null;
+    job.finishedAt = Date.now();
+    publish();
+    return;
+  }
+  const resumeIndex = Math.round(job.nextPageIndex ?? 0);
+  job.pageUris = pageSession.pages;
+  job.nextPageIndex = Math.min(Math.max(0, resumeIndex), pageSession.pages.length);
   job.status = "running";
   job.startedAt = Date.now();
   job.error = null;
@@ -680,6 +698,8 @@ async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
         pageUrl: job.pageUris[index],
         sourceLanguage: job.sourceLanguage,
         targetLanguage: job.targetLanguage,
+        chapterId: job.chapterId,
+        legacyPageIndex: index,
       }).catch(() => null);
       if (!cached) continue;
       history.push({
@@ -708,6 +728,8 @@ async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
         pageUrl: pageUri,
         sourceLanguage: job.sourceLanguage,
         targetLanguage: job.targetLanguage,
+        chapterId: job.chapterId,
+        legacyPageIndex: index,
       }).catch(() => null);
       if (cached) {
         console.log("[translation][queue] page cached", { page: index + 1 });
@@ -743,7 +765,7 @@ async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
       void notifyTranslationProgress(job, index + 1, totalPages);
     }
   } finally {
-    releaseReaderCacheChapter(job.chapterId);
+    await pageSession.cleanup();
     job.currentPage = null;
     if (cancelRequested.delete(job.id)) {
       jobs = jobs.filter((item) => item.id !== job.id);

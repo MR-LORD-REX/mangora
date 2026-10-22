@@ -20,7 +20,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { and, asc, desc, eq, gte, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, like, notInArray, sql } from "drizzle-orm";
 
 import { db } from "../client";
 import {
@@ -214,8 +214,36 @@ export async function findTranslationPage(input: {
   pageUrl: string;
   sourceLanguage: string;
   targetLanguage: string;
+  /** Used to find records created before reader pages stopped using cache paths. */
+  chapterId?: string;
+  legacyPageIndex?: number;
 }): Promise<CachedTranslationPage | null> {
-  const pageId = await findPageId(input);
+  let pageId = await findPageId(input);
+  if (!pageId && input.chapterId && input.legacyPageIndex != null) {
+    const pageNumber = String(input.legacyPageIndex + 1).padStart(4, "0");
+    const legacyRows = await db
+      .select({ id: translationPages.id })
+      .from(translationPages)
+      .where(
+        and(
+          eq(translationPages.mangaId, input.mangaId),
+          eq(translationPages.chapterId, input.chapterId),
+          eq(translationPages.sourceLanguage, input.sourceLanguage),
+          eq(translationPages.targetLanguage, input.targetLanguage),
+          eq(
+            translationPages.promptVersion,
+            TRANSLATION_CACHE_PROMPT_VERSION,
+          ),
+          like(
+            translationPages.pageKey,
+            `%/reader-cache/%/images/${pageNumber}.%`,
+          ),
+        ),
+      )
+      .orderBy(desc(translationPages.updatedAt))
+      .limit(1);
+    pageId = legacyRows[0]?.id ?? null;
+  }
   if (!pageId) return null;
 
   const [pageRow, regionRows] = await Promise.all([

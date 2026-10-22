@@ -178,8 +178,6 @@ export interface AppSettings {
   downloadConfirmSuppressedUntil: string | null;
   /** Data & storage: epoch millis of the last successful backup. */
   lastBackupAt: number | null;
-  /** Data & storage: clear reader-cache on a cold process start (default on). */
-  readerClearCacheOnStart: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -244,7 +242,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   downloadWifiOnly: true,
   downloadConfirmSuppressedUntil: null,
   lastBackupAt: null,
-  readerClearCacheOnStart: true,
 };
 
 let cached: AppSettings | null = null;
@@ -478,7 +475,6 @@ function sanitize(raw: unknown): AppSettings {
       typeof value.lastBackupAt === "number" && Number.isFinite(value.lastBackupAt)
         ? value.lastBackupAt
         : null,
-    readerClearCacheOnStart: bool(value.readerClearCacheOnStart, true),
   };
 }
 

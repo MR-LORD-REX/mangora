@@ -299,40 +299,6 @@ export const translationUsage = sqliteTable(
   ],
 );
 
-/**
- * One chapter materialised in the app's reader cache.
- *
- * Files are the content authority: a row only counts as a hit when its
- * manifest and every page file still validate. `lastAccessedAt` drives the
- * two-chapter LRU policy, while active chapters are pinned in memory by the
- * reader-cache service.
- */
-export const readerCacheChapters = sqliteTable(
-  "reader_cache_chapters",
-  {
-    id: text("id").primaryKey(),
-    source: text("source").notNull(),
-    providerMangaId: text("provider_manga_id").notNull(),
-    providerChapterId: text("provider_chapter_id").notNull(),
-    mangaId: text("manga_id").notNull(),
-    chapterId: text("chapter_id").notNull(),
-    mangaTitle: text("manga_title"),
-    chapterTitle: text("chapter_title"),
-    mangaKey: text("manga_key").notNull(),
-    chapterKey: text("chapter_key").notNull(),
-    directoryUri: text("directory_uri").notNull(),
-    pageCount: integer("page_count", { mode: "number" }).notNull().default(0),
-    byteSize: integer("byte_size", { mode: "number" }).notNull().default(0),
-    complete: integer("complete", { mode: "boolean" }).notNull().default(false),
-    lastAccessedAt: integer("last_accessed_at", { mode: "number" }).notNull(),
-    createdAt: integer("created_at", { mode: "number" }).notNull(),
-    updatedAt: integer("updated_at", { mode: "number" }).notNull(),
-  },
-  (table) => [
-    uniqueIndex("reader_cache_chapter_identity_unique").on(table.chapterId),
-    index("reader_cache_last_accessed_index").on(table.lastAccessedAt),
-  ],
-);
 export const schema = {
   downloads,
   downloadFolders,
@@ -346,7 +312,6 @@ export const schema = {
   translationPages,
   translationRegions,
   translationUsage,
-  readerCacheChapters,
 };
 
 export type Library = typeof libraries.$inferSelect;
@@ -370,6 +335,3 @@ export type DownloadFolder = typeof downloadFolders.$inferSelect;
 export type NewDownloadFolder = typeof downloadFolders.$inferInsert;
 export type TranslationUsage = typeof translationUsage.$inferSelect;
 export type NewTranslationUsage = typeof translationUsage.$inferInsert;
-export type ReaderCacheChapter = typeof readerCacheChapters.$inferSelect;
-export type NewReaderCacheChapter = typeof readerCacheChapters.$inferInsert;
-

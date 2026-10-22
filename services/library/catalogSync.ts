@@ -8,18 +8,32 @@ import {
     type ProviderId,
 } from "./providerAdapters";
 
+const mangaSyncs = new Map<string, Promise<string>>();
+
 export async function syncProviderManga(
   provider: ProviderId,
   providerMangaId: string,
 ): Promise<string> {
-  const snapshot = await getProviderAdapter(provider).load(providerMangaId);
-  const mangaId = await upsertManga(snapshot.manga);
+  const key = `${provider}\0${providerMangaId}`;
+  const inFlight = mangaSyncs.get(key);
+  if (inFlight) return inFlight;
 
-  for (const chapter of snapshot.chapters) {
-    await upsertChapter({ ...chapter, mangaId });
+  const sync = (async () => {
+    const snapshot = await getProviderAdapter(provider).load(providerMangaId);
+    const mangaId = await upsertManga(snapshot.manga);
+
+    for (const chapter of snapshot.chapters) {
+      await upsertChapter({ ...chapter, mangaId });
+    }
+
+    return mangaId;
+  })();
+  mangaSyncs.set(key, sync);
+  try {
+    return await sync;
+  } finally {
+    if (mangaSyncs.get(key) === sync) mangaSyncs.delete(key);
   }
-
-  return mangaId;
 }
 
 export async function trySyncProviderManga(

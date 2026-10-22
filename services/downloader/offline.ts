@@ -6,8 +6,8 @@
  * Every finished download keeps a per-chapter snapshot in the `downloads`
  * table and the catalog snapshot refreshed through the provider adapters, so
  * the viewers can render a readable chapter list (the downloaded chapters)
- * with no network at all. Tapping a row opens the shared reader, which already
- * prefers the local page files.
+ * with no network at all. Tapping a row opens the shared reader, which renders
+ * downloader-owned local page files.
  * ---------------------------------------------------------------------------
  */
 

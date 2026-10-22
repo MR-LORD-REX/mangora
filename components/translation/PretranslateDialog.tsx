@@ -9,7 +9,7 @@
  */
 
 import { Languages, Settings, X } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -22,8 +22,11 @@ import {
 
 import { READER_LANGUAGE_OPTIONS } from "@/components/reader/readerLanguages";
 import { colors, radius } from "@/constants/theme";
-import { getDownloadedPageUris } from "@/services/downloader";
-import type { DownloadCandidate } from "@/services/downloader";
+import {
+  openDownloadedPageSessionForChapter,
+  type DownloadedPageSession,
+  type DownloadCandidate,
+} from "@/services/downloader";
 import {
   getSettings,
   updateSettings,
@@ -60,30 +63,48 @@ export default function PretranslateDialog({
   const [target, setTarget] = useState("en");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const pageSessionRef = useRef<DownloadedPageSession | null>(null);
+  const sessionTransferredRef = useRef(false);
 
   useEffect(() => {
     if (!visible || !candidate) return;
     let cancelled = false;
+    sessionTransferredRef.current = false;
     setLoading(true);
     setPages([]);
     setNotice(null);
     setShowSettings(false);
-    Promise.all([
-      getDownloadedPageUris(candidate.target.chapterId),
-      getSettings(),
-    ])
-      .then(([uris, settings]) => {
-        if (cancelled) return;
-        setPages(uris);
+    const pageSessionPromise = openDownloadedPageSessionForChapter(
+      candidate.target.chapterId,
+    ).then((session) => {
+      if (cancelled) {
+        void session.cleanup();
+      } else {
+        pageSessionRef.current = session;
+      }
+      return session;
+    });
+    Promise.all([pageSessionPromise, getSettings()])
+      .then(([session, settings]) => {
+        if (cancelled) {
+          void session.cleanup();
+          return;
+        }
+        setPages(session.pages);
         setEngine(settings.readerTranslationEngine);
         setSource(settings.readerLanguage || chapterLanguage || "ja");
         setTarget(settings.readerTargetLanguage || "en");
         console.log("[pretranslate] dialog opened", {
           chapterId: candidate.target.chapterId,
-          pages: uris.length,
+          pages: session.pages.length,
         });
       })
       .catch((error) => {
+        const session = pageSessionRef.current;
+        pageSessionRef.current = null;
+        if (session && !sessionTransferredRef.current) {
+          void session.cleanup();
+        }
         if (!cancelled) setNotice(String(error));
       })
       .finally(() => {
@@ -91,6 +112,11 @@ export default function PretranslateDialog({
       });
     return () => {
       cancelled = true;
+      const session = pageSessionRef.current;
+      pageSessionRef.current = null;
+      if (session && !sessionTransferredRef.current) {
+        void session.cleanup();
+      }
     };
   }, [visible, candidate, chapterLanguage]);
 
@@ -136,6 +162,7 @@ export default function PretranslateDialog({
         setBusy(false);
         return;
       }
+      sessionTransferredRef.current = true;
       console.log("[pretranslate] queued", {
         chapterId: candidate.target.chapterId,
         engine,
@@ -275,13 +302,6 @@ export default function PretranslateDialog({
                       </Pressable>
                     ))}
                   </ScrollView>
-
-                  <Text style={styles.settingsHint}>
-                    Translation model, auto model switch, max context and
-                    recognition batch come from Settings &gt; Translation; look
-                    ahead comes from the Advance tab in the reader. These
-                    values are snapshotted when this job is queued.
-                  </Text>
                 </>
               ) : null}
 

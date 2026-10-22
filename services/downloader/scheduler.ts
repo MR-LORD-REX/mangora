@@ -28,7 +28,6 @@ import {
   type DownloadRecordInput,
 } from "@/services/db/repositories/downloadRepository";
 import { getSettings, subscribeSettings } from "@/services/settings/settingsStore";
-import { removeReaderCacheChapter } from "@/services/reader/readerCache";
 import { notifyDownloadsFinished } from "@/services/notifications/notifications";
 import { assertDecodableImageUri } from "@/services/images/decode";
 import { snapshotDownloadMetadata } from "./metadata";
@@ -309,10 +308,19 @@ async function runJob(
   job: DownloadJob,
   control: { cancel: boolean },
 ): Promise<void> {
+  const startedAt = Date.now();
+  let stage = "preparing download";
+  console.log("[downloader][job] started", {
+    jobId: job.id,
+    provider: job.provider,
+    mangaTitle: job.mangaTitle,
+    chapterTitle: job.chapterTitle,
+  });
   try {
     folderState = await ensureFolder();
     const state = folderState;
 
+    stage = "loading chapter page list";
     const pageUrls = await resolveChapterPageUrls({
       provider: job.provider,
       providerChapterId: job.providerChapterId,
@@ -320,6 +328,10 @@ async function runJob(
     if (pageUrls.length === 0) {
       throw new Error("This chapter has no pages to download.");
     }
+    console.log("[downloader][job] page list loaded", {
+      jobId: job.id,
+      pages: pageUrls.length,
+    });
     job.pageCount = pageUrls.length;
     await updateDownload(job.id, { pageCount: pageUrls.length });
 
@@ -346,6 +358,7 @@ async function runJob(
     }
     if (control.cancel) throw new DownloadCancelledError();
 
+    stage = "downloading page images";
     const files = await downloadChapterPages({
       directory,
       urls: pageUrls,
@@ -362,18 +375,31 @@ async function runJob(
     });
     if (control.cancel) throw new DownloadCancelledError();
 
+    console.log("[downloader][job] all page images saved", {
+      jobId: job.id,
+      pages: files.length,
+      bytes: files.reduce((total, file) => total + file.bytes, 0),
+    });
+
     // Every page must be a real, decodable image before it enters the archive.
     // This also rejects HTML challenge pages returned with a 200 status.
+    stage = "validating downloaded images";
     for (const page of files) {
       await assertDecodableImageUri(page.path, `Page ${page.name}`);
     }
 
     const localArchive = new File(directory, "archive.cbz");
+    stage = "building local archive";
+    console.log("[downloader][job] building archive", {
+      jobId: job.id,
+      pages: files.length,
+    });
     await buildArchive(
       files.map((page) => ({ path: page.path, name: page.name })),
       localArchive.uri,
     );
     // Validate the ZIP before it is copied into the user's folder.
+    stage = "validating local archive";
     const localValidation = await validateArchiveFile(
       localArchive.uri,
       pageUrls.length,
@@ -389,11 +415,19 @@ async function runJob(
       mangaTitle: job.mangaTitle,
       providerMangaId: job.providerMangaId,
     });
+    stage = "saving archive to selected folder";
+    console.log("[downloader][job] saving archive", {
+      jobId: job.id,
+      fileName,
+      pageCount: localValidation.pageCount,
+      bytes: localValidation.byteSize,
+    });
     const fileUri = await writeArchive(mangaFolderUri, fileName, localArchive);
     if (control.cancel) throw new DownloadCancelledError();
 
     // Read the final SAF document back: proves it exists, is non-empty and has
     // exactly the expected numbered image entries.
+    stage = "validating saved archive";
     const savedValidation = await validateSafArchive(
       fileUri,
       localValidation.pageCount,
@@ -404,6 +438,7 @@ async function runJob(
     // metadata.json is the recoverable catalog. The validated archive is the
     // source of truth, so a metadata write failure must not discard a valid
     // download; it is surfaced as a warning on the completed row instead.
+    stage = "updating download metadata";
     let metadataError: string | null = null;
     try {
       await upsertDownloadMetadataEntry(
@@ -442,6 +477,7 @@ async function runJob(
     job.byteSize = savedValidation.byteSize;
     job.pagesDone = files.length;
     job.finishedAt = completedAt;
+    stage = "updating completed download record";
     await updateDownload(job.id, {
       status: "completed",
       error: metadataError,
@@ -453,6 +489,13 @@ async function runJob(
       downloadedPages: files.length,
       completedAt: job.finishedAt,
       pagesDirUri: null,
+    });
+    console.log("[downloader][job] completed", {
+      jobId: job.id,
+      pages: files.length,
+      bytes: savedValidation.byteSize,
+      elapsedMs: Date.now() - startedAt,
+      metadataError,
     });
 
     completedSinceIdle += 1;
@@ -479,6 +522,12 @@ async function runJob(
     } else {
       const message =
         error instanceof Error ? error.message : "Download failed.";
+      console.error("[downloader][job] failed", {
+        jobId: job.id,
+        stage,
+        elapsedMs: Date.now() - startedAt,
+        error,
+      });
       job.status = "failed";
       job.reason = message;
       waiting = waiting.filter((waitingId) => waitingId !== job.id);
@@ -681,7 +730,7 @@ export interface RemoveDownloadResult {
 }
 
 /**
- * Stops a job and deletes its archive, cached pages and database row. A SAF
+ * Stops a job and deletes its archive, downloader-owned page files and database row. A SAF
  * failure keeps the row (marked failed) so the delete can be retried instead
  * of pretending the file is gone.
  */
@@ -718,9 +767,6 @@ export async function removeDownload(
   }
 
   removeChapterCache(job?.pagesDirUri ?? row?.pagesDirUri ?? null);
-  await removeReaderCacheChapter(id).catch((error) => {
-    console.warn("[downloader] reader cache entry was not removed", error);
-  });
   const metadataWarning = await removeCatalogEntry(id);
   await deleteDownloadRow(id);
   syncNotification();

@@ -10,7 +10,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { File, Paths } from "expo-file-system";
+import { Directory, File, Paths } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 
 import { downloadToFile } from "@/services/net/browserFetch";
@@ -50,6 +50,8 @@ export interface PageOcrOptions {
   pageUrl: string;
   /** Headers used to fetch the page (e.g. Referer for hotlink-protected hosts). */
   headers?: Record<string, string>;
+  /** Extension source id: page bytes must go through its image client. */
+  extensionSourceId?: string;
   /** Natural width of the decoded page - use the YOLO result dimensions. */
   imageWidth: number;
   /** Natural height of the decoded page. */
@@ -91,21 +93,70 @@ export interface DecodablePageOptions {
   /** Page url, required for extension image interceptors. */
   pageUrl?: string;
   /**
-   * Fetch through the extension client even when the url has no `.avif`
-   * suffix. Used as a decode fallback after Skia rejects the remote image.
+   * Fetch through the configured source even when the url has no `.avif`
+   * suffix because OCR/cropping requires local image bytes.
    */
   force?: boolean;
 }
 
 let tempPageSeq = 0;
+const processingPages = new Map<
+  string,
+  {
+    promise: Promise<string>;
+    temporary: boolean;
+    temporarySourceUri?: string;
+  }
+>();
+
+/** Deletes only abandoned generic page downloads used as temporary OCR inputs. */
+export async function clearAbandonedOcrPageSources(): Promise<void> {
+  const cache = new Directory(Paths.cache);
+  try {
+    for (const entry of cache.list()) {
+      if (
+        entry instanceof File &&
+        /^ocr-page-\d+-\d+\.img$/.test(entry.name)
+      ) {
+        try {
+          entry.delete();
+        } catch (error) {
+          console.warn("[ocr][page] stale source cleanup failed", {
+            file: entry.uri,
+            error,
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.warn("[ocr][page] stale source listing failed", error);
+  }
+}
+
+/** Releases only a generic remote download made for image processing. */
+export async function releaseDecodablePageUri(uri: string): Promise<void> {
+  const entry = processingPages.get(uri);
+  if (!entry) return;
+  processingPages.delete(uri);
+  if (!entry.temporary) return;
+  try {
+    await entry.promise;
+    if (!entry.temporarySourceUri) return;
+    const file = new File(entry.temporarySourceUri);
+    if (file.exists) file.delete();
+  } catch (error) {
+    console.warn("[ocr][page] temporary source cleanup failed", {
+      uri,
+      error,
+    });
+  }
+}
 
 /**
  * Returns a uri the reader / YOLO / OCR can actually decode.
  *
- * The reader now hands every consumer the same local reader-cache file:// uri.
- * This helper therefore does not keep a page cache of its own: local files are
- * returned as-is (AVIF is transcoded), and a remote url only falls back to a
- * short-lived temporary download for legacy callers.
+ * Local files are returned as-is (AVIF is transcoded), while ordinary remote
+ * URLs stay remote unless the decoder/extension path needs local bytes.
  */
 export async function ensureDecodablePageUri(
   uri: string,
@@ -116,25 +167,45 @@ export async function ensureDecodablePageUri(
     return avif ? transcodeAvifToPng(uri) : uri;
   }
   if (!avif && !options.force) return uri;
-  if (options.extensionSourceId) {
-    const image = await fetchExtensionPageImage(
-      options.extensionSourceId,
-      uri,
-      options.pageUrl ?? uri,
+  const cached = processingPages.get(uri);
+  if (cached) return cached.promise;
+
+  const temporary = !options.extensionSourceId;
+  const entry: {
+    promise: Promise<string>;
+    temporary: boolean;
+    temporarySourceUri?: string;
+  } = { promise: Promise.resolve(""), temporary };
+  const promise = (async () => {
+    if (options.extensionSourceId) {
+      const image = await fetchExtensionPageImage(
+        options.extensionSourceId,
+        uri,
+        options.pageUrl ?? uri,
+      );
+      const localAvif = image.mime === "image/avif" || isAvifUri(image.path);
+      return localAvif ? transcodeAvifToPng(image.path) : image.path;
+    }
+    tempPageSeq += 1;
+    const target = new File(
+      Paths.cache,
+      "ocr-page-" + Date.now() + "-" + tempPageSeq + ".img",
     );
-    const localAvif = image.mime === "image/avif" || isAvifUri(image.path);
-    return localAvif ? transcodeAvifToPng(image.path) : image.path;
+    entry.temporarySourceUri = target.uri;
+    await downloadToFile(uri, target, options.headers);
+    if (!target.exists || target.size <= 0) {
+      throw new OcrError("Downloading the page image failed: " + uri);
+    }
+    return avif ? transcodeAvifToPng(target.uri) : target.uri;
+  })();
+  entry.promise = promise;
+  processingPages.set(uri, entry);
+  try {
+    return await promise;
+  } catch (error) {
+    processingPages.delete(uri);
+    throw error;
   }
-  tempPageSeq += 1;
-  const target = new File(
-    Paths.cache,
-    "ocr-page-" + Date.now() + "-" + tempPageSeq + ".img",
-  );
-  await downloadToFile(uri, target, options.headers);
-  if (!target.exists || target.size <= 0) {
-    throw new OcrError("Downloading the page image failed: " + uri);
-  }
-  return avif ? transcodeAvifToPng(target.uri) : target.uri;
 }
 
 export const MIN_CROP_PX = 6;

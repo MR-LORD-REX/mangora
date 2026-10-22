@@ -55,6 +55,12 @@ const migrations: MigrationConfig = {
         tag: "0006_reader_cache",
         breakpoints: true,
       },
+      {
+        idx: 7,
+        when: 1792650000000,
+        tag: "0007_remove_reader_cache",
+        breakpoints: true,
+      },
     ],
   },
   migrations: {
@@ -264,6 +270,7 @@ CREATE INDEX \`downloads_updated_index\` ON \`downloads\` (\`updated_at\`);`,
 --> statement-breakpoint
 CREATE UNIQUE INDEX \`reader_cache_chapter_identity_unique\` ON \`reader_cache_chapters\` (\`chapter_id\`);--> statement-breakpoint
 CREATE INDEX \`reader_cache_last_accessed_index\` ON \`reader_cache_chapters\` (\`last_accessed_at\`);`,
+  m0007: `DROP TABLE IF EXISTS \`reader_cache_chapters\`;`,
   },
 };
 

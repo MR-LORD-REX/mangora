@@ -394,6 +394,7 @@ export async function recognizePageRegions(
   const {
     pageUrl,
     headers,
+    extensionSourceId,
     imageWidth,
     imageHeight,
     language,
@@ -413,7 +414,12 @@ export async function recognizePageRegions(
     modelId,
     options.concurrency ?? 1,
   );
-  const localPageUri = await ensureDecodablePageUri(pageUrl, { headers });
+  const localPageUri = await ensureDecodablePageUri(pageUrl, {
+    headers,
+    extensionSourceId,
+    pageUrl,
+    force: !pageUrl.startsWith("file://"),
+  });
   return recognizeCtcPageRegions({
     modelId,
     textRegions,

@@ -17,9 +17,10 @@ import { getSettings, updateSettings } from "@/services/settings/settingsStore";
 import { removeDownload } from "./scheduler";
 import type { Download } from "@/services/db/schema";
 import {
-  materializeDownloadedReaderChapter,
-  type ReaderCacheHit,
-} from "@/services/reader/readerCache";
+  cleanupDownloadedPageSession,
+  openDownloadedPageSession,
+} from "./readerPageSession";
+import type { DownloadedPageSession } from "./readerPageSession";
 
 export {
   initDownloadScheduler,
@@ -87,6 +88,9 @@ export type {
 } from "./types";
 export { requiresForegroundApp } from "./types";
 export { getDownloadStatusMap, listDownloadedManga, listDownloads, listDownloadsForManga };
+export { cleanupDownloadedPageSession, openDownloadedPageSession };
+export { clearAbandonedDownloadedPageSessions } from "./readerPageSession";
+export type { DownloadedPageSession };
 
 /** Today's date key ("YYYY-MM-DD") used by the confirm-suppression setting. */
 function todayKey(): string {
@@ -105,16 +109,6 @@ export async function isDownloadConfirmSuppressed(): Promise<boolean> {
 /** Hides the per-chapter confirmation until tomorrow. */
 export async function suppressDownloadConfirmForToday(): Promise<void> {
   await updateSettings({ downloadConfirmSuppressedUntil: todayKey() });
-}
-
-function identityForDownload(row: Download) {
-  return {
-    provider: row.provider,
-    providerMangaId: row.providerMangaId,
-    providerChapterId: row.providerChapterId,
-    mangaId: row.mangaId,
-    chapterId: row.id,
-  } as const;
 }
 
 /** The stored completed row for one chapter (null when it was never downloaded). */
@@ -144,86 +138,15 @@ export async function getDownloadedChapter(
   return direct ?? null;
 }
 
-/**
- * Materialises a downloaded chapter into the shared reader cache and returns
- * its local page URIs. The reader pins the chapter explicitly for its lifetime;
- * pre-translation uses this snapshot and re-materialises if it was evicted.
- */
-export async function getDownloadedPageUris(
+/** Opens download-owned page files or a temporary extraction of its archive. */
+export async function openDownloadedPageSessionForChapter(
   chapterId: string,
-): Promise<string[]> {
+): Promise<DownloadedPageSession> {
   const row = await getDownload(chapterId);
-  if (!row || row.status !== "completed") return [];
-  try {
-    const hit: ReaderCacheHit = await materializeDownloadedReaderChapter(
-      identityForDownload(row),
-      {
-        fileUri: row.fileUri ?? null,
-        pageCount: row.pageCount ?? null,
-        pagesDirUri: row.pagesDirUri ?? null,
-      },
-      { mangaTitle: row.mangaTitle, chapterTitle: row.chapterTitle },
-    );
-    return hit.pages;
-  } catch (error) {
-    // The shared reader cache is the content authority. Legacy page folders
-    // are not trusted because they may contain a partial chapter.
-    console.warn("[downloader] could not materialise downloaded chapter", error);
-    return [];
+  if (!row || row.status !== "completed") {
+    throw new Error("The downloaded chapter is no longer available.");
   }
-}
-
-/**
- * Local page uris for a downloaded chapter found by its provider chapter
- * identity instead of the canonical id. Tolerant of id-encoding drift: tries
- * the raw value plus its encoded/decoded forms, so a downloaded chapter never
- * falls back to the network just because the route param was encoded
- * differently from the id stored at download time.
- */
-export async function getDownloadedPageUrisByProviderChapter(
-  provider: string,
-  providerChapterId: string,
-): Promise<string[]> {
-  const variants = new Set<string>([providerChapterId]);
-  try {
-    variants.add(encodeURIComponent(providerChapterId));
-  } catch {
-    // Ignore values that cannot be encoded.
-  }
-  try {
-    variants.add(decodeURIComponent(providerChapterId));
-  } catch {
-    // Ignore values that cannot be decoded.
-  }
-  let sawCompleted = false;
-  for (const variant of variants) {
-    const row = await getDownloadByProviderChapter(provider, variant);
-    if (row?.status !== "completed") continue;
-    sawCompleted = true;
-    let pages: string[] = [];
-    try {
-      const hit = await materializeDownloadedReaderChapter(
-        identityForDownload(row),
-        {
-          fileUri: row.fileUri ?? null,
-          pageCount: row.pageCount ?? null,
-          pagesDirUri: row.pagesDirUri ?? null,
-        },
-        { mangaTitle: row.mangaTitle, chapterTitle: row.chapterTitle },
-      );
-      pages = hit.pages;
-    } catch (error) {
-      console.warn("[downloader] archive extraction failed", error);
-      pages = [];
-    }
-    if (pages.length > 0) return pages;
-  }
-  if (sawCompleted) {
-    console.warn(
-      `[downloader] ${provider}:${providerChapterId} is marked downloaded but its page cache is gone; reloading from the network.`,
-    );
-  }
-  return [];
+  return openDownloadedPageSession(row);
 }
 
 /** True when the given chapter has a finished archive on disk. */
@@ -233,8 +156,8 @@ export async function isChapterDownloaded(chapterId: string): Promise<boolean> {
 }
 
 /**
- * Deletes one downloaded chapter: the `.cbz` in the picked folder, the cached
- * pages, the live queue entry and the database row. Works for chapters that
+ * Deletes one downloaded chapter: the `.cbz` in the picked folder, its
+ * downloader-owned page files, the live queue entry and the database row. Works for chapters that
  * finished in an earlier session too, because the scheduler reads the row when
  * the job is no longer in memory.
  */

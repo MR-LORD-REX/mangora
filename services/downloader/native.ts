@@ -34,6 +34,12 @@ interface MangoraDownloaderModule {
   ): Promise<string>;
   readSafDocument(uri: string, destPath: string): Promise<string>;
   extractSafArchivePages(uri: string, destDirPath: string): Promise<string[]>;
+  listSafArchivePageNames(uri: string): Promise<string[]>;
+  extractSafArchivePage(
+    uri: string,
+    destPath: string,
+    pageFileName: string,
+  ): Promise<string>;
   deleteSafPath(parentUri: string, segments: string[]): Promise<boolean>;
   deleteSafDocument(uri: string): Promise<boolean>;
   findSafChild(parentUri: string, name: string): Promise<string | null>;
@@ -255,6 +261,26 @@ export async function readSafDocumentToFile(
   destination.create({ intermediates: true, overwrite: true });
   destination.write(bytes);
   return destination.uri;
+}
+
+/** Lists numbered page images inside a SAF archive without extracting them. */
+export async function listSafArchivePageNames(uri: string): Promise<string[]> {
+  if (!hasNativeDownloader()) {
+    throw new Error("Listing downloaded chapter pages needs the Android download module.");
+  }
+  return nativeModule!.listSafArchivePageNames(uri);
+}
+
+/** Extracts one numbered page image from a SAF archive into local cache. */
+export async function extractSafArchivePage(
+  uri: string,
+  destPath: string,
+  pageFileName: string,
+): Promise<string> {
+  if (!hasNativeDownloader()) {
+    throw new Error("Extracting downloaded chapter pages needs the Android download module.");
+  }
+  return nativeModule!.extractSafArchivePage(uri, destPath, pageFileName);
 }
 
 /**

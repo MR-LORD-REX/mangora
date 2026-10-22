@@ -28,7 +28,6 @@ import {
   type SafChild,
 } from "./native";
 import { removeChapterCache } from "./pageFiles";
-import { removeReaderCacheChapter } from "@/services/reader/readerCache";
 import { getFolderState } from "./storage";
 
 export const MISSING_METADATA_MESSAGE =
@@ -245,7 +244,6 @@ export async function deleteAllDownloads(
       try {
         await deleteSafDocumentStrict(resolved.fileUri);
         await deleteDownloadRow(entry.id);
-        await removeReaderCacheChapter(entry.id).catch(() => {});
         deletedIds.push(entry.id);
         result.deleted += 1;
       } catch (error) {
@@ -296,7 +294,6 @@ export async function deleteAllDownloads(
       if (row.fileUri) await deleteSafDocumentStrict(row.fileUri);
       removeChapterCache(row.pagesDirUri ?? null);
       await deleteDownloadRow(row.id);
-      await removeReaderCacheChapter(row.id).catch(() => {});
       result.deleted += 1;
     } catch (error) {
       result.failed += 1;

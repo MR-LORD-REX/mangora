@@ -10,11 +10,10 @@
  * that is actually on screen at full resolution, so fit rows stay sharp and
  * giant pages never need to be decoded in one piece.
  *
- * The page URI comes from the shared reader cache (a local file for a normal
- * open), so this component never maintains a second URL-keyed page cache. If
- * the native module is not present (Expo Go, non-rebuilt client, web/iOS) or
- * the file cannot be decoded, it silently falls back to the regular RN <Image>
- * so the reader keeps working everywhere.
+ * Online pages are passed as source URLs and downloaded through the extension
+ * client when required. Downloaded chapters provide their original local page
+ * files. If the native module is not present (Expo Go, non-rebuilt client,
+ * web/iOS) or the file cannot be decoded, it falls back to RN <Image>.
  * ---------------------------------------------------------------------------
  */
 
@@ -40,6 +39,7 @@ import {
 } from "@/utils/reader/borderCrop";
 
 const TILED_EXTENSIONS = /\.(jpe?g|png|webp|avif)(\?|#|$)/i;
+const ENABLE_TILED_RENDERER = true;
 
 let NativeTiledImage: React.ElementType | null = null;
 if (Platform.OS === "android") {
@@ -84,6 +84,7 @@ export default function SubsamplingStripImage({
   const [localFailed, setLocalFailed] = useState(false);
   const [loadingLocal, setLoadingLocal] = useState(false);
   const tiledSupported =
+    ENABLE_TILED_RENDERER &&
     Platform.OS === "android" &&
     NativeTiledImage !== null &&
     TILED_EXTENSIONS.test(uri);
@@ -182,8 +183,30 @@ export default function SubsamplingStripImage({
     };
   }, [uri, headers, tiledSupported, extensionSourceId]);
 
+  useEffect(() => {
+    console.log("[reader][image] renderer state", {
+      sourceType: uri.startsWith("file://") ? "local-file" : "remote",
+      extensionSourceId: extensionSourceId ?? null,
+      tiledSupported,
+      loadingLocal,
+      localReady: Boolean(localUri),
+      localFailed,
+      renderer:
+        tiledSupported && localUri && !localFailed
+          ? "native-tiled"
+          : "react-native-image",
+    });
+  }, [
+    extensionSourceId,
+    localFailed,
+    localUri,
+    loadingLocal,
+    tiledSupported,
+    uri,
+  ]);
+
   // The tiled native view never fires the RN Image onLoad event. Measuring
-  // the cached file gives the screen the real aspect ratio, so the strip row
+  // the local image gives the screen the real aspect ratio, so the strip row
   // does not start with a placeholder height and then jump after decode.
   // The same file is the input for optional border-crop detection.
   useEffect(() => {
@@ -201,7 +224,7 @@ export default function SubsamplingStripImage({
           onBorderCropRef.current?.(null);
           return;
         }
-        // Always analyse while the page is rendered. The result is cached and
+        // Always analyse while the page is rendered. The result is kept in RAM and
         // tiny (160px thumbnail), and having it ready means the crop toggle
         // applies on the first frame instead of waiting and flashing the
         // uncropped page.
@@ -258,7 +281,10 @@ export default function SubsamplingStripImage({
           source={{ uri: localUri }}
           onLoad={onFallbackLoad}
           onError={(event) =>
-            console.warn("[reader] page image failed", event.nativeEvent, uri)
+            console.warn("[reader][image] local image failed", {
+              sourceType: "local-file",
+              error: event.nativeEvent,
+            })
           }
           style={{
             width,
@@ -278,7 +304,10 @@ export default function SubsamplingStripImage({
         source={headers ? { uri, headers } : { uri }}
         onLoad={onFallbackLoad}
         onError={(event) =>
-          console.warn("[reader] page image failed", event.nativeEvent, uri)
+          console.warn("[reader][image] remote image failed", {
+            sourceType: "remote",
+            error: event.nativeEvent,
+          })
         }
         style={{
           width,

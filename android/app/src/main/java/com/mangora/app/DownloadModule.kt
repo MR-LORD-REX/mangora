@@ -186,7 +186,7 @@ class DownloadModule(private val reactContext: ReactApplicationContext) :
         if (input == null) throw IllegalStateException("Could not read: $uri")
         FileOutputStream(destination).use { output -> input.copyTo(output) }
       }
-      destination.absolutePath
+      Uri.fromFile(destination).toString()
     }
   }
 
@@ -236,6 +236,80 @@ class DownloadModule(private val reactContext: ReactApplicationContext) :
         }
       }
       pages
+    }
+  }
+
+  /** Lists numbered image entries without extracting the archive. */
+  @ReactMethod
+  fun listSafArchivePageNames(uri: String, promise: Promise) {
+    runAsync(promise) {
+      val pageName = Regex("""^\d{4,}\.(jpe?g|png|webp|gif|avif|bmp)$""", RegexOption.IGNORE_CASE)
+      val names = Arguments.createArray()
+      val collectedNames = mutableListOf<String>()
+      context().contentResolver.openInputStream(Uri.parse(uri)).use { input ->
+        if (input == null) throw IllegalStateException("Downloaded archive is unavailable")
+        ZipInputStream(BufferedInputStream(input)).use { zip ->
+          while (true) {
+            val entry = zip.nextEntry ?: break
+            val name = entry.name
+            if (
+              !entry.isDirectory &&
+              !name.contains("/") &&
+              !name.contains("\\") &&
+              pageName.matches(name)
+            ) {
+              collectedNames.add(name)
+            }
+            zip.closeEntry()
+          }
+        }
+      }
+      collectedNames.sorted().forEach { names.pushString(it) }
+      names
+    }
+  }
+
+  /** Extracts just one numbered image entry from a downloaded CBZ. */
+  @ReactMethod
+  fun extractSafArchivePage(
+    uri: String,
+    destPath: String,
+    pageFileName: String,
+    promise: Promise
+  ) {
+    runAsync(promise) {
+      val pageName = Regex("""^\d{4,}\.(jpe?g|png|webp|gif|avif|bmp)$""", RegexOption.IGNORE_CASE)
+      if (!pageName.matches(pageFileName)) {
+        throw IllegalArgumentException("Invalid archive page name")
+      }
+      val destination = localFile(destPath)
+      destination.parentFile?.mkdirs()
+      var found = false
+      context().contentResolver.openInputStream(Uri.parse(uri)).use { input ->
+        if (input == null) throw IllegalStateException("Downloaded archive is unavailable")
+        ZipInputStream(BufferedInputStream(input)).use { zip ->
+          while (true) {
+            val entry = zip.nextEntry ?: break
+            if (!entry.isDirectory && entry.name == pageFileName) {
+              FileOutputStream(destination).use { output ->
+                val buffer = ByteArray(8192)
+                while (true) {
+                  val count = zip.read(buffer)
+                  if (count < 0) break
+                  output.write(buffer, 0, count)
+                }
+              }
+              found = true
+              break
+            }
+            zip.closeEntry()
+          }
+        }
+      }
+      if (!found || !destination.exists() || destination.length() <= 0) {
+        throw IllegalStateException("Could not extract archive page $pageFileName")
+      }
+      Uri.fromFile(destination).toString()
     }
   }
 

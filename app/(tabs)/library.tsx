@@ -84,6 +84,7 @@ export default function LibraryScreen() {
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(
     () => new Set(),
   );
+  const syncingRef = useRef(false);
 
   const load = useCallback(
     async (opts?: { quiet?: boolean }) => {
@@ -126,7 +127,8 @@ export default function LibraryScreen() {
   loadRef.current = load;
 
   const updateLibrary = useCallback(async () => {
-    if (!selectedLibraryId) return;
+    if (!selectedLibraryId || syncingRef.current) return;
+    syncingRef.current = true;
     setSyncing(true);
     setError(null);
     try {
@@ -137,6 +139,7 @@ export default function LibraryScreen() {
         syncError instanceof Error ? syncError.message : "Update failed.",
       );
     } finally {
+      syncingRef.current = false;
       setSyncing(false);
     }
   }, [selectedLibraryId]);
@@ -145,12 +148,6 @@ export default function LibraryScreen() {
     useCallback(() => {
       void load({ quiet: true });
     }, [load]),
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      void updateLibrary();
-    }, [updateLibrary]),
   );
 
   const refresh = async () => {
@@ -264,6 +261,13 @@ export default function LibraryScreen() {
         onSearchSubmit={() => void load({ quiet: true })}
         actions={[
           {
+            key: "update",
+            label: "Update library",
+            icon: RefreshCw,
+            active: syncing,
+            onPress: () => void updateLibrary(),
+          },
+          {
             key: "filter",
             icon: SlidersHorizontal,
             active: filterActive,
@@ -272,12 +276,6 @@ export default function LibraryScreen() {
         ]}
         menuTitle="Library"
         menuActions={[
-          {
-            key: "update",
-            label: "Update library",
-            icon: RefreshCw,
-            onPress: () => void updateLibrary(),
-          },
           {
             key: "new",
             label: "Create library",

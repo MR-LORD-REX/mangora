@@ -36,6 +36,7 @@ import {
 } from "@/services/ocr/ocrModels";
 import {
   preparePaddleRegions,
+  releaseDecodablePageUri,
   type OcrRegion,
   type OcrTextItem,
 } from "@/services/ocr/pageOcr";
@@ -512,6 +513,8 @@ export function useReaderTranslation({
       pageUrl: url,
       sourceLanguage: configRef.current.sourceLanguage,
       targetLanguage: configRef.current.targetLanguage,
+      chapterId: identity.chapterId,
+      legacyPageIndex: pageIndex,
     }).catch((error) => {
       console.warn("[reader][tr] cache lookup failed", error);
       return null;
@@ -690,6 +693,7 @@ export function useReaderTranslation({
 
   const finishPageOcr = (page: OcrPageRecord, generation: number) => {
     if (!isCurrentRun(generation)) return;
+    void releaseDecodablePageUri(page.url);
     page.ocrComplete = true;
     page.pendingRegions.clear();
     const assigned = assignItemsToSlots(page.slots, page.items);
@@ -894,6 +898,7 @@ export function useReaderTranslation({
         MAX_CROPS_PER_PAGE,
       );
       if (regions.length === 0 || slots.length === 0) {
+        await releaseDecodablePageUri(url);
         markPageError(
           url,
           `No text regions found on page ${pageIndex + 1}. Use retry after rescanning.`,
@@ -969,6 +974,7 @@ export function useReaderTranslation({
       }
     } catch (error) {
       if (!isCurrentRun(generation)) return;
+      await releaseDecodablePageUri(url);
       console.warn("[reader][scan] failed", { pageIndex, error });
       markPageError(
         url,
@@ -989,6 +995,9 @@ export function useReaderTranslation({
       const result = await recognizePageRegions({
         pageUrl: url,
         headers: imageHeadersForPage(source, url),
+        extensionSourceId: source.startsWith("ext:")
+          ? source.slice(4)
+          : undefined,
         imageWidth: detection.imageWidth,
         imageHeight: detection.imageHeight,
         regions: entries.map((entry) => entry.region),

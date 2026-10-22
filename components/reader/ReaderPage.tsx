@@ -193,6 +193,7 @@ function ReaderPage({
     const imageLayer = (
       <View style={{ width: drawW, height: drawH }}>
         <SubsamplingStripImage
+          key={url}
           uri={url}
           headers={imageHeaders}
           extensionSourceId={extensionSourceId}

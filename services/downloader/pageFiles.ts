@@ -150,6 +150,12 @@ export async function downloadChapterPages({
         existing.size > 0 &&
         (await isDecodableImageUri(existing.uri))
       ) {
+        console.log("[downloader][page] reusing cached image", {
+          page: index + 1,
+          total: urls.length,
+          name,
+          bytes: existing.size,
+        });
         pages[index] = { path: existing.uri, name, bytes: existing.size };
         pagesDone += 1;
         bytes += existing.size;
@@ -206,6 +212,11 @@ async function downloadPage(
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
+      console.log("[downloader][page] fetch started", {
+        provider,
+        name,
+        attempt,
+      });
       if (temp.exists) temp.delete();
       if (provider.startsWith("ext:")) {
         const image = await fetchExtensionPageImage(
@@ -224,15 +235,38 @@ async function downloadPage(
       if (!temp.exists || temp.size <= 0) {
         throw new Error("Empty page payload");
       }
+      console.log("[downloader][page] payload received", {
+        provider,
+        name,
+        attempt,
+        bytes: temp.size,
+      });
       if (!(await isDecodableImageUri(temp.uri))) {
         throw new Error("Downloaded page is not a decodable image");
       }
+      console.log("[downloader][page] image decoded", {
+        provider,
+        name,
+        attempt,
+      });
       const target = new File(directory, name);
       if (target.exists) target.delete();
       temp.move(target);
+      console.log("[downloader][page] image saved", {
+        provider,
+        name,
+        path: target.uri,
+        bytes: target.size,
+      });
       return target;
     } catch (error) {
       lastError = error;
+      console.error("[downloader][page] attempt failed", {
+        provider,
+        name,
+        attempt,
+        error,
+      });
       if (attempt < 3) {
         await new Promise((resolve) => setTimeout(resolve, 700 * attempt));
       }
