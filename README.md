@@ -18,6 +18,14 @@ Mangora is an Android application for reading material obtained through extensio
 
 > Reading, downloading, OCR, and translation can involve requests to third parties. See [Privacy](https://mangora-web.web.app/privacy), [Terms](https://mangora-web.web.app/terms), and [Copyright and DMCA Policy](https://mangora-web.web.app/copyright).
 
+## Google Play Protect scan
+
+Google Play Protect reported that Mangora looks safe to install in this scan:
+
+<p align="center">
+  <img src="playstore-proof.png" alt="Google Play Protect scan says Mangora looks safe and can be installed" width="360" />
+</p>
+
 ## What the app does
 
 ### Library and history
