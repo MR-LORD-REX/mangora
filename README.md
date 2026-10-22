@@ -132,7 +132,7 @@ Mangora's current application and website source do not include a Mangora analyt
 
 ## Installation
 
-The published Android APK targets **ARM64 (`arm64-v8a`)** and Android 7.0 (API 24) or later. 32-bit ARM (`armeabi-v7a`) is not supported by the native OCR and image-processing runtime used in the app.
+Android APKs target Android 7.0 (API 24) or later. The release workflow builds separate **ARM64 (`arm64-v8a`)** and **32-bit ARM (`armeabi-v7a`)** APKs. Those builds run independently, so one ABI build can still be published if the other fails. Manual workflow runs produce test artifacts without publishing a release. Test the ARMv7 APK on a 32-bit Android device before relying on it; local Android builds remain ARM64-focused.
 
 Download the current release from the official [GitHub Releases](https://github.com/MR-LORD-REX/mangora/releases) page or an official Mangora channel. Android may ask you to allow installation from the browser or file manager that opened the APK. Only install builds from a channel you trust.
 
@@ -142,7 +142,7 @@ Download the current release from the official [GitHub Releases](https://github.
 
 - Node.js 20 or newer
 - JDK 17
-- Android SDK and an Android ARM64 emulator or device
+- Android SDK and an Android ARM64 emulator or device for local development
 
 Expo Go is not sufficient for native ONNX Runtime, Skia and image features. Use an Android development build.
 
@@ -161,14 +161,14 @@ npx eslint .
 From the `android` directory:
 
 ```powershell
-.\gradlew.bat :app:assembleRelease -PreactNativeArchitectures=arm64-v8a
+.\gradlew.bat :app:assembleRelease
 ```
 
 For a clean release build, run the clean task separately before assembling:
 
 ```powershell
 .\gradlew.bat clean
-.\gradlew.bat :app:assembleRelease -PreactNativeArchitectures=arm64-v8a
+.\gradlew.bat :app:assembleRelease
 ```
 
 The project uses Expo SDK 54, React Native 0.81, React 19, Expo Router, TypeScript, Expo SQLite with Drizzle, ONNX Runtime, Skia, and native Kotlin Android modules. Android release artifacts are large because they include native OCR and image-processing code.

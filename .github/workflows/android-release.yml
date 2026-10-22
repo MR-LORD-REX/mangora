@@ -54,22 +54,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      # react-native-executorch (ExecuTorch) ships its OpenCV / ExecuTorch
-      # prebuilts for arm64-v8a and x86_64 ONLY. A build that asks for
-      # armeabi-v7a (32-bit ARM) resolves to an empty ABI filter, AGP then
-      # falls back to building EVERY ABI, and the armv7 CMake target dies on
-      # third-party/android/libs/opencv/armeabi-v7a/libopencv_core.a (missing).
-      # Do not re-add armeabi-v7a unless ExecuTorch gains 32-bit ARM support.
       matrix:
         include:
           - abi: arm64-v8a
+          - abi: armeabi-v7a
     env:
       GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx6g"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # The native build (Skia codegen, onnxruntime, ExecuTorch, Hermes, NDK)
+      # The native build (Skia codegen, ONNX Runtime, Hermes, NDK)
       # is disk-hungry; the stock runner runs out mid-bundle with
       # ENOSPC: no space left on device. Reclaim the preinstalled toolchains
       # we do not use. android:false keeps the SDK/NDK that AGP relies on.
@@ -162,6 +157,11 @@ jobs:
   release:
     name: Publish release
     needs: [prepare, build]
+    if: >-
+      always() &&
+      needs.prepare.result == 'success' &&
+      (needs.build.result == 'success' || needs.build.result == 'failure') &&
+      github.ref_type == 'tag'
     runs-on: ubuntu-latest
     steps:
       - name: Download APKs
@@ -169,11 +169,23 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+          if-no-artifact-found: ignore
 
       - name: List APKs
-        run: ls -la dist
+        id: apks
+        shell: bash
+        run: |
+          set -euo pipefail
+          if compgen -G "dist/*.apk" > /dev/null; then
+            ls -la dist
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No ABI build produced an APK; skipping release publication."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Create GitHub release
+        if: steps.apks.outputs.available == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.prepare.outputs.version }}
