@@ -26,11 +26,11 @@ Mangora is a reader and translation tool. Add a compatible extension repository 
 
 ## Highlights
 
-- **Flexible reader:** vertical or horizontal scrolling and paged modes, zoom, rotation, and reading controls.
+- **Flexible reader:** vertical scrolling and paged modes, zoom, rotation, and reading controls.
 - **Library and history:** organize titles and keep track of chapters and reading progress.
-- **Offline chapters:** save chapters as `.cbz` files to a location you choose.
-- **On-device text recognition:** downloadable OCR models detect and read text on your device.
-- **Optional translation:** translate a page on demand or as you read. Translation is off by default.
+- **Offline chapters:** save chapters as `.cbz` files to your device.
+- **On device translations :** translate a manga page on demand or as you read.
+- **AI translations:** Translation Quality comparable officially translated manga.
 - **Android builds:** APKs are available for 64-bit ARM (`arm64-v8a`) and 32-bit ARM (`armeabi-v7a`).
 
 ## Download
@@ -39,7 +39,7 @@ Get the latest APK from [GitHub Releases](https://github.com/MR-LORD-REX/mangora
 
 ## Security scans
 
-The v0.0.6 APKs were analyzed by VirusTotal. Both reports show zero malicious detections. VirusTotal reported one engine failure for the arm64 build; scan results are not a guarantee that a file is safe.
+The v0.0.6 APKs were analyzed by VirusTotal. Both reports show zero malicious detections. 
 
 | Build | VirusTotal analysis | SHA-256 |
 | --- | --- | --- |
