@@ -3,11 +3,10 @@
  * ---------------------------------------------------------------------------
  * Reader-facing page detector.
  *
- * Primary: Manga109 YOLO11-seg speech-bubble segmentation, which gives the
- * overlay real bubble masks. Fallback: the older YOLO text detector, used only
- * when the segmentation model is unavailable or a page contains no speech
- * bubbles (narration boxes, SFX, free text). Keeping the fallback means
- * translation keeps working on pages the bubble-only model cannot describe.
+ * Runs Manga109 bubble segmentation and YOLO text detection concurrently.
+ * Manga109 remains the source of bubble detections and masks; only YOLO's
+ * messy_text regions are added when Manga109 detects bubbles. When Manga109
+ * fails or finds none, the complete YOLO result remains the fallback.
  * ---------------------------------------------------------------------------
  */
 
@@ -19,18 +18,41 @@ export async function detectPageRegions(
   uri: string,
   options: YoloOptions = {},
 ): Promise<DetectionResult> {
-  try {
-    const result = await mangaBubbleSegmenter.detectFromUri(uri, options);
-    if (result.boxes.length > 0) return result;
-    console.warn(
-      "[detect] Manga109 segmentation found no bubbles; using YOLO text detector",
+  const [mangaResult, yoloResult] = await Promise.allSettled([
+    mangaBubbleSegmenter.detectFromUri(uri, options),
+    yoloDetector.detectFromUri(uri, options),
+  ]);
+
+  if (mangaResult.status === "fulfilled" && mangaResult.value.boxes.length > 0) {
+    if (yoloResult.status === "rejected") {
+      console.warn("[detect] YOLO text detection failed; keeping Manga109 bubbles", {
+        error: yoloResult.reason,
+      });
+      return mangaResult.value;
+    }
+    const messyText = yoloResult.value.boxes.filter(
+      (box) => box.classId === 1,
     );
-  } catch (error) {
+    const boxes = [...mangaResult.value.boxes, ...messyText].sort(
+      (a, b) => b.confidence - a.confidence,
+    );
+    console.log("[detect] combined Manga109 bubbles and YOLO free text", {
+      bubbles: mangaResult.value.boxes.length,
+      messyText: messyText.length,
+    });
+    return { ...mangaResult.value, boxes, detector: "manga109" };
+  }
+
+  if (mangaResult.status === "rejected") {
     console.warn(
-      "[detect] Manga109 segmentation unavailable; using YOLO text detector",
-      error,
+      "[detect] Manga109 segmentation unavailable; using complete YOLO result",
+      mangaResult.reason,
+    );
+  } else {
+    console.warn(
+      "[detect] Manga109 segmentation found no bubbles; using complete YOLO result",
     );
   }
-  const fallback = await yoloDetector.detectFromUri(uri, options);
-  return { ...fallback, detector: "yolo" };
+  if (yoloResult.status === "rejected") throw yoloResult.reason;
+  return { ...yoloResult.value, detector: "yolo" };
 }
