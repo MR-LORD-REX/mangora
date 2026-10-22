@@ -22,6 +22,7 @@ import {
   findTranslationPage,
   pruneTranslationCache,
   saveTranslationPage,
+  translationPageKey,
 } from "@/services/db/repositories/translationRepository";
 import {
   isModelDownloaded,
@@ -581,6 +582,7 @@ async function translatePage(
       mangaId: job.mangaId,
       chapterId: job.chapterId,
       pageUrl: pageUri,
+      pageKey: translationPageKey(job.chapterId, pageIndex),
       sourceLanguage: job.sourceLanguage,
       targetLanguage: job.targetLanguage,
       model: modelIdUsed,
@@ -696,6 +698,7 @@ async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
       const cached = await findTranslationPage({
         mangaId: job.mangaId,
         pageUrl: job.pageUris[index],
+        pageKey: translationPageKey(job.chapterId, index),
         sourceLanguage: job.sourceLanguage,
         targetLanguage: job.targetLanguage,
         chapterId: job.chapterId,
@@ -726,6 +729,7 @@ async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
       const cached = await findTranslationPage({
         mangaId: job.mangaId,
         pageUrl: pageUri,
+        pageKey: translationPageKey(job.chapterId, index),
         sourceLanguage: job.sourceLanguage,
         targetLanguage: job.targetLanguage,
         chapterId: job.chapterId,

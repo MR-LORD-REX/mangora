@@ -20,7 +20,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { and, asc, desc, eq, gte, like, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, like, notInArray, or, sql } from "drizzle-orm";
 
 import { db } from "../client";
 import {
@@ -37,6 +37,11 @@ import type { GeminiModelId } from "@/services/translation/geminiModels";
 /** Bump when the stored geometry/prompt contract changes. */
 export const TRANSLATION_CACHE_PROMPT_VERSION = "v3";
 
+/** Stable cache identity for a page within a chapter, independent of file URI. */
+export function translationPageKey(chapterId: string, pageIndex: number): string {
+  return `chapter:${chapterId}:page:${pageIndex}`;
+}
+
 export interface StoredTranslationRegion {
   regionId: number;
   sourceText: string;
@@ -52,6 +57,7 @@ export interface SaveTranslationPageInput {
   mangaId: string;
   chapterId?: string | null;
   pageUrl: string;
+  pageKey?: string;
   sourceLanguage: string;
   targetLanguage: string;
   model?: string | null;
@@ -81,7 +87,7 @@ function newId(prefix: string): string {
 
 async function findPageId(input: {
   mangaId: string;
-  pageUrl: string;
+  pageKey: string;
   sourceLanguage: string;
   targetLanguage: string;
 }): Promise<string | null> {
@@ -91,7 +97,7 @@ async function findPageId(input: {
     .where(
       and(
         eq(translationPages.mangaId, input.mangaId),
-        eq(translationPages.pageKey, input.pageUrl),
+        eq(translationPages.pageKey, input.pageKey),
         eq(translationPages.sourceLanguage, input.sourceLanguage),
         eq(translationPages.targetLanguage, input.targetLanguage),
         eq(
@@ -152,7 +158,10 @@ export async function saveTranslationPage(
   input: SaveTranslationPageInput,
 ): Promise<void> {
   const now = Date.now();
-  const existingId = await findPageId(input);
+  const existingId = await findPageId({
+    ...input,
+    pageKey: input.pageKey ?? input.pageUrl,
+  });
   let pageId = existingId;
 
   if (pageId) {
@@ -176,7 +185,7 @@ export async function saveTranslationPage(
       id: pageId,
       mangaId: input.mangaId,
       chapterId: input.chapterId ?? null,
-      pageKey: input.pageUrl,
+      pageKey: input.pageKey ?? input.pageUrl,
       pageUrl: input.pageUrl,
       sourceLanguage: input.sourceLanguage,
       targetLanguage: input.targetLanguage,
@@ -212,13 +221,24 @@ export async function saveTranslationPage(
 export async function findTranslationPage(input: {
   mangaId: string;
   pageUrl: string;
+  pageKey?: string;
   sourceLanguage: string;
   targetLanguage: string;
-  /** Used to find records created before reader pages stopped using cache paths. */
+  /** Used to find records saved with older page-URI-based cache keys. */
   chapterId?: string;
   legacyPageIndex?: number;
 }): Promise<CachedTranslationPage | null> {
-  let pageId = await findPageId(input);
+  let pageId = await findPageId({
+    ...input,
+    pageKey: input.pageKey ?? input.pageUrl,
+  });
+  if (
+    !pageId &&
+    input.pageKey &&
+    input.pageKey !== input.pageUrl
+  ) {
+    pageId = await findPageId({ ...input, pageKey: input.pageUrl });
+  }
   if (!pageId && input.chapterId && input.legacyPageIndex != null) {
     const pageNumber = String(input.legacyPageIndex + 1).padStart(4, "0");
     const legacyRows = await db
@@ -234,10 +254,7 @@ export async function findTranslationPage(input: {
             translationPages.promptVersion,
             TRANSLATION_CACHE_PROMPT_VERSION,
           ),
-          like(
-            translationPages.pageKey,
-            `%/reader-cache/%/images/${pageNumber}.%`,
-          ),
+          like(translationPages.pageKey, `%/${pageNumber}.%`),
         ),
       )
       .orderBy(desc(translationPages.updatedAt))
@@ -360,6 +377,7 @@ export async function clearTranslationCacheForManga(
 export async function deleteTranslationPage(input: {
   mangaId: string;
   pageUrl: string;
+  pageKey?: string;
   sourceLanguage: string;
   targetLanguage: string;
 }): Promise<void> {
@@ -368,7 +386,10 @@ export async function deleteTranslationPage(input: {
     .where(
       and(
         eq(translationPages.mangaId, input.mangaId),
-        eq(translationPages.pageKey, input.pageUrl),
+        or(
+          eq(translationPages.pageKey, input.pageKey ?? input.pageUrl),
+          eq(translationPages.pageKey, input.pageUrl),
+        ),
         eq(translationPages.sourceLanguage, input.sourceLanguage),
         eq(translationPages.targetLanguage, input.targetLanguage),
         eq(

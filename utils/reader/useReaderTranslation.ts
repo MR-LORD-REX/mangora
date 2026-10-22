@@ -22,6 +22,7 @@ import {
   findTranslationPage,
   pruneTranslationCache,
   saveTranslationPage,
+  translationPageKey,
 } from "@/services/db/repositories/translationRepository";
 import {
   isModelDownloaded,
@@ -486,6 +487,7 @@ export function useReaderTranslation({
         mangaId: identity.mangaId,
         chapterId: identity.chapterId,
         pageUrl: page.url,
+        pageKey: translationPageKey(identity.chapterId, page.pageIndex),
         sourceLanguage: configRef.current.sourceLanguage,
         targetLanguage: configRef.current.targetLanguage,
         model: page.modelId,
@@ -511,6 +513,7 @@ export function useReaderTranslation({
     const cached = await findTranslationPage({
       mangaId: identity.mangaId,
       pageUrl: url,
+      pageKey: translationPageKey(identity.chapterId, pageIndex),
       sourceLanguage: configRef.current.sourceLanguage,
       targetLanguage: configRef.current.targetLanguage,
       chapterId: identity.chapterId,
@@ -1575,6 +1578,7 @@ export function useReaderTranslation({
     void deleteTranslationPage({
       mangaId: identity.mangaId,
       pageUrl: url,
+      pageKey: translationPageKey(identity.chapterId, pageIndex),
       sourceLanguage: configRef.current.sourceLanguage,
       targetLanguage: configRef.current.targetLanguage,
     }).catch((error) => {
