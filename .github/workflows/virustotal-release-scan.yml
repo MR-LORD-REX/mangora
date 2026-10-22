@@ -1,0 +1,102 @@
+name: VirusTotal release scan
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Android Release"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: virustotal-release-scan-${{ github.event.release.tag_name || github.event.workflow_run.head_branch || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    name: Scan released APKs
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || github.event.workflow_run.head_branch || '' }}
+    steps:
+      - name: Check out the default branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Scan release APKs with VirusTotal
+        id: scan
+        env:
+          VT_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        run: >-
+          python security/scan_virustotal_release.py
+          --tag "$RELEASE_TAG"
+          --output-dir security
+
+      - name: Commit scan reports
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          RELEASE_TAG: ${{ steps.scan.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add security/scan_*.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Add VirusTotal scan reports for $RELEASE_TAG"
+            git pull --rebase origin "$DEFAULT_BRANCH"
+            git push origin "HEAD:$DEFAULT_BRANCH"
+          fi
+
+      - name: Append VirusTotal links to release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.scan.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json body --jq '.body // ""' > "$RUNNER_TEMP/release-notes.md"
+          python - "$RUNNER_TEMP/release-notes.md" <<'PY'
+          import json
+          import os
+          import re
+          import sys
+          from pathlib import Path
+
+          notes_path = Path(sys.argv[1])
+          body = notes_path.read_text(encoding="utf-8")
+
+          reports = []
+          version = os.environ["RELEASE_TAG"].removeprefix("v")
+          for path in sorted(Path("security").glob(f"scan_{version}_*.json")):
+              report = json.loads(path.read_text(encoding="utf-8"))
+              architecture = report.get("architecture")
+              link = report.get("analysis_link")
+              sha256 = report.get("sha256")
+              if not all(isinstance(value, str) and value for value in (architecture, link, sha256)):
+                  raise SystemExit(f"Report is missing an architecture, analysis link, or SHA-256: {path}")
+              if not re.fullmatch(r"[a-zA-Z0-9_-]+", architecture) or not re.fullmatch(r"[0-9a-f]{64}", sha256):
+                  raise SystemExit(f"Report has an invalid architecture or SHA-256: {path}")
+              if not re.fullmatch(r"https://www\.virustotal\.com/gui/file/[0-9a-f]{64}/detection", link):
+                  raise SystemExit(f"Report has an invalid VirusTotal link: {path}")
+              reports.append(f"VirusTotal scan ({architecture}): [Analysis]({link}) · SHA-256: `{sha256}`")
+
+          if not reports:
+              raise SystemExit("No VirusTotal scan reports were found.")
+
+          body_lines = body.rstrip().splitlines()
+          body_lines = [line for line in body_lines if not line.startswith("VirusTotal scan (")]
+          updated = "\n".join(body_lines).rstrip() + "\n\n" + "\n".join(reports) + "\n"
+          notes_path.write_text(updated, encoding="utf-8")
+          PY
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$RUNNER_TEMP/release-notes.md"

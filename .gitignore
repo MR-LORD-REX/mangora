@@ -69,6 +69,7 @@ AGENTS.md
 TR_API/
 .claude/
 plan.md
+security/*.py
 
 extesion_intragration.md
 workspace.md
