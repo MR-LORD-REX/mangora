@@ -39,12 +39,14 @@ Get the latest APK from [GitHub Releases](https://github.com/MR-LORD-REX/mangora
 
 ## Security scans
 
-The v0.0.6 APKs were analyzed by VirusTotal. Both reports show zero malicious detections. 
+<!-- latest-security-start -->
+The [v0.0.6](https://github.com/MR-LORD-REX/mangora/releases/tag/v0.0.6) APKs were analyzed by VirusTotal. Both reports show zero malicious detections.
 
 | Build | VirusTotal analysis | SHA-256 |
 | --- | --- | --- |
 | arm64-v8a | [View report](https://www.virustotal.com/gui/file/8148de58279aac9cd46c07e8dafd5a68a03e7fe3119922f101ed65ae93254bab/detection) | `8148de58279aac9cd46c07e8dafd5a68a03e7fe3119922f101ed65ae93254bab` |
 | armeabi-v7a | [View report](https://www.virustotal.com/gui/file/ad28767c2d0117719bccab5621ea3dafa7f45b07e5c8131ee90be54db1ad5df5/detection) | `ad28767c2d0117719bccab5621ea3dafa7f45b07e5c8131ee90be54db1ad5df5` |
+<!-- latest-security-end -->
 
 ## Privacy and third-party services
 

@@ -50,6 +50,19 @@ jobs:
           --tag "$RELEASE_TAG"
           --output-dir security
 
+      - name: Render latest release security details in README
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.scan.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/releases/latest" > "$RUNNER_TEMP/latest-release.json"
+          python security/update_readme_security.py \
+            --release-json "$RUNNER_TEMP/latest-release.json" \
+            --reports-dir security \
+            --readme README.md \
+            --scanned-tag "$RELEASE_TAG"
+
       - name: Commit scan reports
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
@@ -58,7 +71,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add security/scan_*.json
+          git add security/scan_*.json README.md
           if ! git diff --cached --quiet; then
             git commit -m "Add VirusTotal scan reports for $RELEASE_TAG"
             git pull --rebase origin "$DEFAULT_BRANCH"
