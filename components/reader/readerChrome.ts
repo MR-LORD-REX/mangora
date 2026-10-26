@@ -9,149 +9,42 @@
 
 import { OrientationLock } from "expo-screen-orientation";
 
-export type ReaderReadingMode =
-  | "webtoon"
-  | "continuousVertical"
-  | "scrollVertical"
-  | "scrollHorizontal"
-  | "pagedVertical"
-  | "pagedHorizontal";
+import type {
+  ReaderBackgroundColor,
+  ReaderFitMode,
+  ReaderImageScaleType,
+  ReaderInvertTapZones,
+  ReaderOrientation,
+  ReaderPagedDirection,
+  ReaderReadingMode,
+  ReaderTapZoneLayout,
+  ReaderOverlayFont,
+} from "@core/settings/settingsSchema";
+import {
+  DEFAULT_READER_CHROME,
+  applyFilterExclusivity,
+  type ReaderChromeSettings,
+} from "@core/settings/readerChrome";
+import {
+  isGapLessMode,
+  isHorizontalMode,
+  isLongStripMode,
+  isPagedMode,
+} from "@features/reader";
 
-export type ReaderPagedDirection = "ltr" | "rtl";
-
-/** Mihon's image scale choices for paged readers. */
-export type ReaderImageScaleType =
-  | "fitWidth"
-  | "fitHeight"
-  | "fitScreen"
-  | "original";
-
-export type ReaderOrientation =
-  | "default"
-  | "free"
-  | "portrait"
-  | "landscape"
-  | "lockedPortrait"
-  | "lockedLandscape"
-  | "reversePortrait";
-
-export type ReaderFitMode = "fit" | "original";
-
-/**
- * Mihon navigation presets. The legacy names (`topBottom`, `leftRight`,
- * `both`) stay valid so older settings keep working.
- */
-export type ReaderTapZoneLayout =
-  | "l"
-  | "kindlish"
-  | "edge"
-  | "rightLeft"
-  | "disabled"
-  | "topBottom"
-  | "leftRight"
-  | "both";
-
-export type ReaderInvertTapZones = "none" | "horizontal" | "vertical" | "both";
-
-export type ReaderBackgroundColor = "black" | "gray" | "white" | "auto";
-
-/** Overlay paste fonts. "default" keeps the system font. */
-export type ReaderOverlayFont = "default" | "comicNeue" | "bangers" | "chewy";
-
-export interface ReaderChromeSettings {
-  readingMode: ReaderReadingMode;
-  pagedDirection: ReaderPagedDirection;
-  orientation: ReaderOrientation;
-  fitMode: ReaderFitMode;
-  /** Paged-viewer image scale, mirroring Mihon's image scale type. */
-  imageScaleType: ReaderImageScaleType;
-  doubleTapToZoom: boolean;
-  disableZoomOut: boolean;
-  splitWidePages: boolean;
-  rotateWidePagesToFit: boolean;
-  cropBorders: boolean;
-  tapZoneLayout: ReaderTapZoneLayout;
-  invertTapZones: ReaderInvertTapZones;
-  sidePadding: number;
-  /** Webtoon spacing between pages in dp; 0 for continuous vertical. */
-  webtoonPageGap: number;
-  backgroundColor: ReaderBackgroundColor;
-  showPageNumber: boolean;
-  fullscreen: boolean;
-  showContentInCutout: boolean;
-  keepScreenOn: boolean;
-  showActionsOnLongTap: boolean;
-  alwaysShowChapterTransition: boolean;
-  animatePageTransitions: boolean;
-  flashOnPageChange: boolean;
-  customBrightnessEnabled: boolean;
-  /** Percent of the original image brightness (0-200, 100 = neutral). */
-  customBrightness: number;
-  customColorFilterEnabled: boolean;
-  /** `#rrggbb` tint composited over the page (128,128,128 = neutral). */
-  customColorFilter: string;
-  grayscale: boolean;
-  /** Grayscale strength in percent (0-100). */
-  grayscaleAmount: number;
-  inverted: boolean;
-}
-
-export const DEFAULT_READER_CHROME: ReaderChromeSettings = {
-  readingMode: "webtoon",
-  pagedDirection: "ltr",
-  orientation: "default",
-  fitMode: "fit",
-  imageScaleType: "fitScreen",
-  doubleTapToZoom: true,
-  disableZoomOut: true,
-  splitWidePages: false,
-  rotateWidePagesToFit: false,
-  cropBorders: false,
-  tapZoneLayout: "l",
-  invertTapZones: "none",
-  sidePadding: 0,
-  webtoonPageGap: 15,
-  backgroundColor: "black",
-  showPageNumber: true,
-  fullscreen: false,
-  showContentInCutout: false,
-  keepScreenOn: false,
-  showActionsOnLongTap: true,
-  alwaysShowChapterTransition: false,
-  animatePageTransitions: true,
-  flashOnPageChange: false,
-  customBrightnessEnabled: false,
-  customBrightness: 100,
-  customColorFilterEnabled: false,
-  customColorFilter: "#808080",
-  grayscale: false,
-  grayscaleAmount: 100,
-  inverted: false,
+export type {
+  ReaderBackgroundColor,
+  ReaderFitMode,
+  ReaderImageScaleType,
+  ReaderInvertTapZones,
+  ReaderOrientation,
+  ReaderPagedDirection,
+  ReaderReadingMode,
+  ReaderTapZoneLayout,
+  ReaderOverlayFont,
 };
-
-/**
- * Grayscale, inverted and custom color are mutually exclusive (Mihon's
- * single color-filter mode). Enabling one disables the other two; brightness
- * stacks on top of whichever mode is active.
- */
-export function applyFilterExclusivity(
-  patch: Partial<ReaderChromeSettings>,
-): Partial<ReaderChromeSettings> {
-  const next = { ...patch };
-  if (patch.customColorFilterEnabled === true) {
-    next.grayscale = false;
-    next.inverted = false;
-  }
-  if (patch.grayscale === true) {
-    next.customColorFilterEnabled = false;
-    next.inverted = false;
-  }
-  if (patch.inverted === true) {
-    next.customColorFilterEnabled = false;
-    next.grayscale = false;
-  }
-  return next;
-}
+export type { ReaderChromeSettings };
+export { DEFAULT_READER_CHROME, applyFilterExclusivity };
 
 export interface ReaderReadingModeOption {
   id: string;
@@ -251,27 +144,7 @@ export const BACKGROUND_COLOR_OPTIONS: {
   { key: "auto", label: "Auto" },
 ];
 
-export function isPagedMode(mode: ReaderReadingMode): boolean {
-  return mode === "pagedVertical" || mode === "pagedHorizontal";
-}
-
-export function isHorizontalMode(mode: ReaderReadingMode): boolean {
-  return mode === "scrollHorizontal" || mode === "pagedHorizontal";
-}
-
-/** Long-strip modes render pages top-to-bottom in one continuous column. */
-export function isLongStripMode(mode: ReaderReadingMode): boolean {
-  return (
-    mode === "webtoon" ||
-    mode === "continuousVertical" ||
-    mode === "scrollVertical"
-  );
-}
-
-/** Webtoon keeps a Mihon-style gap; continuous vertical removes it. */
-export function isGapLessMode(mode: ReaderReadingMode): boolean {
-  return mode === "continuousVertical";
-}
+export { isGapLessMode, isHorizontalMode, isLongStripMode, isPagedMode };
 
 export function readingModeOptionFor(
   mode: ReaderReadingMode,

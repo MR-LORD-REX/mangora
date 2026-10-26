@@ -2,10 +2,9 @@
  * downloadRepository.ts
  * ---------------------------------------------------------------------------
  * Persistence for the chapter downloader: one row per downloaded chapter
- * archive (`downloads`) and the single user-picked storage folder
- * (`download_folders`).
+ * archive (`downloads`). The user-picked storage root lives in core storage.
  *
- * The queue keeps its live state in memory (services/downloader/scheduler.ts)
+ * The queue keeps its live state in memory (features/downloads/queue/scheduler.ts)
  * but every state change is mirrored here, so badges, offline reading and the
  * "Downloaded" strips survive an app restart.
  * ---------------------------------------------------------------------------
@@ -14,8 +13,8 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "../client";
-import { downloadFolders, downloads } from "../schema";
-import type { Download, DownloadFolder, NewDownload } from "../schema";
+import { downloads } from "../schema";
+import type { Download, NewDownload } from "../schema";
 
 export type DownloadStatus =
   | "queued"
@@ -24,7 +23,6 @@ export type DownloadStatus =
   | "failed"
   | "completed";
 
-export const DOWNLOAD_FOLDER_ID = "default";
 
 export interface DownloadRecordInput {
   /** Canonical chapter id. */
@@ -350,46 +348,4 @@ export async function resetInterruptedDownloads(): Promise<void> {
     .update(downloads)
     .set({ status: "paused", updatedAt: Date.now() })
     .where(eq(downloads.status, "running"));
-}
-
-export async function getDownloadFolder(): Promise<DownloadFolder | null> {
-  const rows = await db
-    .select()
-    .from(downloadFolders)
-    .where(eq(downloadFolders.id, DOWNLOAD_FOLDER_ID))
-    .limit(1);
-  return rows[0] ?? null;
-}
-
-export async function saveDownloadFolder(input: {
-  treeUri: string;
-  label: string | null;
-  downloadsDirUri: string | null;
-}): Promise<void> {
-  const now = Date.now();
-  await db
-    .insert(downloadFolders)
-    .values({
-      id: DOWNLOAD_FOLDER_ID,
-      treeUri: input.treeUri,
-      label: input.label,
-      downloadsDirUri: input.downloadsDirUri,
-      grantedAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: downloadFolders.id,
-      set: {
-        treeUri: input.treeUri,
-        label: input.label,
-        downloadsDirUri: input.downloadsDirUri,
-        updatedAt: now,
-      },
-    });
-}
-
-export async function clearDownloadFolder(): Promise<void> {
-  await db
-    .delete(downloadFolders)
-    .where(eq(downloadFolders.id, DOWNLOAD_FOLDER_ID));
 }

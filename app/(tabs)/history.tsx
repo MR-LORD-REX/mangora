@@ -10,8 +10,8 @@ import {
     View,
 } from "react-native";
 
-import AppHeader from "@/components/common/AppHeader";
-import { colors, radius } from "@/constants/theme";
+import AppHeader from "@shared/ui/layout/AppHeader";
+import { colors, radius } from "@shared/theme";
 import {
     clearHistory,
     deleteHistoryEntry,

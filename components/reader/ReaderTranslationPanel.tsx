@@ -38,19 +38,17 @@ import {
 import type {
   ReaderTranslationEngine,
   ReaderTranslationMode,
-} from "@/services/settings/settingsStore";
-import MenuSheet from "@/components/common/MenuSheet";
+} from "@core/settings";
+import MenuSheet from "@shared/ui/overlays/MenuSheet";
 import type { ReaderPipelineMetrics } from "@/utils/reader/useReaderTranslation";
 import {
   GEMINI_MODELS,
-  type GeminiModelId,
-} from "@/services/translation/geminiModels";
-import {
+  READER_TARGET_OPTIONS,
   getGeminiUsageSnapshot,
   subscribeGeminiUsage,
+  type GeminiModelId,
   type GeminiUsageSnapshot,
-} from "@/services/translation/geminiUsage";
-import { READER_TARGET_OPTIONS } from "@/services/translation/translationLang";
+} from "@features/translation";
 import DotSlider from "./DotSlider";
 import {
   OVERLAY_FONT_OPTIONS,

@@ -1,7 +1,7 @@
 import {
   cachedExtensionSource,
   sourceIdFromProvider,
-} from "@/services/extensions/registry";
+} from "@features/extensions/registry/registry";
 
 /** Human-readable source name for library, downloads and share surfaces. */
 export function providerLabel(provider: string | null | undefined): string {

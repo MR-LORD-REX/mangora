@@ -28,63 +28,47 @@ import {
   isModelDownloaded,
   recognizePageRegions,
   releaseLocalOcrEngines,
-} from "@/services/ocr/localOcr";
-import {
   clampOcrBubbleWorkers,
   getLocalOcrModel,
   modelIdForLanguage,
   ocrEngineConcurrency,
-} from "@/services/ocr/ocrModels";
-import {
   preparePaddleRegions,
   releaseDecodablePageUri,
+  detectPageRegions,
+  type DetectionResult,
   type OcrRegion,
   type OcrTextItem,
-} from "@/services/ocr/pageOcr";
-import { detectPageRegions } from "@/services/detection/pageDetector";
-import type {
+} from "@features/vision";
+import {
   ReaderTranslationEngine,
   ReaderTranslationMode,
-} from "@/services/settings/settingsStore";
-import { GEMINI_DEFAULT_MODEL } from "@/services/translation/geminiModels";
-import type { GeminiModelId } from "@/services/translation/geminiModels";
+} from "@core/settings";
 import {
+  GEMINI_DEFAULT_MODEL,
   GeminiApiError,
-  translateGeminiBatch,
-} from "@/services/translation/geminiTranslator";
-import {
-  recordGeminiUsage,
-  waitForRpmCapacity,
-} from "@/services/translation/geminiUsage";
-import { translateFreeBatch } from "@/services/translation/freeGoogleTranslator";
-import {
-  fallbackModelChain,
-  nextAutoSwitchFailureState,
-  requestWithModelFallback,
-} from "@/services/translation/modelFallback";
-import {
   assignItemsToSlots,
   buildTranslationSlots,
+  fallbackModelChain,
   fillSlotTexts,
-} from "@/services/translation/regionText";
-import type {
-  Box,
-  BubbleMask,
-  PageTranslationState,
-  TranslationRegionState,
-  TranslationSlot,
-} from "@/services/translation/translation.types";
-import {
+  getTranslationLockOwner,
   isCjkLanguageCode,
   isSameEngineLanguage,
-} from "@/services/translation/translationLang";
-import { WorkQueue, type WorkQueueMetrics } from "@/services/translation/workQueue";
-import {
-  getTranslationLockOwner,
+  nextAutoSwitchFailureState,
+  recordGeminiUsage,
   releaseTranslationLock,
+  requestWithModelFallback,
+  translateFreeBatch,
+  translateGeminiBatch,
   tryAcquireTranslationLock,
-} from "@/services/translation/translationRuntimeLock";
-import type { DetectionResult } from "@/services/yolo/yolo.types";
+  waitForRpmCapacity,
+  type Box,
+  type BubbleMask,
+  type GeminiModelId,
+  type PageTranslationState,
+  type TranslationRegionState,
+  type TranslationSlot,
+} from "@features/translation";
+import { WorkQueue, type WorkQueueMetrics } from "@shared/async/workQueue";
 import { imageHeadersForPage } from "@/utils/reader/imageHeaders";
 import type { ReaderIdentity } from "@/utils/reader/readerIdentity";
 

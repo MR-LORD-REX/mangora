@@ -28,11 +28,9 @@ import {
   translationRegions,
   translationUsage,
 } from "../schema";
-import type {
-  Box,
-  BubbleMask,
-} from "@/services/translation/translation.types";
-import type { GeminiModelId } from "@/services/translation/geminiModels";
+import type { BubbleMask } from "@shared/contracts/bubbleMask";
+import type { Box } from "@shared/geometry";
+import type { GeminiModelId } from "@core/settings/geminiModelId";
 
 /** Bump when the stored geometry/prompt contract changes. */
 export const TRANSLATION_CACHE_PROMPT_VERSION = "v3";

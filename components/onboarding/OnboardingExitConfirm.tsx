@@ -9,7 +9,7 @@
 
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { colors, radius } from "@/constants/theme";
+import { colors, radius } from "@shared/theme";
 
 interface OnboardingExitConfirmProps {
   visible: boolean;

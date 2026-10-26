@@ -34,13 +34,13 @@ import {
   ONBOARDING_GUIDES,
   type OnboardingGuide,
 } from "@/constants/onboardingGuides";
-import { colors, radius } from "@/constants/theme";
+import { colors, radius } from "@shared/theme";
 import {
   firstUnseenGuideIndex,
   shouldShowOnboarding,
   snoozeOnboardingForSession,
 } from "@/services/onboarding/onboardingState";
-import { getSettings, updateSettings } from "@/services/settings/settingsStore";
+import { getSettings, updateSettings } from "@core/settings";
 
 const CARD_PADDING = 20;
 const PAGE_HEIGHT = 360;

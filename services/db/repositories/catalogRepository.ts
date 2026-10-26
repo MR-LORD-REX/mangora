@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 
+import { canonicalId } from "@core/catalog/identity";
 import { db } from "../client";
 import { chapters, manga } from "../schema";
 import type { Manga } from "../schema";
@@ -33,9 +34,6 @@ export interface TrackedChapterInput {
   pageCount?: number | null;
   publishedAt?: number | null;
 }
-
-export const canonicalId = (provider: string, externalId: string) =>
-  `${provider}:${externalId}`;
 
 export async function upsertManga(input: TrackedMangaInput): Promise<string> {
   const id = canonicalId(input.provider, input.providerMangaId);

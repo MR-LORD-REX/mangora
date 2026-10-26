@@ -5,6 +5,21 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@composition/*": [
+        "./src/composition/*"
+      ],
+      "@shared/*": [
+        "./src/shared/*"
+      ],
+      "@core/*": [
+        "./src/core/*"
+      ],
+      "@features/*": [
+        "./src/features/*"
+      ],
+      "@platform/*": [
+        "./src/platform/*"
       ]
     }
   },

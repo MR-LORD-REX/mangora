@@ -9,7 +9,7 @@
 import {
   getExtensionChapters,
   getExtensionPages,
-} from "@/services/extensions/native";
+} from "@platform/extensions";
 import {
   registerExtensionHeaders,
   registerExtensionPageUrl,

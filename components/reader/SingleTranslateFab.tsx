@@ -17,7 +17,7 @@ import {
 import React, { useEffect, useRef } from "react";
 import { Animated, Pressable, StyleSheet } from "react-native";
 
-import type { PageTranslationState } from "@/services/translation/translation.types";
+import type { PageTranslationState } from "@features/translation";
 
 export default function SingleTranslateFab({
   stage,

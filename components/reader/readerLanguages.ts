@@ -5,7 +5,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { READER_TARGET_OPTIONS } from "@/services/translation/translationLang";
+import { READER_TARGET_OPTIONS } from "@features/translation";
 
 /** Source-language choices shown in Reader Config -> Language. */
 export const READER_LANGUAGE_OPTIONS: {

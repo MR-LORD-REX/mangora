@@ -31,7 +31,7 @@ import type {
   PageGeometry,
   ReaderPageSplitHalf,
 } from "@/utils/reader/pageGeometry";
-import type { PageTranslationState } from "@/services/translation/translation.types";
+import type { PageTranslationState } from "@features/translation";
 import type { BorderCrop } from "@/utils/reader/borderCrop";
 
 export interface ReaderPageProps {
@@ -57,9 +57,10 @@ export interface ReaderPageProps {
   overlayFontScale: number;
   overlayTextColor: string;
   onLoadDims: (url: string, width: number, height: number) => void;
-  onToggleChrome: () => void;
-  onTapAt: (x: number, y: number) => void;
-  onLongPress: () => void;
+  /** Paged pages own their tap/zoom gestures; strip rows are inert. */
+  interactive?: boolean;
+  onTapAt?: (x: number, y: number) => void;
+  onLongPress?: () => void;
   /** Vertical space after this page in webtoon mode. */
   pageGap?: number;
   onRetryTranslation: (url: string) => void;
@@ -85,7 +86,7 @@ function ReaderPage({
   overlayFontScale,
   overlayTextColor,
   onLoadDims,
-  onToggleChrome,
+  interactive = true,
   onTapAt,
   onLongPress,
   pageGap = 0,
@@ -314,9 +315,8 @@ function ReaderPage({
           contentHeight={geometry.imgH}
           doubleTapToZoom={chrome.doubleTapToZoom}
           disableZoomOut={chrome.disableZoomOut}
-          onSingleTap={pagedMode ? undefined : onToggleChrome}
-          onTapAt={pagedMode ? onTapAt : undefined}
-          onLongPress={onLongPress}
+          onTapAt={interactive ? onTapAt : undefined}
+          onLongPress={interactive ? onLongPress : undefined}
           defScale={defaultZoomScale}
         >
           {renderFramedPage()}
@@ -325,10 +325,10 @@ function ReaderPage({
     );
   }
 
-  // Tapped area is the whole page slot (viewport-sized in paged modes) so
-  // the tap-zone bands work even when the image is centred with padding.
+  // The tapped area is the whole page slot so tap-zone bands work even when
+  // the image is centred with padding. Strip rows leave it to the viewport.
   const pageTap = (event: GestureResponderEvent) => {
-    onTapAt(event.nativeEvent.locationX, event.nativeEvent.locationY);
+    onTapAt?.(event.nativeEvent.locationX, event.nativeEvent.locationY);
   };
   const verticallyScrollable =
     (pagedMode || chrome.readingMode === "scrollHorizontal") &&
@@ -376,24 +376,34 @@ function ReaderPage({
       </View>
     );
   }
+  const pageContent = (
+    <>
+      {statusBadge}
+      <View style={{ width: geometry.imgW, height: geometry.imgH }}>
+        {renderPageImage()}
+      </View>
+    </>
+  );
+  const slotStyle = {
+    width: geometry.itemW,
+    height: geometry.itemH,
+    marginBottom: pageGap,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    backgroundColor: pageBackground,
+  };
+
+  if (!interactive) {
+    return <View style={slotStyle}>{pageContent}</View>;
+  }
   return (
     <Pressable
       onPress={pageTap}
       onLongPress={onLongPress}
       delayLongPress={420}
-      style={{
-        width: geometry.itemW,
-        height: geometry.itemH,
-        marginBottom: pageGap,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: pageBackground,
-      }}
+      style={slotStyle}
     >
-      {statusBadge}
-      <View style={{ width: geometry.imgW, height: geometry.imgH }}>
-        {renderPageImage()}
-      </View>
+      {pageContent}
     </Pressable>
   );
 }
@@ -433,7 +443,7 @@ export default memo(
     prev.overlayFontScale === next.overlayFontScale &&
     prev.overlayTextColor === next.overlayTextColor &&
     prev.onLoadDims === next.onLoadDims &&
-    prev.onToggleChrome === next.onToggleChrome &&
+    prev.interactive === next.interactive &&
     prev.onTapAt === next.onTapAt &&
     prev.onLongPress === next.onLongPress &&
     prev.pageGap === next.pageGap &&

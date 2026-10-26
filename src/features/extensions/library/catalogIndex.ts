@@ -1,0 +1,158 @@
+/**
+ * Pure repository-index parsing and catalog merging.
+ *
+ * No Expo/React Native imports may enter this module; it is exercised directly
+ * by the Node test runner.
+ */
+
+import type {
+  ExtensionCatalogEntry,
+  ExtensionRepo,
+  RepoExtension,
+  RepoSource,
+} from "@platform/extensions/types";
+
+/** Quotes only long numeric ids, leaving versionCode and other numbers alone. */
+export function parseRepoJson(raw: string): unknown {
+  return JSON.parse(raw.replace(/"id"\s*:\s*(-?\d{6,})/g, '"id":"$1"'));
+}
+
+/**
+ * Turns a GitHub blob URL into its raw equivalent. Repo home pages fall back
+ * to Keiyoushi's `repo` branch and are retried against main/master.
+ */
+export function normalizeRepoUrl(input: string): string {
+  const trimmed = input.trim().replace(/\/+$/, "");
+  if (!trimmed) return "";
+  try {
+    const url = new URL(trimmed);
+    if (url.hostname === "github.com") {
+      const parts = url.pathname.split("/").filter(Boolean);
+      const [owner, repo, kind, ...rest] = parts;
+      if (owner && repo) {
+        if (kind === "blob" && rest.length >= 2) {
+          const branch = rest[0];
+          const path = rest.slice(1).join("/");
+          return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+        }
+        if (kind === "raw" && rest.length >= 2) {
+          return `https://raw.githubusercontent.com/${owner}/${repo}/${rest.join("/")}`;
+        }
+        return `https://raw.githubusercontent.com/${owner}/${repo}/repo/index.json`;
+      }
+    }
+    if (url.hostname === "raw.githubusercontent.com") return url.toString();
+    if (url.pathname.toLowerCase().endsWith(".json")) return url.toString();
+    return `${trimmed}/index.json`;
+  } catch {
+    return trimmed;
+  }
+}
+
+export function candidateRepoUrls(input: string): string[] {
+  const canonical = normalizeRepoUrl(input);
+  const list = [canonical];
+  const match = /^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/repo\/index\.json$/.exec(
+    canonical,
+  );
+  if (match) {
+    list.push(
+      `https://cdn.jsdelivr.net/gh/${match[1]}/${match[2]}@repo/index.json`,
+      `https://raw.githubusercontent.com/${match[1]}/${match[2]}/main/index.json`,
+      `https://raw.githubusercontent.com/${match[1]}/${match[2]}/master/index.json`,
+    );
+  }
+  return Array.from(new Set(list));
+}
+
+function normalizeSource(raw: unknown): RepoSource | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  const id = value.id == null ? "" : String(value.id);
+  const name = typeof value.name === "string" ? value.name : "";
+  if (!id || !name) return null;
+  return {
+    id,
+    name,
+    language: typeof value.language === "string" ? value.language : "all",
+    homeUrl: typeof value.homeUrl === "string" ? value.homeUrl : null,
+  };
+}
+
+function normalizeExtension(raw: unknown): RepoExtension | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  const resources = (value.resources ?? {}) as Record<string, unknown>;
+  const apkUrl = typeof resources.apkUrl === "string" ? resources.apkUrl : "";
+  const packageName = typeof value.packageName === "string" ? value.packageName : "";
+  if (!apkUrl || !packageName) return null;
+  const sources = Array.isArray(value.sources)
+    ? value.sources.map(normalizeSource).filter((s): s is RepoSource => s != null)
+    : [];
+  return {
+    name: typeof value.name === "string" ? value.name : packageName,
+    packageName,
+    resources: {
+      apkUrl,
+      iconUrl: typeof resources.iconUrl === "string" ? resources.iconUrl : null,
+      jarUrl: typeof resources.jarUrl === "string" ? resources.jarUrl : null,
+    },
+    extensionLib: value.extensionLib == null ? "1.6" : String(value.extensionLib),
+    versionCode: value.versionCode == null ? "0" : String(value.versionCode),
+    versionName: value.versionName == null ? "" : String(value.versionName),
+    contentWarning: typeof value.contentWarning === "string" ? value.contentWarning : null,
+    sources,
+  };
+}
+
+export function parseExtensionRepo(
+  raw: string,
+  canonicalUrl: string,
+  sourceUrl: string,
+): ExtensionRepo {
+  const data = parseRepoJson(raw) as Record<string, unknown>;
+  const extensionList = data.extensionList as Record<string, unknown> | undefined;
+  const list = Array.isArray(extensionList?.extensions)
+    ? extensionList.extensions
+    : Array.isArray(data.extensions)
+      ? data.extensions
+      : Array.isArray(data)
+        ? data
+        : [];
+  return {
+    url: canonicalUrl,
+    sourceUrl,
+    name: typeof data.name === "string" ? data.name : new URL(canonicalUrl).hostname,
+    badgeLabel: typeof data.badgeLabel === "string" ? data.badgeLabel : null,
+    signingKey: typeof data.signingKey === "string" ? data.signingKey.trim().toLowerCase() : null,
+    fetchedAt: Date.now(),
+    extensions: list.map(normalizeExtension).filter((e): e is RepoExtension => e != null),
+  };
+}
+
+export function mergeCatalog(repos: ExtensionRepo[]): ExtensionCatalogEntry[] {
+  const byPackage = new Map<string, ExtensionCatalogEntry>();
+  for (const repo of repos) {
+    for (const extension of repo.extensions) {
+      const entry: ExtensionCatalogEntry = {
+        ...extension,
+        repoUrl: repo.url,
+        signingKey: repo.signingKey,
+      };
+      const previous = byPackage.get(extension.packageName);
+      if (!previous || Number(extension.versionCode) > Number(previous.versionCode)) {
+        byPackage.set(extension.packageName, entry);
+      }
+    }
+  }
+  return Array.from(byPackage.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function extensionForSource(
+  repos: ExtensionRepo[],
+  sourceId: string,
+): ExtensionCatalogEntry | null {
+  return mergeCatalog(repos).find((extension) =>
+    extension.sources.some((source) => source.id === sourceId),
+  ) ?? null;
+}

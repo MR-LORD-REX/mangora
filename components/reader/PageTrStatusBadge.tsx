@@ -24,7 +24,7 @@ import {
   type GestureResponderEvent,
 } from "react-native";
 
-import type { PageTranslationState } from "@/services/translation/translation.types";
+import type { PageTranslationState } from "@features/translation";
 
 interface PageTrStatusBadgeProps {
   stage: PageTranslationState["stage"] | undefined;

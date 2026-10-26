@@ -4,7 +4,7 @@
  * Notification permission + presentation policy for the app.
  *
  * The live download progress notification (with Pause / Resume / Cancel) is
- * owned by the Android foreground service - see services/downloader/native.ts
+ * owned by the Android foreground service - see features/downloads/adapters/nativeDownloader.ts
  * and DownloadService.kt - because a foreground service is what keeps the JS
  * queue alive while the app is backgrounded. expo-notifications owns the
  * runtime permission request and the app-level handler/channel used for
@@ -13,6 +13,12 @@
  */
 
 import * as Notifications from "expo-notifications";
+import type {
+  TranslationNotificationCommand,
+  TranslationNotificationCommandPort,
+  TranslationNotificationHandler,
+  TranslationNotificationPort,
+} from "@shared/contracts";
 import { Platform } from "react-native";
 
 const EVENT_CHANNEL_ID = "mangora-events";
@@ -26,6 +32,10 @@ let pendingTranslationProgress: {
 } | null = null;
 let translationProgressPump: Promise<void> | null = null;
 
+const translationCommandHandlers = new Map<
+  TranslationNotificationCommand,
+  TranslationNotificationHandler
+>();
 let permissionGranted = false;
 
 /** True once the user granted notification permission this session. */
@@ -86,11 +96,13 @@ export async function initializeNotifications(): Promise<boolean> {
         ) {
           return;
         }
-        void import("@/services/translation/pretranslateQueue").then((queue) => {
-          if (action === "translation-pause") queue.pauseTranslationQueue();
-          else if (action === "translation-resume") queue.resumeTranslationQueue();
-          else queue.cancelTranslationQueue();
-        });
+        const command =
+          action === "translation-pause"
+            ? "pause"
+            : action === "translation-resume"
+              ? "resume"
+              : "cancel";
+        translationCommandHandlers.get(command)?.();
       });
     }
   } catch {
@@ -187,7 +199,7 @@ function pumpTranslationProgress(): Promise<void> {
  * Live pre-translate progress notification (one at a time). Bursts collapse
  * to the newest value, so resuming a long job cannot stack notifications.
  */
-export function notifyTranslationProgress(
+function notifyTranslationProgress(
   job: TranslationNotificationJob,
   current: number,
   total: number,
@@ -223,3 +235,21 @@ export async function notifyTranslationBackground(): Promise<void> {
     // Best effort.
   }
 }
+
+/** Routes notification button actions to the translation queue after it initializes. */
+export const translationNotificationCommands: TranslationNotificationCommandPort = {
+  registerHandler(command, handler) {
+    translationCommandHandlers.set(command, handler);
+    return () => {
+      if (translationCommandHandlers.get(command) === handler) {
+        translationCommandHandlers.delete(command);
+      }
+    };
+  },
+};
+
+export const translationNotifications: TranslationNotificationPort = {
+  progress: (input) =>
+    notifyTranslationProgress(input, input.current, input.total),
+  background: () => notifyTranslationBackground(),
+};

@@ -21,22 +21,22 @@ import {
 } from "react-native";
 
 import { READER_LANGUAGE_OPTIONS } from "@/components/reader/readerLanguages";
-import { colors, radius } from "@/constants/theme";
+import { colors, radius } from "@shared/theme";
 import {
   openDownloadedPageSessionForChapter,
   type DownloadedPageSession,
   type DownloadCandidate,
-} from "@/services/downloader";
+} from "@features/downloads";
 import {
   getSettings,
   updateSettings,
   type ReaderTranslationEngine,
-} from "@/services/settings/settingsStore";
+} from "@core/settings";
 import {
   READER_TARGET_OPTIONS,
+  enqueuePretranslateJob,
   isSameEngineLanguage,
-} from "@/services/translation/translationLang";
-import { enqueuePretranslateJob } from "@/services/translation/pretranslateQueue";
+} from "@features/translation";
 
 export interface PretranslateDialogProps {
   visible: boolean;

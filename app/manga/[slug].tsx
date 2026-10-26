@@ -1,71 +1,32 @@
-import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
+import { useLocalSearchParams } from "expo-router";
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import ChapterMangaViewer from "@/components/manga/ChapterMangaViewer";
-import { chapterSourceFor } from "@/components/manga/sources";
-import { colors } from "@/constants/theme";
+import { MangaScreen } from "@features/manga";
 
 function paramString(value: string | string[] | undefined): string {
-  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-export default function MangaScreen() {
+export default function MangaRoute() {
   const params = useLocalSearchParams<{
     slug?: string | string[];
     provider?: string | string[];
     thumbnailUrl?: string | string[];
     downloadsOnly?: string | string[];
   }>();
-  const slug = paramString(params.slug);
+
+  const param = paramString(params.slug);
   const provider = paramString(params.provider);
   const thumbnailUrl = paramString(params.thumbnailUrl) || null;
   const downloadsOnly = paramString(params.downloadsOnly) === "1";
-  const source = chapterSourceFor(provider);
-
-  if (!source) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>Unknown manga source.</Text>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <ArrowLeft color={colors.text} size={22} />
-          <Text style={styles.backText}>Go back</Text>
-        </Pressable>
-      </View>
-    );
-  }
 
   return (
-    <ChapterMangaViewer
-      key={`${provider}:${slug}`}
-      param={slug}
-      source={source}
+    <MangaScreen
+      key={`${provider}:${param}`}
+      param={param}
+      provider={provider}
       thumbnailUrl={thumbnailUrl}
       downloadsOnly={downloadsOnly}
     />
   );
 }
-
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.bg,
-    padding: 24,
-    gap: 16,
-  },
-  errorText: { color: colors.textMuted, fontSize: 15 },
-  backBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-  },
-  backText: { color: colors.text, fontWeight: "700" },
-});

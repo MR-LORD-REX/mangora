@@ -25,7 +25,7 @@ import type {
   PageTranslationState,
   Point,
   TranslationRegionState,
-} from "@/services/translation/translation.types";
+} from "@features/translation";
 
 import {
   insetMaskPolygon,

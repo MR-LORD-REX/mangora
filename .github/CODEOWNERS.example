@@ -1,0 +1,22 @@
+# Copy to CODEOWNERS and replace each placeholder with a real GitHub handle or
+# team. This example intentionally does not activate unverified ownership.
+
+*                       @OWNER
+
+/app/                   @APP_OWNER
+/src/composition/       @APP_OWNER
+/src/shared/            @SHARED_UI_OWNER
+/src/core/              @DATA_OWNER
+/src/platform/          @NATIVE_OWNER
+/src/features/reader/   @READER_OWNER
+/src/features/translation/ @TRANSLATION_OWNER
+/src/features/vision/   @VISION_OWNER
+/src/features/manga/    @MANGA_OWNER
+/src/features/library/  @LIBRARY_OWNER
+/src/features/downloads/ @DOWNLOADS_OWNER
+/src/features/extensions/ @EXTENSIONS_OWNER
+/src/features/settings/ @SETTINGS_OWNER
+/plugins/               @NATIVE_OWNER
+/android/               @NATIVE_OWNER
+/scripts/               @INFRA_OWNER
+/docs/                  @ARCHITECTURE_OWNER

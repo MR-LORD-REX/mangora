@@ -14,7 +14,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import type { Box, Point } from "@/services/translation/translation.types";
+import type { Box, Point } from "@features/translation";
 
 export interface Span {
   left: number;

@@ -18,7 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 
-import { colors } from "@/constants/theme";
+import { colors } from "@shared/theme";
 
 export interface OnboardingGuide {
   /** Stable persisted id. Renaming it re-shows the guide to everyone. */

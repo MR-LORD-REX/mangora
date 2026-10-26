@@ -3,7 +3,7 @@ import { migrate } from "drizzle-orm/expo-sqlite/migrator";
 import { db } from "./client";
 import migrations from "./migrations";
 import { libraries } from "./schema";
-import { getSettings } from "@/services/settings/settingsStore";
+import { getSettings } from "@core/settings";
 import {
   getStoredSettingsJson,
   upsertStoredSettingsJson,

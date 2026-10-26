@@ -28,8 +28,8 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { ensureDecodablePageUri } from "@/services/ocr/pageOcr";
-import { fetchExtensionPageImage } from "@/services/extensions/native";
+import { ensureDecodablePageUri } from "@features/vision";
+import { fetchExtensionPageImage } from "@platform/extensions";
 import { isAvifUri } from "@/services/images/avif";
 import { extensionPageUrlFor } from "@/utils/reader/imageHeaders";
 import {

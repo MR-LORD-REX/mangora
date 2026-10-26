@@ -10,7 +10,7 @@
 import {
   cachedExtensionSource,
   sourceIdFromProvider,
-} from "@/services/extensions/registry";
+} from "@features/extensions/registry/registry";
 
 export function isMatureProvider(
   provider: string | null | undefined,

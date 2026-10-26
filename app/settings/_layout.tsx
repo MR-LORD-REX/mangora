@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 import React from "react";
 
-import { colors } from "@/constants/theme";
+import { colors } from "@shared/theme";
 
 /** Settings sub-pages are full-screen; each page renders its own header. */
 export default function SettingsLayout() {

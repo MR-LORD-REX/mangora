@@ -1,7 +1,7 @@
 import { Directory, Paths } from "expo-file-system";
 
-import { deleteSafPath } from "@/services/downloader/native";
-import { getFolderState } from "@/services/downloader/storage";
+import { getStorageRoot } from "@core/storage/root";
+import { deleteSafPath } from "@core/storage/saf";
 
 /** Removes only artifacts owned by the retired reader page cache. */
 export async function removeLegacyReaderPageCache(): Promise<void> {
@@ -13,9 +13,9 @@ export async function removeLegacyReaderPageCache(): Promise<void> {
   }
 
   try {
-    const folder = await getFolderState();
-    if (!folder) return;
-    const removed = await deleteSafPath(folder.treeUri, [
+    const root = await getStorageRoot();
+    if (!root) return;
+    const removed = await deleteSafPath(root.treeUri, [
       "cache",
       "reader-cache",
     ]);
