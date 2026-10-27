@@ -19,7 +19,7 @@ import {
 } from "@features/vision";
 import { buildTranslationSlots } from "@features/translation";
 
-import { imageHeadersForPage } from "@/utils/reader/imageHeaders";
+import { imageHeadersForPage } from "@shared/net/imageHeaders";
 
 import {
   MAX_CROPS_PER_PAGE,

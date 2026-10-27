@@ -11,7 +11,7 @@ import { Image } from "react-native";
 
 import type { PageDims } from "../domain/layout/pageGeometry";
 import { isLongStripMode } from "../domain/legacyReadingModes";
-import { imageHeadersForPage } from "@/utils/reader/imageHeaders";
+import { imageHeadersForPage } from "@shared/net/imageHeaders";
 
 export interface ReaderPageDimsOptions {
   pages: string[];

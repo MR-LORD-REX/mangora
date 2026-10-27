@@ -7,7 +7,7 @@ import type {
   InstalledExtensionRecord,
 } from "@platform/extensions/types";
 import { colors } from "@shared/theme";
-import { imageSourceForUrl } from "@/utils/reader/imageHeaders";
+import { imageSourceForUrl } from "@shared/net/imageHeaders";
 
 import { browseStyles as styles } from "./BrowseStyles";
 

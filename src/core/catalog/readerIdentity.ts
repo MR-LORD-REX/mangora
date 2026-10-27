@@ -1,5 +1,5 @@
 import { canonicalId } from "@core/catalog/identity";
-import type { ProviderId } from "@/services/db/repositories/catalogRepository";
+import type { ProviderId } from "./providerId";
 
 export interface ReaderRouteIdentity {
   source: string;

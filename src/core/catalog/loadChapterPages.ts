@@ -14,7 +14,7 @@ import {
   registerExtensionHeaders,
   registerExtensionPageUrl,
   registerExtensionSourceHeaders,
-} from "@/utils/reader/imageHeaders";
+} from "@shared/net/imageHeaders";
 
 export interface AdjacentChapters {
   prev: string | null;

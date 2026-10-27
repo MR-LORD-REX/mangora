@@ -20,7 +20,7 @@ import {
   extensionProviderFor,
   refreshExtensionRegistry,
 } from "@features/extensions/registry/registry";
-import { registerExtensionHeaders } from "@/utils/reader/imageHeaders";
+import { registerExtensionHeaders } from "@shared/net/imageHeaders";
 
 const STATUS_LABELS: Record<number, string> = {
   0: "Unknown",

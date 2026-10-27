@@ -11,7 +11,7 @@ import {
   getChapterDownloadInfo,
   type ChapterDownloadInfo,
 } from "@/services/db/repositories/catalogRepository";
-import { resolveReaderIdentity } from "@/utils/reader/readerIdentity";
+import { resolveReaderIdentity } from "@core/catalog/readerIdentity";
 import {
   readerTarget,
   type DownloadCandidate,

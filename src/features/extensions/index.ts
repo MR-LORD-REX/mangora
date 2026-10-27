@@ -71,6 +71,7 @@ export type {
 } from "./library/migration";
 
 export { useExtensionRegistry } from "./hooks/useExtensionRegistry";
+export { providerLabel } from "./domain/providerLabel";
 
 export { default as BrowseExtensionsScreen } from "./screens/BrowseExtensionsScreen";
 export type { BrowseExtensionsScreenProps } from "./screens/BrowseExtensionsScreen";

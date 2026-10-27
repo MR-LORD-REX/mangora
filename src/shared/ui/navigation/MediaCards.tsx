@@ -2,7 +2,7 @@ import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors, radius, shadows } from "@shared/theme";
-import { imageSourceForUrl } from "@/utils/reader/imageHeaders";
+import { imageSourceForUrl } from "@shared/net/imageHeaders";
 
 export interface MediaCardEntry {
   key: string;

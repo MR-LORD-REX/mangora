@@ -1,16 +1,12 @@
 import { and, eq } from "drizzle-orm";
 
 import { canonicalId } from "@core/catalog/identity";
+import type { ProviderId } from "@core/catalog/providerId";
 import { db } from "../client";
 import { chapters, manga } from "../schema";
 import type { Manga } from "../schema";
 
-/**
- * Extension sources are namespaced by their 64-bit source id. Legacy
- * hand-written provider ids can still exist in old database rows; they are
- * treated as inert records and have no adapter.
- */
-export type ProviderId = `ext:${string}` | (string & {});
+export type { ProviderId };
 
 export interface TrackedMangaInput {
   provider: ProviderId;

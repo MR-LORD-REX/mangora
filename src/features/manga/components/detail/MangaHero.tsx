@@ -27,7 +27,7 @@ import {
   canShareProvider,
   shareMangaLink,
 } from "@/services/deeplink";
-import { imageSourceForUrl } from "@/utils/reader/imageHeaders";
+import { imageSourceForUrl } from "@shared/net/imageHeaders";
 import BottomFade from "./BottomFade";
 import TagChip from "./TagChip";
 import { extremeChapter, sortHint } from "../../domain/chapterGroups";

@@ -22,7 +22,7 @@ import type { LibrarySort } from "@/services/db/repositories/libraryRepository";
 import {
   cachedInstalledExtensions,
   extensionProviderFor,
-} from "@features/extensions/registry/registry";
+} from "@features/extensions";
 
 
 const SORTS: { value: LibrarySort; label: string; icon: LucideIcon }[] = [

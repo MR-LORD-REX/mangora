@@ -115,9 +115,10 @@ camera and native scroll owner remain co-located.
 
 The `components/reader` compatibility tree has been removed, and reader-owned
 helpers now live beside their consumers under `components/page`, `domain` and
-`domain/navigation`. The remaining `utils/reader` modules are process-wide
-identity, page-loading and image-header contracts shared with downloads; they
-belong in core/shared APIs rather than in the reader feature.
+`domain/navigation`. The former `utils/reader` modules now have stable shared
+homes: canonical identity and page resolution are under
+`@core/catalog/readerIdentity` and `@core/catalog/loadChapterPages`, while the
+process-wide image-header registry is `@shared/net/imageHeaders`.
 
 The required release gate is
 [`docs/qa/reader-device-smoke.md`](../../../docs/qa/reader-device-smoke.md).

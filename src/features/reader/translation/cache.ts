@@ -14,7 +14,7 @@ import {
   translationPageKey,
 } from "@/services/db/repositories/translationRepository";
 
-import type { ReaderIdentity } from "@/utils/reader/readerIdentity";
+import type { ReaderIdentity } from "@core/catalog/readerIdentity";
 
 import type { OcrBubbleRecord, OcrPageRecord } from "./types";
 

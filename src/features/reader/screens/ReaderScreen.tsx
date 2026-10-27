@@ -26,7 +26,7 @@ import ReaderPageRenderer from "../blocks/ReaderPageRenderer";
 import { resolveTapZoneAction } from "../domain/navigation/tapZones";
 import { clearTranslationCacheForManga } from "@/services/db/repositories/translationRepository";
 import { updateSettings } from "@core/settings";
-import { imageHeadersForPage } from "@/utils/reader/imageHeaders";
+import { imageHeadersForPage } from "@shared/net/imageHeaders";
 import { buildPageOffsets } from "../domain/layout/pageOffsets";
 import { readerBackgroundColor } from "../domain/readerBackground";
 import { chromeToSettingsPatch } from "../domain/readerChromeSettings";

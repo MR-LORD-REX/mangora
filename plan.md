@@ -238,6 +238,13 @@ existing import cycle.
   detail/chapter screens, chapter grouping and filters, download selection,
   loading hooks and provider adapters. The legacy `components/manga` tree is
   removed and the feature has a README plus four focused domain tests.
+- Completed the shared extension identity/page ownership batch:
+  `imageHeaders.ts` moved to `@shared/net/imageHeaders`,
+  `readerIdentity.ts` and `loadChapterPages.ts` moved to `@core/catalog`, and
+  `providerLabel.ts` moved behind `@features/extensions`. `ProviderId` now has
+  a core-owned type module. The legacy `utils/reader` folder and
+  `utils/providerLabel.ts` are removed, and library's filter sheet now uses the
+  extension public API rather than a deep registry import.
 - Completed the `settings` split: persisted schema/store/backup/usage live in
   `@core/settings`, while routes, section UI and `useAppSettings` live behind
   `@features/settings`. The settings hook now uses `useSyncExternalStore`.
@@ -262,8 +269,8 @@ independent LTR/RTL direction). Legacy reading-mode values are mapped at the
 migration boundary. Geometry, display-item construction and tap-zone
 resolution live under `src/features/reader/domain/`, with focused
 tests for each contract. The `components/reader` compatibility tree has
-been removed; the remaining `utils/reader` modules are live shared/domain code
-and move with their owning slices.
+been removed; the former `utils/reader` modules now live in shared/core, with
+the reader-owned helpers beside their consumers.
 `ReaderSessionProvider` now owns active page, chrome visibility, chrome
 settings and loading state, and the reader route consumes it. The strip camera
 cut is now in `src/features/reader/views/strip/stripCamera.ts`, with the
@@ -489,9 +496,8 @@ actions work in both views.
 - Zoom-out is enabled by default (`disableZoomOut: false`) to the 0.4x page
   floor; the user can disable it in Reader Config.
 
-The `components/reader` shims are gone. The remaining `utils/reader` modules
-stay in place until this contract has pure-domain tests and an on-device pass.
-The route is not rewritten first.
+The `components/reader` shims are gone, and the former `utils/reader` modules
+now live in shared/core. The route is not rewritten first.
 
 ## 3. Target folder structure
 
@@ -860,14 +866,14 @@ The remaining legacy inventory is intentionally small:
 | --- | --- | --- | --- |
 | `components/onboarding/**` | `src/features/onboarding/**` | First-launch guide workflow, exit confirmation, visibility rules and guide data. | Done: `@features/onboarding` public API; library imports only the overlay. |
 | `components/translation/PretranslateDialog.tsx` | `src/features/translation/components/PretranslateDialog.tsx` | Chapter pre-translate setup and queue handoff. | Done: manga passes the source-language options; translation owns the dialog and imports only its own engine/job modules. |
-| `utils/providerLabel.ts` | `src/features/extensions/domain/providerLabel.ts` | Resolves an extension display name; it is not a generic utility. | Export through `@features/extensions`; downloads and library use the public API. |
+| `utils/providerLabel.ts` | `src/features/extensions/domain/providerLabel.ts` | Resolves an extension display name; it is not a generic utility. | Done: exported through `@features/extensions`; downloads and library use the public API. |
 | `utils/reader/borderCrop.ts` | `src/features/reader/components/page/borderCrop.ts` | Used only by reader page image surfaces. | Done: reader page renderer imports the local module. |
 | `utils/reader/chapterLabel.ts` | `src/features/reader/domain/navigation/chapterLabel.ts` | Reader-only chapter title/navigation labels. | Done: reader navigation and chrome hooks import it locally. |
 | `utils/reader/readerBackground.ts` | `src/features/reader/domain/readerBackground.ts` | Reader presentation policy. | Done: reader screen imports the local domain module. |
 | `utils/reader/readerChromeSettings.ts` | `src/features/reader/domain/readerChromeSettings.ts` | Maps reader chrome state to persisted settings. | Done: screen and settings bridge import the local domain module. |
-| `utils/reader/readerIdentity.ts` | `src/core/catalog/readerIdentity.ts` | Canonical provider/chapter identity shared by reader and downloads. | Move the `ProviderId` type use behind `@core/catalog` first so it does not import legacy DB paths. |
-| `utils/reader/loadChapterPages.ts` | `src/core/catalog/loadChapterPages.ts` | Extension page loading shared by reader and downloads; not reader presentation. | Depends on image-header registration; resolve the header registry placement in the same batch. |
-| `utils/reader/imageHeaders.ts` | `src/shared/net/imageHeaders.ts` | Process-wide extension image-header registry used by shared UI, reader, downloads, manga and extensions. | Must not go to `core`: `src/shared/ui/navigation/MediaCards.tsx` consumes it and `shared -> core` is forbidden. Prefer `shared`; alternatively add a neutral shared image-source contract and keep the registry in core. |
+| `utils/reader/readerIdentity.ts` | `src/core/catalog/readerIdentity.ts` | Canonical provider/chapter identity shared by reader and downloads. | Done: `ProviderId` now lives in `@core/catalog/providerId`; reader and downloads import the core identity module. |
+| `utils/reader/loadChapterPages.ts` | `src/core/catalog/loadChapterPages.ts` | Extension page loading shared by reader and downloads; not reader presentation. | Done: reader and downloads import the core page loader; it uses the shared image-header registry. |
+| `utils/reader/imageHeaders.ts` | `src/shared/net/imageHeaders.ts` | Process-wide extension image-header registry used by shared UI, reader, downloads, manga and extensions. | Done: moved to shared, so `MediaCards` can consume it without a `shared -> core` dependency. |
 | `services/db/**` | `src/core/db/**` | Persistence and repositories are core data infrastructure. | Move as one batch; update `drizzle.config.ts` `schema`/`out`, generated migration imports and every `@/services/db/...` caller. Verify the bundled migration map before build. |
 | `services/images/**` | `src/core/images/**` | AVIF transcoding and image validation are core image infrastructure. | Update vision, downloads, reader and any test imports in the same batch. |
 | `services/net/**` | `src/core/net/**` | Cookie-aware fetch policy is core networking. | Update vision and download storage imports. |
@@ -878,10 +884,9 @@ The remaining legacy inventory is intentionally small:
 | `services/updates/index.ts` | `src/features/updates/services/updater.ts` | Orchestrates check/download/verify/install for the About surface. | Native install bridge moves to `src/platform/native/`; extension installer consumes only that bridge. |
 | `services/updates/native.ts` | `src/platform/native/updater.ts` | Typed bridge to `MangoraDownloader` installer/hash calls. | Update extension installer and updates service imports; platform must not import features. |
 
-Recommended execution order: reader-only utilities, identity/page-loading,
-`services/db`, images/net/notifications, then deeplink/updates. Keep
-`imageHeaders` until its shared boundary is chosen; moving it to `core` as-is
-will fail `check:arch`.
+Recommended execution order: `services/db`, images/net/notifications, then
+deeplink/updates. The identity/page-loading and image-header batch is complete;
+`utils/reader` and `utils/providerLabel.ts` have been removed.
 
 ## 7. Validation checklist
 

@@ -4,7 +4,7 @@ import {
   getChapterDownloadInfo,
 } from "@/services/db/repositories/catalogRepository";
 import { prepareReaderOpen } from "@features/library";
-import { resolveReaderIdentity } from "@/utils/reader/readerIdentity";
+import { resolveReaderIdentity } from "@core/catalog/readerIdentity";
 import { chapterTitleFromId } from "../domain/navigation/chapterLabel";
 export { chapterNavigationFlipped } from "../domain/navigation/chapterDirection";
 

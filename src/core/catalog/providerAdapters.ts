@@ -9,12 +9,12 @@
 import { getExtensionManga } from "@platform/extensions";
 import type { NativeMangaDetails } from "@platform/extensions/types";
 import type {
-  ProviderId,
   TrackedChapterInput,
   TrackedMangaInput,
 } from "@/services/db/repositories/catalogRepository";
+import type { ProviderId } from "./providerId";
 
-export type { ProviderId } from "@/services/db/repositories/catalogRepository";
+export type { ProviderId } from "./providerId";
 
 export interface ProviderCatalogSnapshot {
   manga: TrackedMangaInput;

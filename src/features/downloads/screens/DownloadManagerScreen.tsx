@@ -22,7 +22,7 @@ import { getFolderState, removeMangaFolder } from "../storage/storage";
 import { deleteDownloadsForManga } from "@/services/db/repositories/downloadRepository";
 import type { Download } from "@/services/db/schema";
 import { formatBytes } from "@core/settings/storageUsage";
-import { imageSourceForUrl } from "@/utils/reader/imageHeaders";
+import { imageSourceForUrl } from "@shared/net/imageHeaders";
 
 type DownloadRow = Download;
 

@@ -18,7 +18,7 @@ import {
     listHistory,
     type ReaderParamsSnapshot,
 } from "@/services/db/repositories/historyRepository";
-import { imageSourceForUrl } from "@/utils/reader/imageHeaders";
+import { imageSourceForUrl } from "@shared/net/imageHeaders";
 
 type HistoryEntry = Awaited<ReturnType<typeof listHistory>>[number];
 

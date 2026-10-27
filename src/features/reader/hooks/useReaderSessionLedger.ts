@@ -10,7 +10,7 @@ import {
   markChapterGroupCompleted,
   updateProgress,
 } from "@/services/db/repositories/progressRepository";
-import type { ReaderIdentity } from "@/utils/reader/readerIdentity";
+import type { ReaderIdentity } from "@core/catalog/readerIdentity";
 
 interface ReaderRecord {
   chapterId: string;

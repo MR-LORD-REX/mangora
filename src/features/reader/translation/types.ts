@@ -25,7 +25,7 @@ import type {
   OcrTextItem,
 } from "@features/vision";
 
-import type { ReaderIdentity } from "@/utils/reader/readerIdentity";
+import type { ReaderIdentity } from "@core/catalog/readerIdentity";
 
 export interface OcrBubbleRecord {
   id: number;

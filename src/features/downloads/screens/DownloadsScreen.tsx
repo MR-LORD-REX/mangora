@@ -29,8 +29,8 @@ import {
 
 import { formatBytes } from "@core/settings/storageUsage";
 import { openMangaInfo } from "@composition/navigation/manga";
-import { imageSourceForUrl } from "@/utils/reader/imageHeaders";
-import { providerLabel } from "@/utils/providerLabel";
+import { imageSourceForUrl } from "@shared/net/imageHeaders";
+import { providerLabel } from "@features/extensions";
 
 
 export default function DownloadManagerScreen() {

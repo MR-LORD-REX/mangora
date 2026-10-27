@@ -11,8 +11,10 @@ concrete sibling modules to keep the facade out of internal cycles.
 - `app/(tabs)/browse.tsx` and `app/extensions/source/[sourceId].tsx` are thin
   route adapters. Navigation is injected as a callback from the route layer.
 - Shared media cards resolve registered image headers through
-  `utils/reader/imageHeaders`; do not replace them with bare URIs for extension
+  `@shared/net/imageHeaders`; do not replace them with bare URIs for extension
   covers.
+- `domain/providerLabel.ts` is exported through this feature's public entry
+  point for library and downloads labels.
 
 ## Layout
 

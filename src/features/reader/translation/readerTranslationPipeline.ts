@@ -30,7 +30,7 @@ import {
 import { WorkQueue } from "@shared/async/workQueue";
 import { languageLabel } from "@features/reader/components/panels/readerLanguages";
 
-import type { ReaderIdentity } from "@/utils/reader/readerIdentity";
+import type { ReaderIdentity } from "@core/catalog/readerIdentity";
 
 import {
   bubblesFromCachedRegions,

@@ -2,13 +2,13 @@
  * chapterPages.ts
  * ---------------------------------------------------------------------------
  * Resolves the page image urls for one chapter/gallery by reusing the shared
- * reader dispatch (utils/reader/loadChapterPages.ts). The downloader never
+ * core chapter dispatch (@core/catalog/loadChapterPages). The downloader never
  * duplicates provider parsing.
  * ---------------------------------------------------------------------------
  */
 
 import { encodeProviderParam } from "../catalog/identity";
-import { loadChapterPages } from "@/utils/reader/loadChapterPages";
+import { loadChapterPages } from "@core/catalog/loadChapterPages";
 
 
 /**

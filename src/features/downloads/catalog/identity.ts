@@ -7,7 +7,7 @@
  */
 
 import { canonicalId } from "@core/catalog/identity";
-import { resolveReaderIdentity } from "@/utils/reader/readerIdentity";
+import { resolveReaderIdentity } from "@core/catalog/readerIdentity";
 
 export interface DownloadCandidate {
   target: DownloadTarget;

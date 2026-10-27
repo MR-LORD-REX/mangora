@@ -3,8 +3,8 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { LibraryCard as LibraryCardRow } from "@/services/db/repositories/libraryRepository";
 import { colors, radius } from "@shared/theme";
-import { imageSourceForUrl } from "@/utils/reader/imageHeaders";
-import { providerLabel } from "@/utils/providerLabel";
+import { imageSourceForUrl } from "@shared/net/imageHeaders";
+import { providerLabel } from "@features/extensions";
 
 interface LibraryCardProps {
   item: LibraryCardRow;

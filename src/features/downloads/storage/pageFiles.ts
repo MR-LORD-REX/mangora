@@ -19,7 +19,7 @@ import { isDecodableImageUri } from "@/services/images/decode";
 import {
   extensionPageUrlFor,
   imageHeadersForPage,
-} from "@/utils/reader/imageHeaders";
+} from "@shared/net/imageHeaders";
 import { pageExtension, providerSegment, safeSegment, shortHash } from "@core/storage/naming";
 import { downloaderCacheRoot } from "../adapters/nativeDownloader";
 

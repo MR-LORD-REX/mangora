@@ -6,8 +6,8 @@ import {
   type DownloadedPageSession,
 } from "@features/downloads";
 
-import type { ReaderIdentity } from "@/utils/reader/readerIdentity";
-import { loadChapterPages } from "@/utils/reader/loadChapterPages";
+import type { ReaderIdentity } from "@core/catalog/readerIdentity";
+import { loadChapterPages } from "@core/catalog/loadChapterPages";
 
 export interface ReaderChapterPagesOptions {
   source: string;
