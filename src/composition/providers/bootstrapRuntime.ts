@@ -4,6 +4,7 @@
  */
 
 import { initializeDatabase } from "@core/db/bootstrap";
+import { notifyDownloadsFinished } from "@core/platform/notifications";
 import {
   clearAbandonedDownloadedPageSessions,
   initDownloadScheduler,
@@ -25,7 +26,9 @@ export async function startAppRuntime(): Promise<void> {
     clearAbandonedOcrPageSources(),
     removeLegacyReaderPageCache(),
   ]);
-  await initDownloadScheduler().catch((error) => {
+  await initDownloadScheduler({
+    finished: notifyDownloadsFinished,
+  }).catch((error) => {
     console.warn("Download queue failed to start:", error);
   });
 }

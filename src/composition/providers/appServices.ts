@@ -5,7 +5,7 @@ import {
   initializeNotifications,
   translationNotificationCommands,
   translationNotifications,
-} from "@/services/notifications/notifications";
+} from "@core/platform/notifications";
 import type { AppServices } from "@shared/contracts";
 
 /** Stable service identities for the root provider. Hot state stays external. */

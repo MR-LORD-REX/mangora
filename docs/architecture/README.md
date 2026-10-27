@@ -101,6 +101,9 @@ point; the corresponding legacy service/component trees are removed.
 Translation consumes downloads and notifications only through shared ports.
 The composition root wires the adapters and starts the queue after notification
 initialization, so there is no notification -> translation -> downloader cycle.
+The download queue likewise receives its completion notifier through
+`DownloadNotificationPort`; `@features/downloads` never imports the
+expo-notifications adapter.
 
 `downloads` is also complete. It owns the catalog, queue, archive/page storage,
 metadata recovery, offline browsing, reader page sessions and download UI. The

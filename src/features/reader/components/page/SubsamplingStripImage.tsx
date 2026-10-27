@@ -30,7 +30,7 @@ import {
 
 import { ensureDecodablePageUri } from "@features/vision";
 import { fetchExtensionPageImage } from "@platform/extensions";
-import { isAvifUri } from "@/services/images/avif";
+import { isAvifUri } from "@core/images/avif";
 import { extensionPageUrlFor } from "@shared/net/imageHeaders";
 import {
   detectBorderCrop,

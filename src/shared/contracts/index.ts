@@ -15,6 +15,7 @@ export type {
   TranslationNotificationHandler,
   TranslationNotificationPort,
 } from "./translationNotificationPort";
+export type { DownloadNotificationPort } from "./downloadNotificationPort";
 export type { TranslationEngine } from "./translationEngine";
 export type { BubbleMask } from "./bubbleMask";
 export type {

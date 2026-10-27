@@ -13,9 +13,9 @@
 
 import { Directory, File } from "expo-file-system";
 
-import { downloadToFile } from "@/services/net/browserFetch";
+import { downloadToFile } from "@core/net/browserFetch";
 import { fetchExtensionPageImage } from "@platform/extensions";
-import { isDecodableImageUri } from "@/services/images/decode";
+import { isDecodableImageUri } from "@core/images/decode";
 import {
   extensionPageUrlFor,
   imageHeadersForPage,

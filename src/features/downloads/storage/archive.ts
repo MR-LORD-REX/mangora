@@ -11,7 +11,7 @@
 
 import { Directory, File } from "expo-file-system";
 
-import { assertDecodableImageUri } from "@/services/images/decode";
+import { assertDecodableImageUri } from "@core/images/decode";
 import { hasNativeDownloader } from "../adapters/nativeDownloader";
 import { extractSafArchivePages, readSafDocumentToFile } from "@core/storage/saf";
 

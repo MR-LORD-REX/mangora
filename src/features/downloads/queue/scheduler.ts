@@ -28,8 +28,8 @@ import {
   type DownloadRecordInput,
 } from "@core/db/repositories/downloadRepository";
 import { getSettings, subscribeSettings } from "@core/settings";
-import { notifyDownloadsFinished } from "@/services/notifications/notifications";
-import { assertDecodableImageUri } from "@/services/images/decode";
+import type { DownloadNotificationPort } from "@shared/contracts";
+import { assertDecodableImageUri } from "@core/images/decode";
 import { snapshotDownloadMetadata } from "../metadata/metadata";
 import { resolveChapterPageUrls } from "./chapterPages";
 import { validateArchiveFile, validateSafArchive } from "../storage/archive";
@@ -99,6 +99,7 @@ let pumping = false;
 let notificationVisible = false;
 let pausedAll = false;
 let completedSinceIdle = 0;
+let downloadNotifications: DownloadNotificationPort | null = null;
 const metadataSyncedThisSession = new Set<string>();
 
 function snapshot(): DownloadSnapshot {
@@ -279,7 +280,7 @@ async function pump(): Promise<void> {
       if (completedSinceIdle > 0) {
         const finished = completedSinceIdle;
         completedSinceIdle = 0;
-        void notifyDownloadsFinished(finished);
+        void downloadNotifications?.finished(finished);
       }
     }
     syncNotification();
@@ -603,7 +604,10 @@ async function loadSettings(): Promise<void> {
  * Starts the queue: restores persisted jobs, resumes interrupted downloads and
  * subscribes to settings/AppState changes. Safe to call more than once.
  */
-export async function initDownloadScheduler(): Promise<void> {
+export async function initDownloadScheduler(
+  notifications?: DownloadNotificationPort,
+): Promise<void> {
+  if (notifications) downloadNotifications = notifications;
   if (initialized) return;
   initialized = true;
   await loadSettings();

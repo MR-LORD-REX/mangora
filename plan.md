@@ -238,6 +238,10 @@ existing import cycle.
   detail/chapter screens, chapter grouping and filters, download selection,
   loading hooks and provider adapters. The legacy `components/manga` tree is
   removed and the feature has a README plus four focused domain tests.
+- Completed the images/net/notifications ownership batch: AVIF/image validation
+  moved to `@core/images`, cookie-aware fetching to `@core/net`, and the
+  expo-notifications adapter to `@core/platform`. Downloads now receives a
+  `DownloadNotificationPort` from composition instead of importing the adapter.
 - Completed the database ownership batch: schema, client, bootstrap, backup,
   repositories and bundled migration assets moved from `services/db/**` to
   `src/core/db/**`; `drizzle.config.ts` and every consumer now use `@core/db`.
@@ -847,8 +851,8 @@ shrink each phase and be deleted at the end of Phase 3.
 | `services/translation/pretranslateQueue.ts`      | `features/translation/jobs/pretranslateQueue.ts`         | 2 (done) |
 | `services/db/**`                                 | `src/core/db/**`                                         | 2 (done) |
 | `services/settings/settingsStore.ts`             | `src/core/settings/settingsStore.ts`                     | 2        |
-| `services/images/**`                             | `src/core/images/**`                                     | 2        |
-| `services/net/**`                                | `src/core/net/**`                                        | 2        |
+| `services/images/**`                             | `src/core/images/**`                                     | 2 (done) |
+| `services/net/**`                                | `src/core/net/**`                                        | 2 (done) |
 | `components/common/Dialogs.tsx`                  | `src/shared/ui/overlays/`                                | 1        |
 | `components/common/AppHeader.tsx`                | `src/shared/ui/layout/`                                  | 1        |
 | `components/common/MenuSheet.tsx`                | `src/shared/ui/overlays/`                                | 1        |
@@ -879,19 +883,18 @@ The remaining legacy inventory is intentionally small:
 | `utils/reader/loadChapterPages.ts` | `src/core/catalog/loadChapterPages.ts` | Extension page loading shared by reader and downloads; not reader presentation. | Done: reader and downloads import the core page loader; it uses the shared image-header registry. |
 | `utils/reader/imageHeaders.ts` | `src/shared/net/imageHeaders.ts` | Process-wide extension image-header registry used by shared UI, reader, downloads, manga and extensions. | Done: moved to shared, so `MediaCards` can consume it without a `shared -> core` dependency. |
 | `services/db/**` | `src/core/db/**` | Persistence and repositories are core data infrastructure. | Done: moved with schema, client, bootstrap, backup, repositories and migration assets; `drizzle.config.ts` and all callers use `@core/db`. |
-| `services/images/**` | `src/core/images/**` | AVIF transcoding and image validation are core image infrastructure. | Update vision, downloads, reader and any test imports in the same batch. |
-| `services/net/**` | `src/core/net/**` | Cookie-aware fetch policy is core networking. | Update vision and download storage imports. |
-| `services/notifications/notifications.ts` | `src/core/platform/notifications.ts` | Platform notification policy behind shared ports. | Composition may import core; downloads must keep using the notification port, not the implementation. |
+| `services/images/**` | `src/core/images/**` | AVIF transcoding and image validation are core image infrastructure. | Done: vision, downloads and the reader use `@core/images`; folder removed. |
+| `services/net/**` | `src/core/net/**` | Cookie-aware fetch policy is core networking. | Done: vision and download storage use `@core/net`; folder removed. |
+| `services/notifications/notifications.ts` | `src/core/platform/notifications.ts` | Platform notification policy behind shared ports. | Done: composition owns the adapter and injects `DownloadNotificationPort`; downloads no longer imports the implementation. |
 | `services/reader/legacyCacheCleanup.ts` | `src/core/storage/legacyReaderCacheCleanup.ts` | One-time storage cleanup, executed during bootstrap. | Composition calls it at startup; no UI ownership. |
 | `services/deeplink/index.ts` | `src/shared/links/mangaLinks.ts` for URL builders; share-sheet side effects via composition/platform adapter | The share catalogue is consumed by manga and extension terms; site origin is also needed by updates. | Resolve the `isMatureProvider` dependency first so shared code does not import the extension registry directly. |
 | `services/updates/github.ts` | `src/features/updates/data/github.ts` | Release discovery and version comparison for the updater UI. | Create `@features/updates`; settings imports only the public entry point. |
 | `services/updates/index.ts` | `src/features/updates/services/updater.ts` | Orchestrates check/download/verify/install for the About surface. | Native install bridge moves to `src/platform/native/`; extension installer consumes only that bridge. |
 | `services/updates/native.ts` | `src/platform/native/updater.ts` | Typed bridge to `MangoraDownloader` installer/hash calls. | Update extension installer and updates service imports; platform must not import features. |
 
-Recommended execution order: images/net/notifications, then deeplink/updates.
-The identity/page-loading, image-header and database ownership batches are
-complete; `utils/reader`, `utils/providerLabel.ts` and `services/db` have been
-removed.
+Recommended execution order: deeplink/updates. The identity/page-loading,
+image-header, database and images/net/notifications ownership batches are
+complete; their legacy `utils/` and `services/` paths have been removed.
 
 ## 7. Validation checklist
 

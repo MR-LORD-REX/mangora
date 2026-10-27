@@ -13,9 +13,9 @@
 import { Directory, File, Paths } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 
-import { downloadToFile } from "@/services/net/browserFetch";
+import { downloadToFile } from "@core/net/browserFetch";
 import { fetchExtensionPageImage } from "@platform/extensions";
-import { isAvifUri, transcodeAvifToPng } from "@/services/images/avif";
+import { isAvifUri, transcodeAvifToPng } from "@core/images/avif";
 
 
 /** A YOLO text-region box in natural page pixels. */
