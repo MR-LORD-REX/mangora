@@ -46,3 +46,52 @@ test("rotation disables splitting so one rotated row remains", () => {
   assert.equal(items.length, 1);
   assert.equal(items[0]?.half, null);
 });
+
+test("measured tall portrait pages become slices with one logical page", () => {
+  const items = buildReaderDisplayItems(
+    ["tall"],
+    { tall: { width: 600, height: 2400 } },
+    {
+      splitWidePages: false,
+      rotateWidePagesToFit: false,
+      pagedDirection: "ltr",
+      sliceTallPages: true,
+      viewportHeight: 800,
+      imageScaleType: "fitScreen",
+      sidePadding: 0,
+      body: { width: 400, height: 800 },
+    },
+  );
+
+  assert.equal(items.length, 2);
+  assert.deepEqual(
+    items.map((item) => [item.key, item.pageIndex, item.slice?.index, item.gapAfter]),
+    [
+      ["0:slice:0:tall", 0, 0, false],
+      ["0:slice:1:tall", 0, 1, true],
+    ],
+  );
+});
+
+test("unmeasured and wide pages remain unsliced", () => {
+  const items = buildReaderDisplayItems(
+    ["unknown", "spread"],
+    { spread: { width: 1600, height: 900 } },
+    {
+      splitWidePages: false,
+      rotateWidePagesToFit: false,
+      pagedDirection: "ltr",
+      sliceTallPages: true,
+      viewportHeight: 800,
+      body: { width: 400, height: 800 },
+    },
+  );
+
+  assert.deepEqual(
+    items.map((item) => [item.key, item.slice]),
+    [
+      ["0:full:unknown", null],
+      ["1:full:spread", null],
+    ],
+  );
+});

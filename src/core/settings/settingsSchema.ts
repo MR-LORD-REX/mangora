@@ -14,9 +14,6 @@ export type ReaderTranslationMode = "off" | "single" | "auto";
 export type ReaderReadingMode =
   | "webtoon"
   | "continuousVertical"
-  | "scrollVertical"
-  | "scrollHorizontal"
-  | "pagedVertical"
   | "pagedHorizontal";
 
 export type ReaderPagedDirection = "ltr" | "rtl";
@@ -231,11 +228,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
 const READING_MODES: ReaderReadingMode[] = [
   "webtoon",
   "continuousVertical",
-  "scrollVertical",
-  "scrollHorizontal",
-  "pagedVertical",
   "pagedHorizontal",
 ];
+const LEGACY_READING_MODES: Record<string, ReaderReadingMode> = {
+  scrollVertical: "webtoon",
+  scrollHorizontal: "pagedHorizontal",
+  pagedVertical: "pagedHorizontal",
+};
 const ORIENTATIONS: ReaderOrientation[] = [
   "default",
   "free",
@@ -331,7 +330,9 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     ocrLookahead: Math.round(num(value.ocrLookahead, 2, 1, 5)),
     aiMaxContextPages: Math.round(num(value.aiMaxContextPages, 10, 1, 50)),
     readerAutoModelSwitch: bool(value.readerAutoModelSwitch, false),
-    readerReadingMode: oneOf(value.readerReadingMode, READING_MODES, "webtoon"),
+    readerReadingMode:
+      LEGACY_READING_MODES[String(value.readerReadingMode)] ??
+      oneOf(value.readerReadingMode, READING_MODES, "webtoon"),
     readerPagedDirection:
       value.readerPagedDirection === "rtl" ? "rtl" : "ltr",
     readerOrientation: oneOf(value.readerOrientation, ORIENTATIONS, "default"),

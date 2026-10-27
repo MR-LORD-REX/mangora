@@ -1,9 +1,7 @@
 /**
  * ReaderReadingModeSheet.tsx
  * ---------------------------------------------------------------------------
- * Mihon-style reading-mode picker: five icon rows, staged locally and
- * committed with Apply. LTR and RTL are separate entries even though both
- * use the horizontal pager.
+ * Reading-mode picker with three rows and a paged-direction selector.
  * ---------------------------------------------------------------------------
  */
 
@@ -53,18 +51,11 @@ export default function ReaderReadingModeSheet({
         showsVerticalScrollIndicator={false}
       >
         {READING_MODE_OPTIONS.map((option) => {
-          const direction = option.direction ?? pagedDirection;
-          const selected =
-            value === option.key &&
-            (option.key !== "pagedHorizontal" ||
-              pagedDirection === direction);
+          const selected = value === option.key;
           return (
             <Pressable
               key={option.id}
-              onPress={() => {
-                onSelect(option.key);
-                if (option.direction) onSelectDirection(option.direction);
-              }}
+              onPress={() => onSelect(option.key)}
               style={[styles.modeRow, selected && styles.modeRowSelected]}
             >
               <View
@@ -74,7 +65,13 @@ export default function ReaderReadingModeSheet({
                 ]}
               >
                 <ReaderModeIcon
-                  id={option.id as "ltr" | "rtl" | "vertical" | "webtoon" | "continuous"}
+                  id={
+                    option.key === "pagedHorizontal"
+                      ? pagedDirection
+                      : option.key === "continuousVertical"
+                        ? "continuous"
+                        : "webtoon"
+                  }
                   size={24}
                   color={selected ? READER_ON_ACCENT : "#e5e7eb"}
                 />
@@ -99,6 +96,26 @@ export default function ReaderReadingModeSheet({
           );
         })}
       </ScrollView>
+
+      {value === "pagedHorizontal" ? (
+        <View style={styles.directionRow}>
+          <Text style={styles.directionLabel}>Page direction</Text>
+          {(["ltr", "rtl"] as const).map((direction) => (
+            <Pressable
+              key={direction}
+              onPress={() => onSelectDirection(direction)}
+              style={[
+                styles.directionPill,
+                pagedDirection === direction && styles.directionPillSelected,
+              ]}
+            >
+              <Text style={styles.directionPillText}>
+                {direction === "ltr" ? "Left to right" : "Right to left"}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
 
       <View style={styles.sheetFooter}>
         <Pressable style={styles.sheetSecondaryBtn} onPress={onRevert}>
@@ -176,6 +193,25 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
   },
+  directionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  directionLabel: { color: "#e5e7eb", fontSize: 12, marginRight: "auto" },
+  directionPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: READER_PILL_BORDER,
+  },
+  directionPillSelected: {
+    borderColor: READER_ACCENT,
+    backgroundColor: "rgba(251,191,36,0.10)",
+  },
+  directionPillText: { color: "#f1f5f9", fontSize: 11, fontWeight: "600" },
   sheetFooter: {
     flexDirection: "row",
     justifyContent: "space-between",

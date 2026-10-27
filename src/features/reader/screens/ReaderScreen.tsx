@@ -324,10 +324,19 @@ export default function ReaderScreen({
         splitWidePages: chrome.splitWidePages,
         rotateWidePagesToFit: chrome.rotateWidePagesToFit,
         pagedDirection: chrome.pagedDirection,
+        sliceTallPages: isPagedMode(chrome.readingMode),
+        viewportHeight: bodySize.height,
+        imageScaleType: chrome.imageScaleType,
+        sidePadding: chrome.sidePadding,
+        body: bodySize,
       }),
     [
+      bodySize,
       chrome.pagedDirection,
+      chrome.imageScaleType,
+      chrome.readingMode,
       chrome.rotateWidePagesToFit,
+      chrome.sidePadding,
       chrome.splitWidePages,
       pageDims,
       pages,
@@ -346,12 +355,23 @@ export default function ReaderScreen({
     return first;
   }, [displayItems, pages.length]);
 
-  // A split can change the row count after the first image measurement.
-  // Keep the visible source page selected while moving to its first half.
+  // A split or slice can change the row count after the first image
+  // measurement. Keep the visible source page selected while preserving the
+  // current slice when possible.
   useEffect(() => {
     const item = displayItems[currentDisplayIndex];
     if (item && item.pageIndex === currentPageIndex) return;
-    const next = firstDisplayIndexByPage[currentPageIndex] ?? 0;
+    const previous = displayItemsRef.current[currentDisplayIndex];
+    const sliceIndex = previous?.slice?.index ?? 0;
+    const sameSlice = displayItems.findIndex(
+      (candidate) =>
+        candidate.pageIndex === currentPageIndex &&
+        (candidate.slice?.index ?? 0) === sliceIndex,
+    );
+    const next =
+      sameSlice >= 0
+        ? sameSlice
+        : firstDisplayIndexByPage[currentPageIndex] ?? 0;
     lastDisplayIndexRef.current = next;
     setCurrentDisplayIndex(next);
   }, [
@@ -802,6 +822,8 @@ export default function ReaderScreen({
         chrome.imageScaleType,
         chrome.rotateWidePagesToFit,
         item.half,
+        undefined,
+        item.slice,
       );
       const gap = item.gapAfter ? pageGapValue : 0;
       const length = horizontal
@@ -899,8 +921,14 @@ export default function ReaderScreen({
     }
   }, [setCurrentPageIndex]);
 
-  const animateScroll = () => {
-    scrollOffset.current += scrollSpeedRef.current;
+  const lastAutoScrollTimeRef = useRef(0);
+  const animateScroll = (time: number) => {
+    const previous = lastAutoScrollTimeRef.current || time;
+    lastAutoScrollTimeRef.current = time;
+    const elapsedSeconds = Math.min(0.05, (time - previous) / 1000);
+    // Mihon's speed slider is expressed in dp/s; 60 px/s keeps the slowest
+    // useful setting readable on a phone and scales linearly from there.
+    scrollOffset.current += 60 * scrollSpeedRef.current * elapsedSeconds;
     scrollToReaderOffset(scrollOffset.current, false);
     requestRef.current = requestAnimationFrame(animateScroll);
   };
@@ -910,6 +938,7 @@ export default function ReaderScreen({
 
   useEffect(() => {
     if (autoScroll && pages.length && !pagedMode) {
+      lastAutoScrollTimeRef.current = 0;
       requestRef.current = requestAnimationFrame(animateScroll);
     } else {
       if (requestRef.current) {
@@ -1175,20 +1204,29 @@ export default function ReaderScreen({
     ],
   );
 
-  // Image measurements can turn a landscape page into two rows after it has
-  // already been displayed. Keep the pager on the same source page instead of
-  // letting inserted halves shift the visible row under the user.
+  // Image measurements can turn a page into two halves or several slices after
+  // it has already been displayed. Keep the pager on the same logical page and
+  // slice instead of letting inserted rows shift the visible row under the
+  // user.
   useEffect(() => {
     const previous = previousDisplayItemsRef.current;
     if (previous === displayItems) return;
     previousDisplayItemsRef.current = displayItems;
     if (!pagedMode || displayItems.length === 0) return;
 
-    const visiblePage =
-      previous[lastDisplayIndexRef.current]?.pageIndex ?? currentPageIndex;
-    const target = displayItems.findIndex(
-      (item) => item.pageIndex === visiblePage,
+    const visibleItem =
+      previous[lastDisplayIndexRef.current] ?? previous[currentDisplayIndex];
+    const visiblePage = visibleItem?.pageIndex ?? currentPageIndex;
+    const visibleSlice = visibleItem?.slice?.index ?? 0;
+    const sameSlice = displayItems.findIndex(
+      (item) =>
+        item.pageIndex === visiblePage &&
+        (item.slice?.index ?? 0) === visibleSlice,
     );
+    const target =
+      sameSlice >= 0
+        ? sameSlice
+        : displayItems.findIndex((item) => item.pageIndex === visiblePage);
     if (target < 0) return;
     lastDisplayIndexRef.current = target;
     setCurrentDisplayIndex(target);
@@ -1197,6 +1235,7 @@ export default function ReaderScreen({
       scrollToReaderIndex(target, false);
     });
   }, [
+    currentDisplayIndex,
     currentPageIndex,
     displayItems,
     pagedMode,
@@ -1512,7 +1551,11 @@ export default function ReaderScreen({
         chrome.imageScaleType,
         chrome.rotateWidePagesToFit,
         item.half,
+        undefined,
+        item.slice,
       )}
+      sourceWidth={pageDims[item.url]?.width}
+      sourceHeight={pageDims[item.url]?.height}
       pageBackground={pageBackground}
       imageHeaders={pageImageHeaders.get(item.url)}
       chrome={chrome}
@@ -1763,7 +1806,7 @@ export default function ReaderScreen({
             maxToRenderPerBatch={4}
             windowSize={5}
             updateCellsBatchingPeriod={60}
-            scrollEnabled={!pagedMode}
+            scrollEnabled
             nestedScrollEnabled
             directionalLockEnabled
             removeClippedSubviews={false}

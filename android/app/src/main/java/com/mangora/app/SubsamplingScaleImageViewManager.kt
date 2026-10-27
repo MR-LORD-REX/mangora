@@ -7,14 +7,14 @@ import com.facebook.react.uimanager.SimpleViewManager
 import com.facebook.react.uimanager.ThemedReactContext
 import com.facebook.react.uimanager.annotations.ReactProp
 
-class SubsamplingScaleImageViewManager : SimpleViewManager<SubsamplingScaleImageView>() {
+class SubsamplingScaleImageViewManager :
+    SimpleViewManager<ReaderTiledImageView>() {
     override fun getName(): String = "SubsamplingScaleImageView"
 
-    override fun createViewInstance(reactContext: ThemedReactContext): SubsamplingScaleImageView =
-        SubsamplingScaleImageView(reactContext).apply {
-            // Zoom/pan belongs to ZoomablePage so translation overlays (RN
-            // siblings) transform with the page. The native view's built-in
-            // gestures would zoom only the bitmap and leave overlays behind.
+    override fun createViewInstance(reactContext: ThemedReactContext): ReaderTiledImageView =
+        ReaderTiledImageView(reactContext).apply {
+            // Zoom/pan belongs to the reader camera so translation overlays
+            // (RN siblings) transform with the page.
             setPanEnabled(false)
             setZoomEnabled(false)
             setQuickScaleEnabled(false)
@@ -24,7 +24,7 @@ class SubsamplingScaleImageViewManager : SimpleViewManager<SubsamplingScaleImage
         }
 
     @ReactProp(name = "src")
-    fun setSource(view: SubsamplingScaleImageView, source: String?) {
+    fun setSource(view: ReaderTiledImageView, source: String?) {
         if (!source.isNullOrBlank()) {
             view.setImage(ImageSource.uri(source))
         }

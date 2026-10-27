@@ -9,13 +9,16 @@ import {
   type ReactNode,
 } from "react";
 import {
-  ScrollView,
   StyleSheet,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import {
+  GestureDetector,
+  Gesture,
+  ScrollView as GestureScrollView,
+} from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
   useAnimatedReaction,
@@ -28,6 +31,7 @@ import { stripWindowForOffset } from "../../domain/layout/stripWindow";
 import {
   clampStripCameraTranslation,
   stripCameraScreenPointToWorld,
+  stripCameraWindowFor,
   stripCameraTranslationForScale,
   stripPageIndexForWorldY,
   type StripCameraMetrics,
@@ -65,10 +69,9 @@ export interface StripReaderProps {
 }
 
 const MAX_CAMERA_SCALE = 4;
-const MIN_CAMERA_SCALE = 1;
-const ZOOM_RESET_THRESHOLD = 1.05;
+const MIN_CAMERA_SCALE = 0.25;
 const TAP_TRAVEL_LIMIT = 12;
-const TAP_STEP_RATIO = 0.75;
+const TAP_STEP_RATIO = 0.9;
 
 function metricsFor(
   scale: number,
@@ -102,10 +105,10 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
     },
     ref,
   ) {
-    const scrollRef = useRef<ScrollView>(null);
+    const scrollRef = useRef<GestureScrollView>(null);
     const lastResetKeyRef = useRef(resetKey);
-    const lastMountedPageRef = useRef(0);
-    const [zoomed, setZoomed] = useState(false);
+    const lastVisibleItemRef = useRef(0);
+    const [cameraAtBase, setCameraAtBase] = useState(true);
     const [windowRange, setWindowRange] = useState(() =>
       stripWindowForOffset(
         offsets,
@@ -133,21 +136,38 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
       viewport.height,
     );
 
-    const workletMetrics = (
-      currentScale: number,
-      currentScrollY: number,
-    ): StripCameraMetrics => {
-      "worklet";
-      return metricsFor(
-        currentScale,
-        currentScrollY,
-        { width: viewportWidth.value, height: viewportHeight.value },
-        contentHeightValue.value,
-      );
-    };
+    const workletMetrics = useCallback(
+      (
+        currentScale: number,
+        currentScrollY: number,
+      ): StripCameraMetrics => {
+        "worklet";
+        return metricsFor(
+          currentScale,
+          currentScrollY,
+          { width: viewportWidth.value, height: viewportHeight.value },
+          contentHeightValue.value,
+        );
+      },
+      [contentHeightValue, viewportHeight, viewportWidth],
+    );
+
+    const onTapRef = useRef(onTap);
+    const onLongPressRef = useRef(onLongPress);
+    useEffect(() => {
+      onTapRef.current = onTap;
+      onLongPressRef.current = onLongPress;
+    }, [onLongPress, onTap]);
+
+    const dispatchTap = useCallback((event: StripTapEvent) => {
+      onTapRef.current(event);
+    }, []);
+    const dispatchLongPress = useCallback((index: number) => {
+      onLongPressRef.current(index);
+    }, []);
 
     const updateWindow = useCallback(
-      (offset: number) => {
+      (offset: number, pageIndex?: number) => {
         const next = stripWindowForOffset(
           offsets,
           items.length,
@@ -159,34 +179,80 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
             ? current
             : next,
         );
-      },
-      [items.length, offsets, viewport.height],
-    );
-
-    const syncPageFromWorldY = useCallback(
-      (pageIndex: number) => {
-        if (items.length === 0) return;
+        if (pageIndex === undefined || items.length === 0) return;
         const index = Math.max(0, Math.min(items.length - 1, pageIndex));
-        if (index === lastMountedPageRef.current) return;
-        lastMountedPageRef.current = index;
-        updateWindow(offsets[index] ?? 0);
+        if (index === lastVisibleItemRef.current) return;
+        lastVisibleItemRef.current = index;
         onScroll(Math.max(0, offsets[index] ?? 0));
       },
-      [items.length, offsets, onScroll, updateWindow],
+      [items.length, offsets, onScroll, viewport.height],
+    );
+
+    const applyCameraWindow = useCallback(
+      (start: number, end: number, pageIndex: number) => {
+        setWindowRange((current) =>
+          current.start === start && current.end === end
+            ? current
+            : (() => {
+                lastVisibleItemRef.current = -1;
+                return { start, end };
+              })(),
+        );
+        if (items.length === 0) return;
+        const index = Math.max(0, Math.min(items.length - 1, pageIndex));
+        if (index === lastVisibleItemRef.current) return;
+        lastVisibleItemRef.current = index;
+        onScroll(Math.max(0, offsets[index] ?? 0));
+      },
+      [items.length, offsets, onScroll],
+    );
+
+    const syncCameraWindow = useCallback(
+      (
+        currentScale: number,
+        currentScrollY: number,
+        translationY: number,
+      ) => {
+        const window = stripCameraWindowFor(
+          offsets,
+          items.length,
+          metricsFor(
+            currentScale,
+            currentScrollY,
+            viewport,
+            contentHeight,
+          ),
+          translationY,
+        );
+        applyCameraWindow(
+          window.start,
+          window.end,
+          stripPageIndexForWorldY(offsets, window.visibleOffset),
+        );
+      },
+      [
+        applyCameraWindow,
+        contentHeight,
+        items.length,
+        offsets,
+        viewport,
+      ],
     );
 
     useEffect(() => {
       viewportWidth.value = viewport.width;
       viewportHeight.value = viewport.height;
       contentHeightValue.value = contentHeight;
-      updateWindow(scrollY.value);
+      syncCameraWindow(scale.value, scrollY.value, translateY.value);
       // Viewport metrics are shared values; scrollY is read only for the
       // current window after a resize and must not retrigger this effect.
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
       contentHeight,
       contentHeightValue,
-      updateWindow,
+      scale,
+      syncCameraWindow,
+      translateY,
       viewport.height,
       viewport.width,
       viewportHeight,
@@ -200,7 +266,7 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
       translateY.value = 0;
       panStartX.value = 0;
       panStartY.value = 0;
-      setZoomed(false);
+      setCameraAtBase(true);
     }, [
       panStartX,
       panStartY,
@@ -211,39 +277,60 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
     ]);
 
     const scrollToOffset = useCallback(
-      (nextOffset: number, animated: boolean) => {
+      (nextOffset: number, animated: boolean, keepCamera = true) => {
         const target = Math.max(0, nextOffset);
         scrollY.value = target;
-        resetCamera();
-        updateWindow(target);
-        lastMountedPageRef.current = stripPageIndexForWorldY(offsets, target);
+        if (!keepCamera) resetCamera();
+        const bounded = clampStripCameraTranslation(
+          metricsFor(scale.value, target, viewport, contentHeight),
+          translateX.value,
+          translateY.value,
+        );
+        translateX.value = bounded.x;
+        translateY.value = bounded.y;
+        syncCameraWindow(scale.value, target, bounded.y);
         scrollRef.current?.scrollTo({ y: target, animated });
       },
-      [offsets, resetCamera, scrollY, updateWindow],
+      [
+        contentHeight,
+        resetCamera,
+        scale,
+        scrollY,
+        syncCameraWindow,
+        translateX,
+        translateY,
+        viewport,
+      ],
     );
 
     useEffect(() => {
       if (lastResetKeyRef.current === resetKey) return;
       lastResetKeyRef.current = resetKey;
-      scrollToOffset(0, false);
+      scrollToOffset(0, false, false);
     }, [resetKey, scrollToOffset]);
 
     useEffect(() => {
-      updateWindow(scrollY.value);
+      syncCameraWindow(scale.value, scrollY.value, translateY.value);
       // See above: the window follows the current offset, not a scroll event.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [items.length, offsets, updateWindow, viewport.height]);
+    }, [
+      items.length,
+      offsets,
+      scale,
+      syncCameraWindow,
+      translateY,
+      viewport.height,
+    ]);
 
     const handleScroll = useCallback(
       (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-        if (scale.value > MIN_CAMERA_SCALE) return;
+        if (scale.value !== 1) return;
         const offset = Math.max(0, event.nativeEvent.contentOffset.y);
         scrollY.value = offset;
         const pageIndex = stripPageIndexForWorldY(offsets, offset);
-        updateWindow(offset);
-        onScroll(Math.max(0, offsets[pageIndex] ?? offset));
+        updateWindow(offset, pageIndex);
       },
-      [offsets, onScroll, scale, scrollY, updateWindow],
+      [offsets, scale, scrollY, updateWindow],
     );
 
     useImperativeHandle(
@@ -254,105 +341,187 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
         scrollToIndex: ({ index, animated = false }) =>
           scrollToOffset(offsets[Math.max(0, index)] ?? 0, animated),
         stepByViewport: (direction) => {
-          const delta =
+          const baseDelta =
             direction === "next"
               ? viewport.height * TAP_STEP_RATIO
               : -viewport.height * TAP_STEP_RATIO;
+          const delta = baseDelta / Math.max(MIN_CAMERA_SCALE, scale.value);
           scrollToOffset(scrollY.value + delta, true);
         },
       }),
-      [offsets, scrollToOffset, scrollY, viewport.height],
+      [offsets, scale, scrollToOffset, scrollY, viewport.height],
     );
 
-    const pinch = Gesture.Pinch()
-      .onStart(() => {
-        pinchStartScale.value = scale.value;
-        runOnJS(setZoomed)(true);
-      })
-      .onUpdate((event) => {
-        const nextScale = Math.min(
-          MAX_CAMERA_SCALE,
-          Math.max(MIN_CAMERA_SCALE, pinchStartScale.value * event.scale),
-        );
-        const nextTranslation = stripCameraTranslationForScale(
-          workletMetrics(scale.value, scrollY.value),
-          translateX.value,
-          translateY.value,
-          nextScale,
-          event.focalX,
-          event.focalY,
-        );
-        scale.value = nextScale;
-        translateX.value = nextTranslation.x;
-        translateY.value = nextTranslation.y;
-      })
-      .onEnd(() => {
-        if (scale.value <= ZOOM_RESET_THRESHOLD) {
-          runOnJS(resetCamera)();
-          return;
-        }
-        pinchStartScale.value = scale.value;
-        runOnJS(setZoomed)(true);
-      });
+    const composedGesture = useMemo(() => {
+      const pinch = Gesture.Pinch()
+        .onStart(() => {
+          pinchStartScale.value = scale.value;
+          runOnJS(setCameraAtBase)(scale.value === 1);
+        })
+        .onUpdate((event) => {
+          const nextScale = Math.min(
+            MAX_CAMERA_SCALE,
+            Math.max(
+              MIN_CAMERA_SCALE,
+              pinchStartScale.value * event.scale,
+            ),
+          );
+          const nextTranslation = stripCameraTranslationForScale(
+            workletMetrics(scale.value, scrollY.value),
+            translateX.value,
+            translateY.value,
+            nextScale,
+            event.focalX,
+            event.focalY,
+          );
+          scale.value = nextScale;
+          translateX.value = nextTranslation.x;
+          translateY.value = nextTranslation.y;
+        })
+        .onEnd(() => {
+          pinchStartScale.value = scale.value;
+          runOnJS(setCameraAtBase)(scale.value === 1);
+        });
 
-    const pan = Gesture.Pan()
-      .enabled(zoomed)
-      .onStart(() => {
-        panStartX.value = translateX.value;
-        panStartY.value = translateY.value;
-      })
-      .onUpdate((event) => {
-        const nextTranslation = clampStripCameraTranslation(
-          workletMetrics(scale.value, scrollY.value),
-          panStartX.value + event.translationX,
-          panStartY.value + event.translationY,
-        );
-        translateX.value = nextTranslation.x;
-        translateY.value = nextTranslation.y;
-      })
-      .onEnd(() => {
-        panStartX.value = translateX.value;
-        panStartY.value = translateY.value;
-      });
+      const pan = Gesture.Pan()
+        .enabled(!cameraAtBase)
+        .onStart(() => {
+          panStartX.value = translateX.value;
+          panStartY.value = translateY.value;
+        })
+        .onUpdate((event) => {
+          const nextTranslation = clampStripCameraTranslation(
+            workletMetrics(scale.value, scrollY.value),
+            panStartX.value + event.translationX,
+            panStartY.value + event.translationY,
+          );
+          translateX.value = nextTranslation.x;
+          translateY.value = nextTranslation.y;
+        })
+        .onEnd(() => {
+          panStartX.value = translateX.value;
+          panStartY.value = translateY.value;
+          runOnJS(setCameraAtBase)(scale.value === 1);
+        });
 
-    const cameraGesture = Gesture.Simultaneous(pinch, pan);
+      const singleTap = Gesture.Tap()
+        .maxDistance(TAP_TRAVEL_LIMIT)
+        .onEnd((event) => {
+          const world = stripCameraScreenPointToWorld(
+            workletMetrics(scale.value, scrollY.value),
+            translateX.value,
+            translateY.value,
+            event.x,
+            event.y,
+          );
+          const index = stripPageIndexForWorldY(offsets, world.y);
+          runOnJS(dispatchTap)({ x: event.x, y: event.y, index });
+        });
 
-    const singleTap = Gesture.Tap()
-      .maxDistance(TAP_TRAVEL_LIMIT)
-      .onEnd((event) => {
-        const world = stripCameraScreenPointToWorld(
-          workletMetrics(scale.value, scrollY.value),
-          translateX.value,
-          translateY.value,
-          event.x,
-          event.y,
-        );
-        const index = stripPageIndexForWorldY(offsets, world.y);
-        runOnJS(onTap)({ x: event.x, y: event.y, index });
-      });
+      const longPress = Gesture.LongPress()
+        .minDuration(450)
+        .maxDistance(14)
+        .onStart((event) => {
+          const world = stripCameraScreenPointToWorld(
+            workletMetrics(scale.value, scrollY.value),
+            translateX.value,
+            translateY.value,
+            event.x,
+            event.y,
+          );
+          runOnJS(dispatchLongPress)(
+            stripPageIndexForWorldY(offsets, world.y),
+          );
+        });
 
-    const longPress = Gesture.LongPress()
-      .minDuration(450)
-      .maxDistance(14)
-      .onStart((event) => {
-        const world = stripCameraScreenPointToWorld(
-          workletMetrics(scale.value, scrollY.value),
-          translateX.value,
-          translateY.value,
-          event.x,
-          event.y,
-        );
-        runOnJS(onLongPress)(stripPageIndexForWorldY(offsets, world.y));
-      });
-
-    const tapGesture = Gesture.Exclusive(longPress, singleTap);
-    const composedGesture = Gesture.Simultaneous(cameraGesture, tapGesture);
+      return Gesture.Simultaneous(
+        pinch,
+        pan,
+        Gesture.Exclusive(longPress, singleTap),
+      );
+    }, [
+      cameraAtBase,
+      dispatchLongPress,
+      dispatchTap,
+      offsets,
+      panStartX,
+      panStartY,
+      pinchStartScale,
+      scale,
+      scrollY,
+      translateX,
+      translateY,
+      workletMetrics,
+    ]);
 
     useAnimatedReaction(
-      () => stripPageIndexForWorldY(offsets, scrollY.value),
-      (pageIndex) => {
-        runOnJS(syncPageFromWorldY)(pageIndex);
+      () => {
+        const cameraScale = Math.max(0.01, scale.value);
+        const visibleOffset = Math.max(
+          0,
+          (scrollY.value - translateY.value) / cameraScale,
+        );
+        const indexForWorldY = (worldY: number) => {
+          if (offsets.length <= 1) return 0;
+          const pageCount = offsets.length - 1;
+          let low = 0;
+          let high = pageCount - 1;
+          while (low < high) {
+            const middle = (low + high) >> 1;
+            if (
+              (offsets[middle + 1] ?? Number.POSITIVE_INFINITY) > worldY
+            ) {
+              high = middle;
+            } else {
+              low = middle + 1;
+            }
+          }
+          return Math.max(0, Math.min(pageCount - 1, low));
+        };
+        const pageIndex = indexForWorldY(visibleOffset);
+        const visibleHeight = viewportHeight.value / cameraScale;
+        const overscan = Math.max(
+          2,
+          Math.ceil(cameraScale <= 1 ? 2 : 2 / cameraScale),
+        );
+        const start = Math.max(
+          0,
+          indexForWorldY(visibleOffset) - overscan,
+        );
+        const end = Math.min(
+          Math.max(0, items.length - 1),
+          indexForWorldY(visibleOffset + visibleHeight) + overscan,
+        );
+        return {
+          start,
+          end,
+          pageIndex,
+        };
       },
+      (current, previous) => {
+        if (
+          previous &&
+          previous.start === current.start &&
+          previous.end === current.end &&
+          previous.pageIndex === current.pageIndex
+        ) {
+          return;
+        }
+        runOnJS(applyCameraWindow)(
+          current.start,
+          current.end,
+          current.pageIndex,
+        );
+      },
+      [
+        applyCameraWindow,
+        items.length,
+        offsets,
+        scale,
+        scrollY,
+        translateY,
+        viewportHeight,
+      ],
     );
 
     const cameraStyle = useAnimatedStyle(() => ({
@@ -378,26 +547,25 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
     return (
       <View style={styles.viewport}>
         <GestureDetector gesture={composedGesture}>
-          <View style={styles.viewport}>
-            <ScrollView
-              ref={scrollRef}
-              style={{ flex: 1 }}
-              contentContainerStyle={{
-                width: viewport.width,
-                height: contentHeight,
-              }}
-              scrollEnabled={!zoomed}
-              scrollEventThrottle={16}
-              onScroll={handleScroll}
-              onScrollBeginDrag={onScrollBeginDrag}
-              nestedScrollEnabled
-              directionalLockEnabled
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              // The tap surface is the gesture target; keep one vertical
-              // scroll owner and never start the native drag under a tap.
-            >
+          <View style={styles.viewport} collapsable={false}>
+            <GestureScrollView
+                ref={scrollRef}
+                style={styles.viewport}
+                contentContainerStyle={{
+                  width: viewport.width,
+                  height: contentHeight,
+                }}
+                scrollEnabled={cameraAtBase}
+                scrollEventThrottle={16}
+                onScroll={handleScroll}
+                onScrollBeginDrag={onScrollBeginDrag}
+                nestedScrollEnabled
+                directionalLockEnabled
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
               <Animated.View
+                collapsable={false}
                 style={[
                   {
                     width: viewport.width,
@@ -427,8 +595,7 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
                   })}
                 </View>
               </Animated.View>
-            </ScrollView>
-            <View style={styles.tapSurface} collapsable={false} />
+            </GestureScrollView>
           </View>
         </GestureDetector>
       </View>
@@ -438,10 +605,6 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
 
 const styles = StyleSheet.create({
   viewport: { flex: 1 },
-  tapSurface: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "transparent",
-  },
 });
 
 export default StripReader;

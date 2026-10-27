@@ -1,16 +1,15 @@
 /**
  * ZoomablePage.tsx
  * ---------------------------------------------------------------------------
- * Per-page pinch-zoom + pan + double-tap container for the reader's
- * "original" fit mode (paged layouts). Built on react-native-gesture-handler
- * and reanimated (both already installed - no new dependency).
+ * Per-page pinch-zoom + pan + double-tap container for paged layouts. Built
+ * on react-native-gesture-handler and reanimated.
  *
- * Single-finger drags are left to the parent FlatList (two-finger pan only),
- * so page swipes keep working while zoomed content can still be moved.
+ * One-finger vertical drags pan tall pages; horizontal drags are left to the
+ * parent pager so page swipes keep working. Two-finger pans are always local.
  * ---------------------------------------------------------------------------
  */
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -34,7 +33,7 @@ export interface ZoomablePageProps {
   doubleTapToZoom: boolean;
   disableZoomOut: boolean;
   onSingleTap?: () => void;
-  /** Tap callback that also receives the tap point inside the page box. */
+  /** Tap callback with coordinates in the page frame. */
   onTapAt?: (x: number, y: number) => void;
   onLongPress?: () => void;
   children: React.ReactNode;
@@ -59,16 +58,10 @@ export default function ZoomablePage({
   children,
   defScale,
 }: ZoomablePageProps) {
-  const fitScale = useMemo(
-    () =>
-      contentWidth > 0 && contentHeight > 0
-        ? Math.min(width / contentWidth, height / contentHeight)
-        : 1,
-    [contentHeight, contentWidth, height, width],
-  );
-  // Start zoomed to the viewport instead of rendering natural-size content
-  // larger than the screen on the first frame.
-  const defaultScale = Math.min(1.5, Math.max(0.5, defScale ?? 1));
+  // Paged mode computes `contentWidth/Height` at the selected fit. At base
+  // scale the page therefore fits the slot, and the user can still pinch out
+  // below it when zoom-out is enabled.
+  const defaultScale = clamp(defScale ?? 1, MIN_ZOOM_OUT, 1.5);
   const scale = useSharedValue(defaultScale);
   const savedScale = useSharedValue(defaultScale);
   const tx = useSharedValue(0);
@@ -87,10 +80,7 @@ export default function ZoomablePage({
     savedTy.value = 0;
   }, [defaultScale, pinchStart, savedScale, savedTx, savedTy, scale, tx, ty]);
 
-  const minScale = disableZoomOut
-    ? Math.max(fitScale, MIN_ZOOM_OUT)
-    : Math.min(fitScale, MIN_ZOOM_OUT);
-
+  const minScale = disableZoomOut ? 1 : MIN_ZOOM_OUT;
   const useGestures = Platform.OS !== "web" && width > 0 && height > 0;
 
   const clampTranslation = (
@@ -140,8 +130,9 @@ export default function ZoomablePage({
     });
 
   const pan = Gesture.Pan()
-    .minPointers(2)
-    .maxPointers(2)
+    .minPointers(1)
+    .activeOffsetY([-10, 10])
+    .failOffsetX([-12, 12])
     .onStart(() => {
       savedTx.value = tx.value;
       savedTy.value = ty.value;
@@ -222,36 +213,33 @@ export default function ZoomablePage({
   }));
 
   const content = (
-    <View style={styles.centerWrap}>
-      <Animated.View
-        style={[
-          styles.content,
-          { width: contentWidth, height: contentHeight },
-          animatedStyle,
-        ]}
-      >
-        {children}
-      </Animated.View>
+    <Animated.View
+      style={[
+        styles.content,
+        { width: contentWidth, height: contentHeight },
+        animatedStyle,
+      ]}
+    >
+      {children}
+    </Animated.View>
+  );
+  const surface = (
+    <View style={[styles.container, { width, height }]}>
+      <View style={[styles.center, { flex: 1 }]}>{content}</View>
     </View>
   );
 
   if (!useGestures) {
-    return <View style={[styles.container, { width, height }]}>{content}</View>;
+    return surface;
   }
 
   return (
-    <GestureDetector gesture={composed}>
-      <View style={[styles.container, { width, height }]}>{content}</View>
-    </GestureDetector>
+    <GestureDetector gesture={composed}>{surface}</GestureDetector>
   );
 }
 
 const styles = StyleSheet.create({
   container: { overflow: "hidden" },
-  centerWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  center: { alignItems: "center", justifyContent: "center" },
   content: { backgroundColor: "#000" },
 });

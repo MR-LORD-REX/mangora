@@ -134,10 +134,19 @@ removal of legacy paths.
 ## Validation
 
 ```powershell
-npm run check:types
-npm run check:arch
+npm run check
 npx eslint <touched paths>
 ```
+
+`npm run check` runs type checking, the architecture graph and every feature
+test. `.github/workflows/pull-request.yml` also exports the Android bundle on
+each pull request. Reader changes additionally require the
+[device smoke test](../qa/reader-device-smoke.md); a passing static check does
+not prove touch, zoom or overlay behavior.
+
+Architecture decisions live in [adr/README.md](adr/README.md). Add an ADR when
+a change affects a boundary, a shared runtime contract or the reader view
+model.
 
 Reader, native and on-device validation remain governed by `AGENTS.md`,
 `workspace.md` and `APP.md`; passing a static check does not prove reader

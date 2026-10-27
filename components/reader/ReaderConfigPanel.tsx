@@ -123,7 +123,7 @@ function ReadingTab(props: ReaderConfigPanelProps) {
     scrollSpeed,
     onSelectScrollSpeed,
   } = props;
-  const { readingMode, pagedDirection, orientation } = chrome;
+  const { readingMode, orientation } = chrome;
   const paged = isPagedMode(readingMode);
   const longStrip = isLongStripMode(readingMode);
 
@@ -136,18 +136,9 @@ function ReadingTab(props: ReaderConfigPanelProps) {
             key={option.id}
             label={option.label}
             selected={
-              readingMode === option.key &&
-              (option.key !== "pagedHorizontal" ||
-                pagedDirection === (option.direction ?? pagedDirection))
+              readingMode === option.key
             }
-            onPress={() =>
-              onChangeChrome({
-                readingMode: option.key,
-                ...(option.direction
-                  ? { pagedDirection: option.direction }
-                  : {}),
-              })
-            }
+            onPress={() => onChangeChrome({ readingMode: option.key })}
           />
         ))}
       </View>

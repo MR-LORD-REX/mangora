@@ -1,11 +1,11 @@
 import { Dimensions } from "react-native";
 
-import { pageGeometry as resolvePageGeometry } from "@features/reader";
+import { pageGeometry as resolvePageGeometry } from "@features/reader/domain/layout/pageGeometry";
 import type {
   PageDims,
   PageGeometry,
   ReaderPageSplitHalf,
-} from "@features/reader";
+} from "@features/reader/domain/layout/pageGeometry";
 import type {
   ReaderImageScaleType,
   ReaderReadingMode,
@@ -28,6 +28,8 @@ export function pageGeometry(
   imageScaleType: ReaderImageScaleType = "fitScreen",
   rotateWidePagesToFit = false,
   splitHalf: ReaderPageSplitHalf | null = null,
+  fallbackBodyOverride?: PageDims,
+  slice?: { top: number; height: number } | null,
 ): PageGeometry {
   return resolvePageGeometry(
     url,
@@ -38,6 +40,7 @@ export function pageGeometry(
     imageScaleType,
     rotateWidePagesToFit,
     splitHalf,
-    fallbackBody,
+    fallbackBodyOverride ?? fallbackBody,
+    slice ?? null,
   );
 }

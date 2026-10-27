@@ -32,7 +32,6 @@ export function modeIconId(
   direction: ReaderPagedDirection = "ltr",
 ): ReaderModeIconId {
   if (mode === "pagedHorizontal") return direction === "rtl" ? "rtl" : "ltr";
-  if (mode === "pagedVertical") return "vertical";
   if (mode === "continuousVertical") return "continuous";
   return "webtoon";
 }

@@ -49,7 +49,7 @@ export const DEFAULT_READER_CHROME: ReaderChromeSettings = {
   fitMode: "fit",
   imageScaleType: "fitScreen",
   doubleTapToZoom: true,
-  disableZoomOut: true,
+  disableZoomOut: false,
   splitWidePages: false,
   rotateWidePagesToFit: false,
   cropBorders: false,

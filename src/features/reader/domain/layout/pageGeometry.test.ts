@@ -55,9 +55,48 @@ test("paged fit modes keep the viewport slot and image box separate", () => {
     zoom: false,
     rotate: false,
   });
-  assert.equal(original.imgW, 1000);
-  assert.equal(original.imgH, 2000);
+  assert.equal(original.imgW, 400);
+  assert.equal(original.imgH, 800);
   assert.equal(original.zoom, true);
+});
+
+test("tall paged pages use fit-width so they can be vertically panned", () => {
+  const geometry = pageGeometry(
+    "tall",
+    "pagedHorizontal",
+    0,
+    body,
+    { tall: { width: 600, height: 2400 } },
+    "fitScreen",
+  );
+
+  assert.equal(geometry.imgW, 400);
+  assert.equal(geometry.imgH, 1600);
+});
+
+test("paged slices expose a source crop and a viewport-height image box", () => {
+  const geometry = pageGeometry(
+    "tall",
+    "pagedHorizontal",
+    0,
+    body,
+    { tall: { width: 600, height: 2400 } },
+    "fitScreen",
+    false,
+    null,
+    undefined,
+    { top: 0.25, height: 0.5 },
+  );
+
+  assert.equal(geometry.imgW, 400);
+  assert.equal(geometry.imgH, 800);
+  assert.equal(geometry.overlayH, 1600);
+  assert.deepEqual(geometry.slice, {
+    sourceTop: 600,
+    sourceHeight: 1200,
+    displayTop: 400,
+    displayHeight: 800,
+  });
 });
 
 test("split halves map the full source overlay while showing one half", () => {

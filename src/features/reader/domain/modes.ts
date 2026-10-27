@@ -9,9 +9,5 @@ export function isReaderViewMode(value: unknown): value is ReaderViewMode {
 export function readerViewModeFor(
   readingMode: ReaderReadingMode,
 ): ReaderViewMode {
-  return readingMode === "scrollHorizontal" ||
-    readingMode === "pagedVertical" ||
-    readingMode === "pagedHorizontal"
-    ? "paged"
-    : "strip";
+  return readingMode === "pagedHorizontal" ? "paged" : "strip";
 }

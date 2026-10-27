@@ -22,7 +22,18 @@ import type {
   ReaderReadingMode,
 } from "@core/settings/settingsSchema";
 
-import { isHorizontalMode, isLongStripMode } from "../legacyReadingModes";
+import { isLongStripMode } from "../legacyReadingModes";
+
+export interface PageSliceGeometry {
+  /** Source-space top in natural paged pixels. */
+  sourceTop: number;
+  /** Source-space height in natural paged pixels. */
+  sourceHeight: number;
+  /** Display-space top inside the full rendered page. */
+  displayTop: number;
+  /** Display-space height of the slice. */
+  displayHeight: number;
+}
 
 export interface PageGeometry {
   itemW: number;
@@ -34,6 +45,8 @@ export interface PageGeometry {
   zoom: boolean;
   /** The page is drawn rotated 90 degrees; imgW/imgH are the rotated box. */
   rotate: boolean;
+  /** Present only for a tall paged-mode slice. */
+  slice?: PageSliceGeometry | null;
 }
 
 export interface PageDims {
@@ -87,6 +100,24 @@ function scaled(
   }
 }
 
+function pagedImageScale(
+  scaleType: ReaderImageScaleType,
+  naturalW: number,
+  naturalH: number,
+  budgetW: number,
+  budgetH: number,
+  rotate: boolean,
+): ReaderImageScaleType {
+  if (rotate || naturalW <= 0) return scaleType;
+  if (scaleType === "original") return "fitWidth";
+  // Tall pages are more useful as fit-width pages with vertical panning than
+  // as a fit-screen sliver. Short pages keep the normal contain fit.
+  if (scaleType === "fitScreen" && (naturalH * budgetW) / naturalW > budgetH) {
+    return "fitWidth";
+  }
+  return scaleType;
+}
+
 export function pageGeometry(
   url: string,
   mode: ReaderReadingMode,
@@ -97,6 +128,7 @@ export function pageGeometry(
   rotateWidePagesToFit = false,
   splitHalf: ReaderPageSplitHalf | null = null,
   fallbackBody: PageDims = { width: 390, height: 844 },
+  slice: { top: number; height: number } | null = null,
 ): PageGeometry {
   const bodyW = body.width || fallbackBody.width;
   const bodyH = body.height || fallbackBody.height;
@@ -148,34 +180,39 @@ export function pageGeometry(
     };
   }
 
-  if (isHorizontalMode(mode) && mode === "scrollHorizontal") {
-    if (!hasDims) {
-      const placeholderW = bodyH * 0.71;
-      return {
-        itemW: bodyW,
-        itemH: bodyH,
-        imgW: placeholderW,
-        imgH: bodyH,
-        overlayW: placeholderW,
-        overlayH: bodyH,
-        zoom: false,
-        rotate: false,
-      };
-    }
-    const image = scaled(
+  // A paged slice is a viewport-sized window into the same source image. The
+  // overlay keeps the full source box; the image layer is offset by the source
+  // crop so translation geometry stays normalized to the original page.
+  if (slice) {
+    const fullImage = scaled(
       targetNaturalW,
       targetNaturalH,
-      imageScaleType,
+      pagedImageScale(
+        imageScaleType,
+        targetNaturalW,
+        targetNaturalH,
+        budgetW,
+        bodyH,
+        rotate,
+      ),
       budgetW,
       bodyH,
     );
+    const sourceTop = slice.top * targetNaturalH;
+    const sourceHeight = slice.height * targetNaturalH;
     return {
       itemW: bodyW,
       itemH: bodyH,
-      imgW: image.width,
-      imgH: image.height,
-      overlayW: image.width * overlayMultiplier,
-      overlayH: image.height,
+      imgW: fullImage.width,
+      imgH: Math.max(1, fullImage.height * slice.height),
+      overlayW: fullImage.width * overlayMultiplier,
+      overlayH: fullImage.height,
+      slice: {
+        sourceTop,
+        sourceHeight,
+        displayTop: fullImage.height * slice.top,
+        displayHeight: fullImage.height * slice.height,
+      },
       zoom: imageScaleType === "original",
       rotate,
     };
@@ -198,7 +235,14 @@ export function pageGeometry(
   const image = scaled(
     targetNaturalW,
     targetNaturalH,
-    imageScaleType,
+    pagedImageScale(
+      imageScaleType,
+      targetNaturalW,
+      targetNaturalH,
+      budgetW,
+      bodyH,
+      rotate,
+    ),
     budgetW,
     bodyH,
   );

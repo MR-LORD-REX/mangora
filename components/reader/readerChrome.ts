@@ -30,7 +30,7 @@ import {
   isHorizontalMode,
   isLongStripMode,
   isPagedMode,
-} from "@features/reader";
+} from "@features/reader/domain/legacyReadingModes";
 
 export type {
   ReaderBackgroundColor,
@@ -49,47 +49,32 @@ export { DEFAULT_READER_CHROME, applyFilterExclusivity };
 export interface ReaderReadingModeOption {
   id: string;
   key: ReaderReadingMode;
-  direction?: ReaderPagedDirection;
   label: string;
   description: string;
 }
 
 /**
- * Mihon's reading modes in the same order as its mode picker. LTR and RTL are
- * both the horizontal pager, distinguished by `direction`.
+ * The reader exposes exactly three modes. Paged direction is a separate
+ * property so LTR/RTL do not duplicate the mode in the picker.
  */
 export const READING_MODE_OPTIONS: ReaderReadingModeOption[] = [
   {
-    id: "ltr",
+    id: "paged",
     key: "pagedHorizontal",
-    direction: "ltr",
-    label: "Left to right",
-    description: "Paged, swipe left for the next page",
-  },
-  {
-    id: "rtl",
-    key: "pagedHorizontal",
-    direction: "rtl",
-    label: "Right to left",
-    description: "Paged, swipe right for the next page",
-  },
-  {
-    id: "vertical",
-    key: "pagedVertical",
-    label: "Vertical",
-    description: "Paged, swipe up for the next page",
+    label: "Paged",
+    description: "One page at a time; swipe or tap to turn",
   },
   {
     id: "webtoon",
     key: "webtoon",
-    label: "Webtoon",
-    description: "Continuous long strip with page gaps",
+    label: "Long strip with gaps",
+    description: "Continuous vertical strip with page gaps",
   },
   {
     id: "continuous",
     key: "continuousVertical",
-    label: "Continuous vertical",
-    description: "Continuous long strip without gaps",
+    label: "Long strip",
+    description: "Continuous vertical strip without gaps",
   },
 ];
 
@@ -150,13 +135,7 @@ export function readingModeOptionFor(
   mode: ReaderReadingMode,
   direction: ReaderPagedDirection,
 ): ReaderReadingModeOption {
-  const match = READING_MODE_OPTIONS.find(
-    (option) =>
-      option.key === mode &&
-      (option.direction ?? direction) === direction,
-  );
   return (
-    match ??
     READING_MODE_OPTIONS.find((option) => option.key === mode) ??
     READING_MODE_OPTIONS[0]
   );

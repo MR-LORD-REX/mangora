@@ -13,10 +13,7 @@
 import { memo, useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Pressable,
-  ScrollView,
   View,
-  type GestureResponderEvent,
 } from "react-native";
 
 import PageTranslationOverlay from "@/components/reader/PageTranslationOverlay";
@@ -41,6 +38,9 @@ export interface ReaderPageProps {
   /** Set for `ext:*` pages so the native extension client fetches images. */
   extensionSourceId?: string;
   geometry: PageGeometry;
+  /** Natural dimensions of the source page, if already measured. */
+  sourceWidth?: number;
+  sourceHeight?: number;
   pageBackground: string;
   imageHeaders?: Record<string, string>;
   chrome: ReaderChromeSettings;
@@ -71,6 +71,8 @@ function ReaderPage({
   loadImage,
   extensionSourceId,
   geometry,
+  sourceWidth,
+  sourceHeight,
   pageBackground,
   imageHeaders,
   chrome,
@@ -200,6 +202,8 @@ function ReaderPage({
           extensionSourceId={extensionSourceId}
           width={drawW}
           height={drawH}
+          sourceWidth={sourceWidth}
+          sourceHeight={sourceHeight}
           backgroundColor={pageBackground}
           imageFilter={imageFilter}
           colorTint={colorTint}
@@ -234,6 +238,35 @@ function ReaderPage({
         </View>
       </View>
     );
+    if (geometry.slice) {
+      const slice = geometry.slice;
+      const sliceTop = sourceH > 0 ? slice.displayTop * (drawH / sourceH) : 0;
+      const sliceHeight =
+        sourceH > 0 ? slice.displayHeight * (drawH / sourceH) : geometry.imgH;
+      return (
+        <View
+          style={{
+            width: geometry.itemW,
+            height: Math.max(1, sliceHeight),
+            overflow: "hidden",
+            alignItems: "center",
+            backgroundColor: pageBackground,
+          }}
+        >
+          <View
+            style={{
+              position: "absolute",
+              top: -sliceTop,
+              width: geometry.imgW,
+              height: geometry.imgH,
+              alignItems: "center",
+            }}
+          >
+            {framed}
+          </View>
+        </View>
+      );
+    }
     if (splitHalf && !geometry.rotate) {
       return (
         <View
@@ -295,92 +328,11 @@ function ReaderPage({
     );
   }
 
-  if (geometry.zoom) {
-    return (
-      <View
-        style={{
-          width: geometry.itemW,
-          height: geometry.itemH,
-          backgroundColor: pageBackground,
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        {statusBadge}
-        <ZoomablePage
-          width={geometry.itemW}
-          height={geometry.itemH}
-          contentWidth={geometry.imgW}
-          contentHeight={geometry.imgH}
-          doubleTapToZoom={chrome.doubleTapToZoom}
-          disableZoomOut={chrome.disableZoomOut}
-          onTapAt={interactive ? onTapAt : undefined}
-          onLongPress={interactive ? onLongPress : undefined}
-          defScale={defaultZoomScale}
-        >
-          {renderFramedPage()}
-        </ZoomablePage>
-      </View>
-    );
-  }
-
-  // The tapped area is the whole page slot so tap-zone bands work even when
-  // the image is centred with padding. Strip rows leave it to the viewport.
-  const pageTap = (event: GestureResponderEvent) => {
-    onTapAt?.(event.nativeEvent.locationX, event.nativeEvent.locationY);
-  };
-  const verticallyScrollable =
-    (pagedMode || chrome.readingMode === "scrollHorizontal") &&
-    geometry.imgH > geometry.itemH;
-
-  const renderPageImage = () => {
-    if (verticallyScrollable) {
-      return (
-        <ScrollView
-          style={{ width: geometry.imgW, height: geometry.itemH }}
-          contentContainerStyle={{
-            width: geometry.imgW,
-            minHeight: geometry.imgH,
-          }}
-          nestedScrollEnabled
-          directionalLockEnabled
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={true}
-        >
-          {renderFramedPage()}
-        </ScrollView>
-      );
-    }
-    return (
-      <View style={{ width: geometry.imgW, height: geometry.imgH }}>
-        {renderFramedPage()}
-      </View>
-    );
-  };
-
-  if (verticallyScrollable) {
-    return (
-      <View
-        style={{
-          width: geometry.itemW,
-          height: geometry.itemH,
-          marginBottom: pageGap,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: pageBackground,
-        }}
-      >
-        {statusBadge}
-        {renderPageImage()}
-      </View>
-    );
-  }
   const pageContent = (
     <>
       {statusBadge}
       <View style={{ width: geometry.imgW, height: geometry.imgH }}>
-        {renderPageImage()}
+        {renderFramedPage()}
       </View>
     </>
   );
@@ -393,18 +345,22 @@ function ReaderPage({
     backgroundColor: pageBackground,
   };
 
-  if (!interactive) {
-    return <View style={slotStyle}>{pageContent}</View>;
-  }
+  const slot = <View style={slotStyle}>{pageContent}</View>;
+  if (!pagedMode) return slot;
   return (
-    <Pressable
-      onPress={pageTap}
-      onLongPress={onLongPress}
-      delayLongPress={420}
-      style={slotStyle}
+    <ZoomablePage
+      width={geometry.itemW}
+      height={geometry.itemH}
+      contentWidth={geometry.imgW}
+      contentHeight={geometry.imgH}
+      doubleTapToZoom={chrome.doubleTapToZoom}
+      disableZoomOut={chrome.disableZoomOut}
+      onTapAt={interactive ? onTapAt : undefined}
+      onLongPress={interactive ? onLongPress : undefined}
+      defScale={defaultZoomScale}
     >
       {pageContent}
-    </Pressable>
+    </ZoomablePage>
   );
 }
 
@@ -417,7 +373,11 @@ function geometryEqual(a: PageGeometry, b: PageGeometry): boolean {
     a.overlayW === b.overlayW &&
     a.overlayH === b.overlayH &&
     a.zoom === b.zoom &&
-    a.rotate === b.rotate
+    a.rotate === b.rotate &&
+    a.slice?.sourceTop === b.slice?.sourceTop &&
+    a.slice?.sourceHeight === b.slice?.sourceHeight &&
+    a.slice?.displayTop === b.slice?.displayTop &&
+    a.slice?.displayHeight === b.slice?.displayHeight
   );
 }
 
@@ -428,6 +388,8 @@ export default memo(
     prev.loadImage === next.loadImage &&
     prev.extensionSourceId === next.extensionSourceId &&
     geometryEqual(prev.geometry, next.geometry) &&
+    prev.sourceWidth === next.sourceWidth &&
+    prev.sourceHeight === next.sourceHeight &&
     prev.pageBackground === next.pageBackground &&
     prev.imageHeaders === next.imageHeaders &&
     prev.chrome === next.chrome &&

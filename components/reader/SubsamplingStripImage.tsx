@@ -53,6 +53,9 @@ export interface SubsamplingStripImageProps {
   extensionSourceId?: string;
   width: number;
   height: number;
+  /** Natural source dimensions when the reader already measured the page. */
+  sourceWidth?: number;
+  sourceHeight?: number;
   backgroundColor: string;
   /** RN 0.81 color-matrix filters (brightness / grayscale / invert). */
   imageFilter?: ViewStyle["filter"];
@@ -73,6 +76,8 @@ export default function SubsamplingStripImage({
   extensionSourceId,
   width,
   height,
+  sourceWidth,
+  sourceHeight,
   backgroundColor,
   imageFilter,
   colorTint,
@@ -219,7 +224,7 @@ export default function SubsamplingStripImage({
       localUri,
       (width, height) => {
         if (cancelled || width <= 0 || height <= 0) return;
-        onLoadDimsRef.current?.(width, height);
+        onLoadDimsRef.current?.(sourceWidth ?? width, sourceHeight ?? height);
         if (!shouldAnalyzeBorderCrop(width, height)) {
           onBorderCropRef.current?.(null);
           return;
@@ -243,7 +248,7 @@ export default function SubsamplingStripImage({
     return () => {
       cancelled = true;
     };
-  }, [localUri]);
+  }, [localUri, sourceHeight, sourceWidth]);
 
   if (tiledSupported && localUri && !localFailed && NativeTiledImage) {
     const TiledView = NativeTiledImage;

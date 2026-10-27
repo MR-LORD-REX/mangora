@@ -11,23 +11,37 @@ export interface StripCameraPoint {
   y: number;
 }
 
+export interface StripCameraWindow {
+  start: number;
+  end: number;
+  visibleOffset: number;
+  visibleHeight: number;
+}
+
 export function clampStripCameraTranslation(
   metrics: StripCameraMetrics,
   translationX: number,
   translationY: number,
 ): StripCameraPoint {
   "worklet";
-  if (metrics.scale <= 1) return { x: 0, y: 0 };
-  const minX = metrics.viewportWidth * (1 - metrics.scale);
-  const minY =
-    metrics.scrollY +
-    metrics.viewportHeight -
-    metrics.contentHeight * metrics.scale;
-  const maxY = metrics.scrollY;
-  return {
-    x: Math.max(minX, Math.min(0, translationX)),
-    y: Math.max(minY, Math.min(maxY, translationY)),
-  };
+  if (metrics.scale === 1) return { x: 0, y: 0 };
+  const scaledWidth = metrics.viewportWidth * metrics.scale;
+  const scaledHeight = metrics.contentHeight * metrics.scale;
+  const x =
+    scaledWidth <= metrics.viewportWidth
+      ? (metrics.viewportWidth - scaledWidth) / 2
+      : Math.max(
+          metrics.viewportWidth - scaledWidth,
+          Math.min(0, translationX),
+        );
+  const y =
+    scaledHeight <= metrics.viewportHeight
+      ? metrics.scrollY + (metrics.viewportHeight - scaledHeight) / 2
+      : Math.max(
+          metrics.scrollY + metrics.viewportHeight - scaledHeight,
+          Math.min(metrics.scrollY, translationY),
+        );
+  return { x, y };
 }
 
 export function stripCameraScreenPointToWorld(
@@ -99,4 +113,43 @@ export function stripPageIndexForWorldY(
     }
   }
   return Math.max(0, Math.min(pageCount - 1, low));
+}
+
+/**
+ * Rows that intersect the camera rectangle plus a small overscan. This must
+ * use the transformed camera, not scrollY alone: while zoomed, panning moves
+ * translateY without moving the native ScrollView.
+ *
+ * JS-only: this runs in the React effect, while the animated reaction keeps an
+ * inlined copy so Reanimated never has to capture a cross-function worklet.
+ */
+export function stripCameraWindowFor(
+  offsets: readonly number[],
+  itemCount: number,
+  metrics: StripCameraMetrics,
+  translationY: number,
+): StripCameraWindow {
+  const visibleOffset = stripCameraVisibleOffset(metrics, translationY);
+  const visibleHeight =
+    metrics.viewportHeight / Math.max(0.01, metrics.scale);
+  if (itemCount <= 0) {
+    return { start: 0, end: -1, visibleOffset, visibleHeight };
+  }
+  const overscan = Math.max(
+    2,
+    Math.ceil(metrics.scale <= 1 ? 2 : 2 / metrics.scale),
+  );
+  return {
+    start: Math.max(
+      0,
+      stripPageIndexForWorldY(offsets, visibleOffset) - overscan,
+    ),
+    end: Math.min(
+      itemCount - 1,
+      stripPageIndexForWorldY(offsets, visibleOffset + visibleHeight) +
+        overscan,
+    ),
+    visibleOffset,
+    visibleHeight,
+  };
 }
