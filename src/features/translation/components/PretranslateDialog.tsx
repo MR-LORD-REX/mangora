@@ -20,7 +20,7 @@ import {
   View,
 } from "react-native";
 
-import { READER_LANGUAGE_OPTIONS } from "@/components/reader/readerLanguages";
+
 import { colors, radius } from "@shared/theme";
 import {
   openDownloadedPageSessionForChapter,
@@ -32,17 +32,20 @@ import {
   updateSettings,
   type ReaderTranslationEngine,
 } from "@core/settings";
-import {
-  READER_TARGET_OPTIONS,
-  enqueuePretranslateJob,
-  isSameEngineLanguage,
-} from "@features/translation";
+import { READER_TARGET_OPTIONS, isSameEngineLanguage } from "../domain/languages";
+import { enqueuePretranslateJob } from "../jobs/pretranslateQueue";
+
+export interface LanguageOption {
+  code: string;
+  label: string;
+}
 
 export interface PretranslateDialogProps {
   visible: boolean;
   candidate: DownloadCandidate | null;
   mangaTitle: string;
   chapterLanguage: string | null;
+  sourceLanguages: LanguageOption[];
   onClose: () => void;
   onDownload: (candidate: DownloadCandidate) => void;
 }
@@ -52,6 +55,7 @@ export default function PretranslateDialog({
   candidate,
   mangaTitle,
   chapterLanguage,
+  sourceLanguages,
   onClose,
   onDownload,
 }: PretranslateDialogProps) {
@@ -271,7 +275,7 @@ export default function PretranslateDialog({
 
                   <Text style={styles.sectionLabel}>Source language</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {READER_LANGUAGE_OPTIONS.filter((item) => item.code).map(
+                    {sourceLanguages.filter((item) => item.code).map(
                       (item) => (
                         <Pressable
                           key={item.code}

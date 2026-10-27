@@ -7,7 +7,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import type { ReaderChromeSettings } from "@/components/reader/readerChrome";
+import type { ReaderChromeSettings } from "@features/reader/components/panels/readerChrome";
 import type { AppSettings } from "@core/settings";
 
 /** Reader chrome field names map to reader* settings keys. */

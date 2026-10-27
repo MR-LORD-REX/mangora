@@ -33,7 +33,7 @@ import { chromeToSettingsPatch } from "@/utils/reader/readerChromeSettings";
 import {
   buildReaderDisplayItems,
   type ReaderDisplayItem,
-} from "@/utils/reader/readerItems";
+} from "../domain/layout/readerItems";
 import { useReaderTranslation } from "../translation/useReaderTranslation";
 import { useReaderAutoScroll } from "../hooks/useReaderAutoScroll";
 import { useReaderChapterPages } from "../hooks/useReaderChapterPages";

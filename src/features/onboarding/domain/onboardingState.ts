@@ -10,7 +10,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { ONBOARDING_GUIDES } from "@/constants/onboardingGuides";
+import { ONBOARDING_GUIDES } from "../data/onboardingGuides";
 import type { AppSettings } from "@core/settings";
 
 let snoozedThisSession = false;

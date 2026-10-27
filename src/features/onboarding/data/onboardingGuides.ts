@@ -5,7 +5,7 @@
  *
  * Adding a guide is a one-file change: append an entry here and every user who
  * has not seen its `id` gets the overlay again (see
- * `services/onboarding/onboardingState.ts`). Never rename an `id` once shipped
+ * `domain/onboardingState.ts`). Never rename an `id` once shipped
  * - it is the key persisted in settings.
  * ---------------------------------------------------------------------------
  */

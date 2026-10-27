@@ -110,3 +110,5 @@ export type {
   PretranslateSnapshot,
   PretranslateStatus,
 } from "./jobs/pretranslateQueue";
+export { default as PretranslateDialog } from "./components/PretranslateDialog";
+export type { PretranslateDialogProps } from "./components/PretranslateDialog";

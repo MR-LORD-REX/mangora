@@ -3,7 +3,7 @@
  * ---------------------------------------------------------------------------
  * First-launch guide carousel shown over the Library.
  *
- * Content comes from `constants/onboardingGuides.ts`; completion is tracked per
+ * Content comes from `data/onboardingGuides.ts`; completion is tracked per
  * guide id in settings, so adding a new guide automatically brings the overlay
  * back for users who have not seen it. Dismissing early opens a second dialog
  * with "Remind me later" / "Close forever".
@@ -29,17 +29,17 @@ import {
   View,
 } from "react-native";
 
-import OnboardingExitConfirm from "@/components/onboarding/OnboardingExitConfirm";
+import OnboardingExitConfirm from "./OnboardingExitConfirm";
 import {
   ONBOARDING_GUIDES,
   type OnboardingGuide,
-} from "@/constants/onboardingGuides";
+} from "../data/onboardingGuides";
 import { colors, radius } from "@shared/theme";
 import {
   firstUnseenGuideIndex,
   shouldShowOnboarding,
   snoozeOnboardingForSession,
-} from "@/services/onboarding/onboardingState";
+} from "../domain/onboardingState";
 import { getSettings, updateSettings } from "@core/settings";
 
 const CARD_PADDING = 20;

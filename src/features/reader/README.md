@@ -113,9 +113,9 @@ is never skipped. `useStripWindow` owns the mounted-row window and page
 notification de-duplication; the gesture worklets stay in `StripReader` so the
 camera and native scroll owner remain co-located.
 
-Legacy paths under `components/reader` and `utils/reader` remain compatibility
-re-exports until the on-device paging, zoom, split/rotate, orientation, restore
-and translation-alignment checklist passes.
+The `components/reader` compatibility tree has been removed. The remaining
+`utils/reader` modules are live code shared with downloads and other surfaces;
+they move with their owning domains rather than through another shim layer.
 
 The required release gate is
 [`docs/qa/reader-device-smoke.md`](../../../docs/qa/reader-device-smoke.md).

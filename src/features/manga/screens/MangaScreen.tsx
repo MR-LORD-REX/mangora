@@ -46,7 +46,8 @@ import {
   offlineReaderTarget,
   requestChapterDownload,
 } from "@features/downloads";
-import PretranslateDialog from "@/components/translation/PretranslateDialog";
+import { READER_LANGUAGE_OPTIONS } from "../components/chapters/languageOptions";
+import { PretranslateDialog } from "@features/translation";
 import { emptyLibrary } from "../domain/mangaLibrary";
 import {
   groupNumber,
@@ -594,6 +595,7 @@ return (
         candidate={pretranslateCandidate}
         mangaTitle={meta.title}
         chapterLanguage={pretranslateCandidate?.languageCode ?? null}
+        sourceLanguages={READER_LANGUAGE_OPTIONS}
         onClose={() => setPretranslateCandidate(null)}
         onDownload={(candidate) => {
           void requestChapterDownload(candidate, downloadContext);

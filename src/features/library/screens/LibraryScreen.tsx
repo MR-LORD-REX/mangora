@@ -18,7 +18,7 @@ import {
 import AppHeader from "@shared/ui/layout/AppHeader";
 import { ConfirmDialog } from "@shared/ui/overlays";
 import MenuSheet from "@shared/ui/overlays/MenuSheet";
-import OnboardingOverlay from "@/components/onboarding/OnboardingOverlay";
+import { OnboardingOverlay } from "@features/onboarding";
 import { colors, radius } from "@shared/theme";
 import { DOWNLOADS_LIBRARY_ID } from "@/services/db/bootstrap";
 import { isSystemLibrary, type LibraryCard as LibraryCardRow } from "@/services/db/repositories/libraryRepository";
