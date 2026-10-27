@@ -6,7 +6,7 @@
  */
 import type { ReactNode } from "react";
 
-import type { ReaderPipelineMetrics } from "@/utils/reader/useReaderTranslation";
+import type { ReaderPipelineMetrics } from "../../translation/types";
 import type { GeminiModelId } from "@features/translation";
 
 import type {

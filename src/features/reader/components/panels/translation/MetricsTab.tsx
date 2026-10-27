@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
-import type { ReaderPipelineMetrics } from "@/utils/reader/useReaderTranslation";
+import type { ReaderPipelineMetrics } from "../../../translation/types";
 import {
   GEMINI_MODELS,
   getGeminiUsageSnapshot,

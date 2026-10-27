@@ -29,13 +29,22 @@ domain/
   navigation/tapZones.ts
   scroll/autoScroll.ts
 hooks/
+  usePagedDisplayAnchor.ts
+  usePagedTap.ts
   useReaderAutoScroll.ts
+  useReaderChapterPages.ts
+  useReaderDisplayIndex.ts
+  useReaderDownloadState.ts
   useReaderPageDims.ts
+  useReaderSessionLedger.ts
   useReaderSettings.ts
 state/
   readerSessionReducer.ts
   ReaderSessionProvider.tsx
 views/
+  ReaderViewport/
+    ReaderViewport.tsx
+    ReaderViewport.types.ts
   paged/PagedReader.tsx
   strip/
     StripReader.tsx
@@ -44,13 +53,23 @@ views/
 screens/
   ReaderScreen.tsx
   readerChapterNavigation.ts
+translation/
+  scanOcr.ts
+  translateWorkers.ts
+  readerTranslationPipeline.ts
+  cache.ts
+  pageState.ts
+  types.ts
+  useReaderTranslation.ts
 index.ts
 ```
 
-`ReaderScreen` still composes the reader lifecycle (page loading, progress,
-orientation and gesture wiring), while the modules above own their individual
-contracts. `ReaderChromeStack.types.ts` and `useReaderSettings.types.ts` keep
-large prop/state contracts out of the component and hook implementation files.
+`ReaderScreen` composes the reader session, settings and gesture wiring; page
+loading, restore/progress persistence, download metadata and translation now
+live in their hooks and `translation/`. `ReaderViewport` owns the paged/strip
+presentation branch and viewport overlays. Further screen decomposition and
+legacy-shim removal remain Phase 3 work. `ReaderChromeStack.types.ts` and
+`useReaderSettings.types.ts` keep large prop/state contracts out of the component and hook implementation files.
 
 `ReaderSessionProvider` owns active page, chrome visibility/settings and
 loading state. The route at `app/reader/[id].tsx` only parses route params,

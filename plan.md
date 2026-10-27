@@ -1,4 +1,4 @@
-﻿# Mangora Refactor Plan
+# Mangora Refactor Plan
 
 Status: active, branch `refactor`
 Last updated: 2026-10-27
@@ -291,6 +291,29 @@ screen itself as the documented exception until its lifecycle cut lands. Re-run
 `docs/qa/reader-device-smoke.md` on the next device connection before treating
 the reader release gate as closed.
 
+**Phase 3 screen split (2026-10-27):** `ReaderScreen` now composes three
+extracted hooks and no longer owns page loading, history/progress persistence
+or the paged-tap latch. `useReaderChapterPages` owns downloaded-vs-network page
+selection and cleanup; `useReaderSessionLedger` owns restore, progress and
+history; `usePagedTap` owns tap-zone resolution and the transition gate. The
+screen is about 1,240 LOC, down from 1,536, and TypeScript, targeted ESLint,
+`check:arch` (277 files, 848 edges) and all 69 tests pass. The screen still
+exceeds the 400 LOC target, so the remaining work is a viewport/tap-wiring cut,
+not a behavior change. The device smoke checklist must be rerun before release;
+the latest device checkpoint predates this extraction.
+
+**Phase 3 viewport and display cut (2026-10-27):** `ReaderViewport` now owns
+the paged/strip presentation branch, tap-zone preview and page flash;
+`useReaderDownloadState` owns identity, catalog download metadata and the
+download candidate/context; `usePagedDisplayAnchor` and
+`useReaderDisplayIndex` own display-row alignment and scrubber lookup. The
+translation pipeline now lives in `features/reader/translation/`, with
+`scanOcr`, `translateWorkers`, `readerTranslationPipeline`, cache/page-state
+modules and the session hook. `ReaderScreen` is 1,157 LOC. The full
+gate is green: TypeScript, targeted ESLint, `check:arch` (282 files, 860
+edges) and all 69 tests. This remains a behavior-preserving refactor; the
+device smoke checklist is still open until the V2311L is reconnected.
+
 **Rollback unit:** one feature per PR, keeping the old feature API as a
 re-export until all callers move.
 
@@ -309,8 +332,9 @@ make multi-owner development enforceable.
    `features/reader/screens/ReaderScreen.tsx`.
 4. [ ] Split the remaining UI into page, chrome, panels and overlays; the
    paged/strip list hosts are already separated.
-5. [ ] Split `useReaderTranslation.ts` into scan, OCR, translate and cache
-   pipeline modules plus a session hook.
+5. [x] Split `useReaderTranslation.ts` into scan, OCR, translate and cache
+   pipeline modules plus a session hook. The compatibility shim remains until
+   the legacy-reader cleanup in item 6.
 6. [ ] Remove legacy shims and the temporary `@/*` alias.
 7. [x] Add the CI matrix, device smoke checklist, CODEOWNERS review rules, ADRs
    and feature contribution templates. CODEOWNERS activation remains pending

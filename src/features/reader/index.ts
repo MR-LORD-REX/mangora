@@ -62,3 +62,9 @@ export type {
   ReaderSessionAction,
   ReaderSessionState,
 } from "./state/readerSessionReducer";
+export { useReaderTranslation } from "./translation/useReaderTranslation";
+export type {
+  ReaderPipelineMetrics,
+  ReaderTranslationController,
+  UseReaderTranslationOptions,
+} from "./translation/types";
