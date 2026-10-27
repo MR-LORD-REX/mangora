@@ -1,5 +1,5 @@
 /**
- * services/updates/github.ts
+ * src/features/updates/data/github.ts
  * ---------------------------------------------------------------------------
  * Reads published GitHub releases for the updater. Drafts are always ignored;
  * prereleases are ignored unless the caller opts into betas (plan S14.4).

@@ -15,7 +15,7 @@ import {
   canRequestPackageInstalls,
   installApk,
   openInstallPermissionSettings,
-} from "@/services/updates/native";
+} from "@platform/native/updater";
 import { inspectExtensionApk, type InspectedExtensionApk } from "@platform/extensions";
 import type { ExtensionCatalogEntry } from "@platform/extensions/types";
 

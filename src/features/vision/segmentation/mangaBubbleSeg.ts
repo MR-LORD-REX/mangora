@@ -38,7 +38,7 @@ import {
 import { ensureDecodablePageUri } from "../ocr/pageOcr";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const MODEL_FILE = require("@/assets/models/manga109-bubble-seg.onnx");
+const MODEL_FILE = require("../../../../assets/models/manga109-bubble-seg.onnx");
 
 /** Must match the exported ONNX input. */
 export const SEG_INPUT_SIZE = 1024;

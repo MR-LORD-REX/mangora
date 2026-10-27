@@ -1,5 +1,5 @@
 /**
- * services/deeplink/index.ts
+ * src/shared/links/mangaLinks.ts
  * ---------------------------------------------------------------------------
  * Share + deep-link helpers for the public Mangora site (plan S14.1).
  *
@@ -17,8 +17,6 @@
 
 import { setStringAsync } from "expo-clipboard";
 import { Share } from "react-native";
-
-import { isMatureProvider } from "@/constants/providers";
 
 /** Public site origin. Keep in sync with SITE.url in mangora-website. */
 export const SITE_ORIGIN = "https://mangora-web.web.app";
@@ -49,8 +47,9 @@ export function buildMangaShareUrl(target: MangaShareTarget): string {
 export function canShareProvider(
   provider: string,
   ageRestrictedSources: boolean,
+  isMature: (provider: string) => boolean,
 ): boolean {
-  return ageRestrictedSources || !isMatureProvider(provider);
+  return ageRestrictedSources || !isMature(provider);
 }
 
 export type ShareMangaResult = "shared" | "dismissed" | "copied";

@@ -76,7 +76,8 @@ low-risk shared code. No reader behavior changes.
 **Scope**
 
 1. Add `src/` zone aliases: `@features/*`, `@shared/*`, `@core/*`,
-   `@platform/*`. Keep `@/*` temporarily for compatibility.
+   `@platform/*`. The temporary root `@/*` alias was removed once every
+   caller moved; routes use a relative CSS asset import.
 2. Add `scripts/check-architecture.mjs` to detect:
    - import cycles
    - `shared -> features`
@@ -238,6 +239,16 @@ existing import cycle.
   detail/chapter screens, chapter grouping and filters, download selection,
   loading hooks and provider adapters. The legacy `components/manga` tree is
   removed and the feature has a README plus four focused domain tests.
+- Completed the alias and documentation cleanup batch: removed the unused
+  temporary `@/*` TypeScript alias, switched route CSS imports to relative
+  assets, and aligned `APP.md` plus the reader/architecture notes with the
+  deleted services trees and compatibility shims.
+- Completed the final service cleanup batch: reader cleanup moved to
+  `@core/storage`, share URLs to `@shared/links`, the updater bridge to
+  `@platform/native`, and release/update mechanics behind `@features/updates`.
+  Extension maturity moved into the extensions feature and is injected into the
+  shared share gate. The legacy `services/` tree and `constants/providers.ts`
+  are removed.
 - Completed the images/net/notifications ownership batch: AVIF/image validation
   moved to `@core/images`, cookie-aware fetching to `@core/net`, and the
   expo-notifications adapter to `@core/platform`. Downloads now receives a
@@ -300,8 +311,9 @@ zones, zoom, and scroll behavior on the V2311L after the auto-scroll fix, then
 disconnected the device. The remaining UI cut has started: settings, page
 measurement/prefetch and chapter-arrow resolution are extracted; the chrome
 stack has its own component and prop contract. `ReaderScreen` is still about
-1,619 LOC and owns several lifecycle/gesture concerns, so the screen split and
-the legacy-shim removal remain open. The extracted chrome component (323 LOC)
+1,619 LOC and owns several lifecycle/gesture concerns, so the screen split
+remained open at that checkpoint. The compatibility trees and the temporary
+root alias have since been removed. The extracted chrome component (323 LOC)
 and settings hook (245 LOC) currently meet the 400/250 LOC targets; keep the
 screen itself as the documented exception until its lifecycle cut lands. Re-run
 `docs/qa/reader-device-smoke.md` on the next device connection before treating
@@ -385,9 +397,9 @@ make multi-owner development enforceable.
 4. [ ] Split the remaining UI into page, chrome, panels and overlays; the
     paged/strip list hosts are already separated.
 5. [X] Split `useReaderTranslation.ts` into scan, OCR, translate and cache
-    pipeline modules plus a session hook. The compatibility shim remains until
-    the legacy-reader cleanup in item 6.
-6. [ ] Remove legacy shims and the temporary `@/*` alias.
+    pipeline modules plus a session hook. Its legacy reader paths were removed
+    with the compatibility-tree cleanup.
+6. [X] Remove legacy shims and the temporary `@/*` alias.
 7. [X] Add the CI matrix, device smoke checklist, CODEOWNERS review rules, ADRs
     and feature contribution templates. CODEOWNERS activation remains pending
     real GitHub handles; the example file documents the intended ownership map.
@@ -504,8 +516,9 @@ actions work in both views.
 - Zoom-out is enabled by default (`disableZoomOut: false`) to the 0.4x page
   floor; the user can disable it in Reader Config.
 
-The `components/reader` shims are gone, and the former `utils/reader` modules
-now live in shared/core. The route is not rewritten first.
+The `components/reader` compatibility tree and its shims are gone, and the
+former `utils/reader` modules now live in shared/core. The route was not
+rewritten first.
 
 ## 3. Target folder structure
 
@@ -858,7 +871,7 @@ shrink each phase and be deleted at the end of Phase 3.
 | `components/common/MenuSheet.tsx`                | `src/shared/ui/overlays/`                                | 1        |
 | `constants/theme.ts`                             | `src/shared/theme/tokens.ts`                             | 1        |
 | `utils/providerLabel.ts`                         | `src/features/library/domain/providerLabel.ts`           | 2        |
-| `services/reader/legacyCacheCleanup.ts`          | `features/reader/data/legacyCacheCleanup.ts`             | 3        |
+| `services/reader/legacyCacheCleanup.ts`          | `src/core/storage/legacyReaderCacheCleanup.ts`            | 3 (done) |
 
 Do not move a file before its destination contract is defined.
 
@@ -886,15 +899,15 @@ The remaining legacy inventory is intentionally small:
 | `services/images/**` | `src/core/images/**` | AVIF transcoding and image validation are core image infrastructure. | Done: vision, downloads and the reader use `@core/images`; folder removed. |
 | `services/net/**` | `src/core/net/**` | Cookie-aware fetch policy is core networking. | Done: vision and download storage use `@core/net`; folder removed. |
 | `services/notifications/notifications.ts` | `src/core/platform/notifications.ts` | Platform notification policy behind shared ports. | Done: composition owns the adapter and injects `DownloadNotificationPort`; downloads no longer imports the implementation. |
-| `services/reader/legacyCacheCleanup.ts` | `src/core/storage/legacyReaderCacheCleanup.ts` | One-time storage cleanup, executed during bootstrap. | Composition calls it at startup; no UI ownership. |
-| `services/deeplink/index.ts` | `src/shared/links/mangaLinks.ts` for URL builders; share-sheet side effects via composition/platform adapter | The share catalogue is consumed by manga and extension terms; site origin is also needed by updates. | Resolve the `isMatureProvider` dependency first so shared code does not import the extension registry directly. |
-| `services/updates/github.ts` | `src/features/updates/data/github.ts` | Release discovery and version comparison for the updater UI. | Create `@features/updates`; settings imports only the public entry point. |
-| `services/updates/index.ts` | `src/features/updates/services/updater.ts` | Orchestrates check/download/verify/install for the About surface. | Native install bridge moves to `src/platform/native/`; extension installer consumes only that bridge. |
-| `services/updates/native.ts` | `src/platform/native/updater.ts` | Typed bridge to `MangoraDownloader` installer/hash calls. | Update extension installer and updates service imports; platform must not import features. |
+| `services/reader/legacyCacheCleanup.ts` | `src/core/storage/legacyReaderCacheCleanup.ts` | One-time storage cleanup, executed during bootstrap. | Done: composition imports the core cleanup module. |
+| `services/deeplink/index.ts` | `src/shared/links/mangaLinks.ts` plus the extension maturity predicate | Share URLs and clipboard behavior are generic; maturity stays feature-owned. | Done: shared links accept an injected maturity predicate; manga supplies `isMatureProvider`. |
+| `services/updates/github.ts` | `src/features/updates/data/github.ts` | Release discovery and version comparison for the updater UI. | Done: exported through `@features/updates`. |
+| `services/updates/index.ts` | `src/features/updates/services/updater.ts` | Orchestrates check/download/verify/install for the About surface. | Done: About imports only `@features/updates`. |
+| `services/updates/native.ts` | `src/platform/native/updater.ts` | Typed bridge to `MangoraDownloader` installer/hash calls. | Done: extension installer and updates import the platform bridge. |
 
-Recommended execution order: deeplink/updates. The identity/page-loading,
-image-header, database and images/net/notifications ownership batches are
-complete; their legacy `utils/` and `services/` paths have been removed.
+All planned ownership batches are complete. `services/` and the legacy
+`constants/providers.ts` module have been removed; new code uses the
+feature/shared/core/platform boundaries.
 
 ## 7. Validation checklist
 

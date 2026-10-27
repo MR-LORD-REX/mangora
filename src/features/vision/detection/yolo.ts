@@ -40,7 +40,7 @@ interface YoloRuntime {
 
 /** The bundled model (expo-asset turns the require into a bundled asset). */
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const MODEL_FILE = require("@/assets/models/yolo.onnx");
+const MODEL_FILE = require("../../../../assets/models/yolo.onnx");
 
 /** Ultralytics default letterbox target. Must match the exported model. */
 const INPUT_SIZE = 640;

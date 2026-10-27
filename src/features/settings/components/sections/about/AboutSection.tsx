@@ -35,7 +35,7 @@ import {
 } from "../../primitives/SettingsPrimitives";
 import { useAppSettings } from "../../../hooks/useAppSettings";
 import { colors, radius } from "@shared/theme";
-import { SITE_ORIGIN } from "@/services/deeplink";
+import { SITE_ORIGIN } from "@shared/links/mangaLinks";
 import {
   checkForUpdate,
   currentVersion,
@@ -46,7 +46,7 @@ import {
   openInstallSettings,
   type AvailableUpdate,
   type DownloadProgress,
-} from "@/services/updates";
+} from "@features/updates";
 
 const LINKS = {
   whatsNew: `${SITE_ORIGIN}/whats-new`,
@@ -219,7 +219,7 @@ export default function AboutSection({ standalone }: { standalone?: boolean }) {
     <SettingsSection title="About" icon={Info} standalone={standalone}>
       <View style={styles.brand}>
         <Image
-          source={require("@/assets/icons/appLogo.png")}
+          source={require("../../../../../../assets/icons/appLogo.png")}
           style={styles.logo}
           resizeMode="contain"
         />

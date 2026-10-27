@@ -1,20 +1,19 @@
 /**
- * services/updates/index.ts
+ * updater.ts
  * ---------------------------------------------------------------------------
- * In-app updater (plan S14.4). Checks GitHub releases against the running
+ * In-app updater mechanics. Checks GitHub releases against the running
  * version, downloads the APK to app-private storage, verifies it, and hands it
- * to the system installer through the DownloadModule FileProvider.
+ * to the system installer through the platform bridge.
  *
- * The UI orchestrates the steps; this file owns the mechanics and returns
- * plain data so the screen can render each phase.
+ * The UI orchestrates the steps; this module returns plain data so the screen
+ * can render each phase.
  * ---------------------------------------------------------------------------
  */
-
 import { Directory, File, Paths } from "expo-file-system";
 import { createDownloadResumable } from "expo-file-system/legacy";
 import * as Linking from "expo-linking";
 
-import { SITE_ORIGIN } from "@/services/deeplink";
+import { SITE_ORIGIN } from "@shared/links/mangaLinks";
 
 import {
   canRequestPackageInstalls,
@@ -22,16 +21,16 @@ import {
   installApk,
   openInstallPermissionSettings,
   sha256OfFile,
-} from "./native";
+} from "@platform/native/updater";
 import {
   compareVersions,
   currentVersion,
   fetchReleases,
   type AvailableUpdate,
-} from "./github";
+} from "../data/github";
 
-export type { AvailableUpdate } from "./github";
-export { compareVersions, currentVersion } from "./github";
+export type { AvailableUpdate } from "../data/github";
+export { compareVersions, currentVersion } from "../data/github";
 
 export interface UpdateCheck {
   currentVersion: string;

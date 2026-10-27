@@ -34,7 +34,6 @@ const compilerOptions = {
   moduleResolution: ts.ModuleResolutionKind.Bundler,
   baseUrl: ROOT,
   paths: {
-    "@/*": ["./*"],
     "@composition/*": ["./src/composition/*"],
     "@shared/*": ["./src/shared/*"],
     "@core/*": ["./src/core/*"],

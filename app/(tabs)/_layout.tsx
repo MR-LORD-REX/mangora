@@ -7,7 +7,7 @@ import {
 } from "lucide-react-native";
 
 import { colors } from "@shared/theme";
-import "@/global.css";
+import "../../global.css";
 
 export default function RootLayout() {
   return (

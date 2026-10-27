@@ -1,5 +1,5 @@
 /**
- * services/updates/native.ts
+ * src/platform/native/updater.ts
  * ---------------------------------------------------------------------------
  * Typed bridge to the updater helpers on the `MangoraDownloader` Android
  * module (android/app/src/main/java/com/mangora/app/DownloadModule.kt). Every

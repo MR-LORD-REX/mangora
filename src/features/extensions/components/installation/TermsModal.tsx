@@ -4,7 +4,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 
 import { colors, radius } from "@shared/theme";
-import { SITE_ORIGIN } from "@/services/deeplink";
+import { SITE_ORIGIN } from "@shared/links/mangaLinks";
 
 interface TermsModalProps {
   visible: boolean;

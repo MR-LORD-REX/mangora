@@ -72,6 +72,7 @@ export type {
 
 export { useExtensionRegistry } from "./hooks/useExtensionRegistry";
 export { providerLabel } from "./domain/providerLabel";
+export { isMatureProvider } from "./domain/providerMaturity";
 
 export { default as BrowseExtensionsScreen } from "./screens/BrowseExtensionsScreen";
 export type { BrowseExtensionsScreenProps } from "./screens/BrowseExtensionsScreen";

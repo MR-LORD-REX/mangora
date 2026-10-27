@@ -9,7 +9,7 @@ import {
   clearAbandonedDownloadedPageSessions,
   initDownloadScheduler,
 } from "@features/downloads";
-import { removeLegacyReaderPageCache } from "@/services/reader/legacyCacheCleanup";
+import { removeLegacyReaderPageCache } from "@core/storage/legacyReaderCacheCleanup";
 import { initPretranslateQueue } from "@features/translation";
 import { clearAbandonedOcrPageSources } from "@features/vision";
 import type { AppServices } from "@shared/contracts";

@@ -122,8 +122,8 @@ registry snapshots remain external stores.
 
 The reader's pure domain cut is in place under `src/features/reader/domain/`.
 It owns the two product views (`paged` and `strip`), geometry, display items
-and tap-zone resolution; legacy reader files are compatibility re-exports for
-now. `ReaderSessionProvider` owns reader-local page, chrome and loading state
+and tap-zone resolution; the former reader compatibility trees have been
+removed. `ReaderSessionProvider` owns reader-local page, chrome and loading state
 and is already consumed by the route. The route is now a 54-line adapter and
 the screen lives at `src/features/reader/screens/ReaderScreen.tsx`. Paged mode
 uses `PagedReader` with the default `FlatList`; strip mode uses
@@ -131,8 +131,8 @@ uses `PagedReader` with the default `FlatList`; strip mode uses
 The strip viewport now owns the shared world camera, viewport-level tap zones
 and long-press page identity; while zoomed, camera pan is the only vertical pan
 owner. The next cut is remaining large-screen decomposition, then hooks and
-presentation; on-device page, gesture and translation validation still gates
-removal of legacy paths.
+presentation; on-device page, gesture and translation validation remains the
+release gate.
 
 ## Validation
 

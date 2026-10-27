@@ -9,7 +9,7 @@ import { appServices } from "@composition/providers/appServices";
 import { AppServicesProvider, OverlayHostProvider } from "@shared/runtime";
 import { colors } from "@shared/theme";
 
-import "@/global.css";
+import "../global.css";
 
 export default function RootLayout() {
   return (

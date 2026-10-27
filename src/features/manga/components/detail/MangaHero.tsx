@@ -23,10 +23,8 @@ import type {
 import type { ProviderId } from "@core/catalog";
 import { colors, radius } from "@shared/theme";
 import { useAppSettings } from "@features/settings";
-import {
-  canShareProvider,
-  shareMangaLink,
-} from "@/services/deeplink";
+import { canShareProvider, shareMangaLink } from "@shared/links/mangaLinks";
+import { isMatureProvider } from "@features/extensions";
 import { imageSourceForUrl } from "@shared/net/imageHeaders";
 import BottomFade from "./BottomFade";
 import TagChip from "./TagChip";
@@ -108,6 +106,7 @@ export default function MangaHero({
   const shareAllowed = canShareProvider(
     source.provider,
     settings?.ageRestrictedSources ?? false,
+    isMatureProvider,
   );
 
   return (

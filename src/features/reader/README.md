@@ -89,7 +89,7 @@ persistence, download metadata and translation live in their hooks and
 props, `ReaderChromeRenderer` maps session callbacks onto the chrome stack, and
 `ReaderScreenStates` owns the loading and empty-chapter states. `ReaderViewport`
 owns the paged/strip presentation branch and viewport overlays. Further screen
-decomposition and legacy-shim removal remain Phase 3 work.
+decomposition remains Phase 3 work.
 `ReaderChromeStack.types.ts` and `useReaderSettings.types.ts` keep large
 prop/state contracts out of the component and hook implementation files.
 
