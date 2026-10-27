@@ -45,6 +45,8 @@ export interface StripReaderHandle {
     viewPosition?: number;
   }) => void;
   stepByViewport: (direction: "previous" | "next") => void;
+  /** Latest rendered scroll offset and the clamped content end. */
+  getScrollMetrics: () => { offset: number; maxOffset: number };
 }
 
 export interface StripTapEvent {
@@ -62,6 +64,8 @@ export interface StripReaderProps {
   resetKey: string;
   initialOffset?: number;
   onScroll: (offset: number) => void;
+  /** Called after the native ScrollView reports its current offset. */
+  onScrollOffset?: (offset: number) => void;
   onScrollBeginDrag: () => void;
   onTap: (event: StripTapEvent) => void;
   onLongPress: (index: number) => void;
@@ -71,7 +75,7 @@ export interface StripReaderProps {
 const MAX_CAMERA_SCALE = 4;
 const MIN_CAMERA_SCALE = 0.25;
 const TAP_TRAVEL_LIMIT = 12;
-const TAP_STEP_RATIO = 0.9;
+const TAP_STEP_RATIO = 0.35;
 
 function metricsFor(
   scale: number,
@@ -98,6 +102,7 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
       resetKey,
       initialOffset = 0,
       onScroll,
+      onScrollOffset,
       onScrollBeginDrag,
       onTap,
       onLongPress,
@@ -106,6 +111,7 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
     ref,
   ) {
     const scrollRef = useRef<GestureScrollView>(null);
+    const scrollOffsetRef = useRef(Math.max(0, initialOffset));
     const lastResetKeyRef = useRef(resetKey);
     const lastVisibleItemRef = useRef(0);
     const [cameraAtBase, setCameraAtBase] = useState(true);
@@ -154,10 +160,12 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
 
     const onTapRef = useRef(onTap);
     const onLongPressRef = useRef(onLongPress);
+    const onScrollOffsetRef = useRef(onScrollOffset);
     useEffect(() => {
       onTapRef.current = onTap;
       onLongPressRef.current = onLongPress;
-    }, [onLongPress, onTap]);
+      onScrollOffsetRef.current = onScrollOffset;
+    }, [onLongPress, onScrollOffset, onTap]);
 
     const dispatchTap = useCallback((event: StripTapEvent) => {
       onTapRef.current(event);
@@ -326,11 +334,14 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
       (event: NativeSyntheticEvent<NativeScrollEvent>) => {
         if (scale.value !== 1) return;
         const offset = Math.max(0, event.nativeEvent.contentOffset.y);
+        scrollOffsetRef.current = offset;
         scrollY.value = offset;
+        onScroll(offset);
+        onScrollOffsetRef.current?.(offset);
         const pageIndex = stripPageIndexForWorldY(offsets, offset);
         updateWindow(offset, pageIndex);
       },
-      [offsets, scale, scrollY, updateWindow],
+      [offsets, onScroll, scale, scrollY, updateWindow],
     );
 
     useImperativeHandle(
@@ -348,8 +359,15 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
           const delta = baseDelta / Math.max(MIN_CAMERA_SCALE, scale.value);
           scrollToOffset(scrollY.value + delta, true);
         },
+        getScrollMetrics: () => {
+          const viewportHeightPx = Math.max(0, viewport.height);
+          return {
+            offset: Math.max(0, scrollOffsetRef.current),
+            maxOffset: Math.max(0, contentHeight - viewportHeightPx),
+          };
+        },
       }),
-      [offsets, scale, scrollToOffset, scrollY, viewport.height],
+      [contentHeight, offsets, scale, scrollToOffset, scrollY, viewport.height],
     );
 
     const composedGesture = useMemo(() => {

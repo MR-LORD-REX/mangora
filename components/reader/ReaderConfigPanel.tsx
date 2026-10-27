@@ -173,12 +173,9 @@ function ReadingTab(props: ReaderConfigPanelProps) {
         ))}
       </View>
 
-      <SectionLabel>Image scale</SectionLabel>
+
       {longStrip ? (
-        <HelperText>
-          Webtoon and continuous modes always fit the page to the strip width,
-          matching Mihon&apos;s long-strip viewer.
-        </HelperText>
+        <></>
       ) : (
         <View style={styles.pillGrid}>
           {IMAGE_SCALE_OPTIONS.map((option) => (

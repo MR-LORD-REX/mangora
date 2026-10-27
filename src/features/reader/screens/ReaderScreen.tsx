@@ -117,6 +117,10 @@ import {
 } from "@/utils/reader/readerItems";
 import { resolveReaderIdentity } from "@/utils/reader/readerIdentity";
 import { useReaderTranslation } from "@/utils/reader/useReaderTranslation";
+import {
+  autoScrollPauseMs,
+  autoScrollSegment,
+} from "../domain/scroll/autoScroll";
 
 function paramString(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -245,6 +249,8 @@ export default function ReaderScreen({
     setLoading,
   } = useReaderSession();
   const [autoScroll, setAutoScroll] = useState(false);
+  const autoScrollRef = useRef(false);
+  const autoScrollPausedByDragRef = useRef(false);
   const pagedListRef = useRef<FlatList<ReaderDisplayItem>>(null);
   const stripListRef = useRef<StripReaderHandle>(null);
   const [defaultZoomScale, setDefaultZoomScale] = useState(1);
@@ -253,6 +259,8 @@ export default function ReaderScreen({
   const lastDisplayIndexRef = useRef(0);
   const [currentDisplayIndex, setCurrentDisplayIndex] = useState(0);
   const pagedModeRef = useRef(false);
+  const pagedMode = isPagedMode(chrome.readingMode);
+  pagedModeRef.current = pagedMode;
 
   /** Records the decoded pixel size of a page once known (getSize/onLoad). */
   const rememberPageDims = useCallback(
@@ -789,7 +797,14 @@ export default function ReaderScreen({
   const scrollOffset = useRef(0);
   const [scrollSpeed, setScrollSpeed] = useState(1);
   const scrollSpeedRef = useRef(1);
-  const requestRef = useRef<number | undefined>(undefined);
+  const autoScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const autoScrollGenerationRef = useRef(0);
+  const pagedTapInFlightRef = useRef(false);
+  const pagedTapUnlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const handleSetSpeed = (speed: number) => {
     setScrollSpeed(speed);
@@ -872,8 +887,78 @@ export default function ReaderScreen({
   };
 
   const handleScrollBeginDrag = () => {
+    autoScrollPausedByDragRef.current = autoScrollRef.current;
     setAutoScroll(false);
   };
+
+  /**
+   * Native ScrollView owns each auto-scroll animation. One bounded segment is
+   * issued per settle event; a page boundary adds a short readable pause.
+   * Nothing writes an offset back every frame, so a native fling and the
+   * scroll events it emits cannot fight each other.
+   */
+  const scheduleAutoScroll = useCallback(() => {
+    if (autoScrollTimerRef.current) {
+      clearTimeout(autoScrollTimerRef.current);
+      autoScrollTimerRef.current = null;
+    }
+    if (
+      !autoScrollRef.current ||
+      autoScrollPausedByDragRef.current ||
+      isPagedMode(chrome.readingMode)
+    ) {
+      return;
+    }
+    const generation = autoScrollGenerationRef.current;
+    const scrollHost = stripListRef.current;
+    if (!scrollHost) return;
+    const metrics = scrollHost.getScrollMetrics();
+    const segment = autoScrollSegment({
+      offset: metrics.offset,
+      maxOffset: metrics.maxOffset,
+      speed: scrollSpeedRef.current,
+      viewportSize: bodySize.height,
+      pageOffsets,
+    });
+    if (!segment) {
+      autoScrollRef.current = false;
+      setAutoScroll(false);
+      return;
+    }
+    scrollToReaderOffset(segment.target, true);
+    autoScrollTimerRef.current = setTimeout(() => {
+      autoScrollTimerRef.current = null;
+      if (generation !== autoScrollGenerationRef.current) return;
+      scheduleAutoScroll();
+    }, 380 + autoScrollPauseMs(segment));
+  }, [
+    bodySize.height,
+    chrome.readingMode,
+    pageOffsets,
+    scrollToReaderOffset,
+  ]);
+
+  useEffect(() => {
+    autoScrollRef.current = autoScroll;
+    autoScrollGenerationRef.current += 1;
+    autoScrollPausedByDragRef.current = false;
+    if (autoScroll && !pagedMode && pages.length > 0) {
+      scheduleAutoScroll();
+    } else if (autoScrollTimerRef.current) {
+      clearTimeout(autoScrollTimerRef.current);
+      autoScrollTimerRef.current = null;
+    }
+  }, [autoScroll, pagedMode, pages.length, scheduleAutoScroll]);
+
+  useEffect(
+    () => () => {
+      if (autoScrollTimerRef.current) {
+        clearTimeout(autoScrollTimerRef.current);
+        autoScrollTimerRef.current = null;
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (displayItems.length === 0) {
@@ -921,37 +1006,13 @@ export default function ReaderScreen({
     }
   }, [setCurrentPageIndex]);
 
-  const lastAutoScrollTimeRef = useRef(0);
-  const animateScroll = (time: number) => {
-    const previous = lastAutoScrollTimeRef.current || time;
-    lastAutoScrollTimeRef.current = time;
-    const elapsedSeconds = Math.min(0.05, (time - previous) / 1000);
-    // Mihon's speed slider is expressed in dp/s; 60 px/s keeps the slowest
-    // useful setting readable on a phone and scales linearly from there.
-    scrollOffset.current += 60 * scrollSpeedRef.current * elapsedSeconds;
-    scrollToReaderOffset(scrollOffset.current, false);
-    requestRef.current = requestAnimationFrame(animateScroll);
-  };
-
-  const pagedMode = isPagedMode(chrome.readingMode);
-  pagedModeRef.current = pagedMode;
-
-  useEffect(() => {
-    if (autoScroll && pages.length && !pagedMode) {
-      lastAutoScrollTimeRef.current = 0;
-      requestRef.current = requestAnimationFrame(animateScroll);
-    } else {
-      if (requestRef.current) {
-        cancelAnimationFrame(requestRef.current);
-      }
+  const releasePagedTapLock = useCallback(() => {
+    pagedTapInFlightRef.current = false;
+    if (pagedTapUnlockTimerRef.current) {
+      clearTimeout(pagedTapUnlockTimerRef.current);
+      pagedTapUnlockTimerRef.current = null;
     }
-    return () => {
-      if (requestRef.current) {
-        cancelAnimationFrame(requestRef.current);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoScroll, pages, pagedMode]);
+  }, []);
 
   useEffect(() => {
     if (pagedMode) {
@@ -1120,6 +1181,9 @@ export default function ReaderScreen({
       if (settingsPersistTimerRef.current) {
         clearTimeout(settingsPersistTimerRef.current);
       }
+      if (pagedTapUnlockTimerRef.current) {
+        clearTimeout(pagedTapUnlockTimerRef.current);
+      }
       const pending = pendingSettingsPatchRef.current;
       if (Object.keys(pending).length > 0) {
         updateSettings(pending).catch(console.error);
@@ -1178,7 +1242,7 @@ export default function ReaderScreen({
   const scrollRetryRef = useRef(0);
 
   const scrollToDisplayItem = useCallback(
-    (index: number) => {
+    (index: number, animated = false) => {
       if (displayItems.length === 0) return;
       const target = Math.min(Math.max(index, 0), displayItems.length - 1);
       const item = displayItems[target];
@@ -1189,7 +1253,7 @@ export default function ReaderScreen({
       setCurrentPageIndex(item.pageIndex);
       lastPageIndexRef.current = item.pageIndex;
       if (isPagedMode(chrome.readingMode)) {
-        scrollToReaderIndex(target, false);
+        scrollToReaderIndex(target, animated);
         return;
       }
       scrollToReaderOffset(pageOffsets[target] ?? 0, false);
@@ -1282,6 +1346,7 @@ export default function ReaderScreen({
   const handlePagedTap = useCallback(
     (x: number, y: number) => {
       if (configOpen) return;
+      if (pagedTapInFlightRef.current) return;
       const rtl =
         chrome.readingMode === "pagedHorizontal" &&
         chrome.pagedDirection === "rtl";
@@ -1296,11 +1361,35 @@ export default function ReaderScreen({
       });
       if (action === "prev") {
         if (currentDisplayIndex > 0) {
-          scrollToDisplayItem(currentDisplayIndex - 1);
+          if (chrome.animatePageTransitions) {
+            pagedTapInFlightRef.current = true;
+            if (pagedTapUnlockTimerRef.current) {
+              clearTimeout(pagedTapUnlockTimerRef.current);
+            }
+            pagedTapUnlockTimerRef.current = setTimeout(
+              releasePagedTapLock,
+              700,
+            );
+            scrollToDisplayItem(currentDisplayIndex - 1, true);
+          } else {
+            scrollToDisplayItem(currentDisplayIndex - 1);
+          }
         }
       } else if (action === "next") {
         if (currentDisplayIndex < displayItems.length - 1) {
-          scrollToDisplayItem(currentDisplayIndex + 1);
+          if (chrome.animatePageTransitions) {
+            pagedTapInFlightRef.current = true;
+            if (pagedTapUnlockTimerRef.current) {
+              clearTimeout(pagedTapUnlockTimerRef.current);
+            }
+            pagedTapUnlockTimerRef.current = setTimeout(
+              releasePagedTapLock,
+              700,
+            );
+            scrollToDisplayItem(currentDisplayIndex + 1, true);
+          } else {
+            scrollToDisplayItem(currentDisplayIndex + 1);
+          }
         }
       } else {
         setShowHeader(true);
@@ -1309,10 +1398,15 @@ export default function ReaderScreen({
     [
       bodySize.height,
       bodySize.width,
-      chrome,
+      chrome.animatePageTransitions,
+      chrome.invertTapZones,
+      chrome.pagedDirection,
+      chrome.readingMode,
+      chrome.tapZoneLayout,
       configOpen,
       currentDisplayIndex,
       displayItems.length,
+      releasePagedTapLock,
       scrollToDisplayItem,
       setShowHeader,
     ],
@@ -1817,6 +1911,7 @@ export default function ReaderScreen({
             getItemLayout={getItemLayout}
             scrollEventThrottle={32}
             onScrollBeginDrag={handleScrollBeginDrag}
+            onMomentumScrollEnd={releasePagedTapLock}
             onScrollToIndexFailed={handleScrollToIndexFailed}
             contentContainerStyle={
               horizontalList
