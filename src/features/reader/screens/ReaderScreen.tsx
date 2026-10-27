@@ -23,6 +23,7 @@ import PagedReader from "../views/paged/PagedReader";
 import StripReader, {
   type StripReaderHandle,
   type StripTapEvent,
+  type StripViewportState,
 } from "../views/strip/StripReader";
 import {
   AddToLibraryButton,
@@ -801,6 +802,8 @@ export default function ReaderScreen({
     null,
   );
   const autoScrollGenerationRef = useRef(0);
+  const autoScrollSchedulerRef = useRef<() => void>(() => {});
+  const autoScrollCameraZoomedRef = useRef(false);
   const pagedTapInFlightRef = useRef(false);
   const pagedTapUnlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -886,6 +889,28 @@ export default function ReaderScreen({
     syncPageIndexFromOffset(offset);
   };
 
+  const handleStripViewportChange = useCallback(
+    ({ offset, atBase, interacting }: StripViewportState) => {
+      scrollOffset.current = offset;
+      if (interacting || !atBase) {
+        autoScrollCameraZoomedRef.current = true;
+        if (autoScrollTimerRef.current) {
+          clearTimeout(autoScrollTimerRef.current);
+          autoScrollTimerRef.current = null;
+        }
+        autoScrollGenerationRef.current += 1;
+        return;
+      }
+      if (!autoScrollCameraZoomedRef.current) return;
+      autoScrollCameraZoomedRef.current = false;
+      if (autoScrollRef.current && !pagedModeRef.current) {
+        autoScrollGenerationRef.current += 1;
+        autoScrollSchedulerRef.current();
+      }
+    },
+    [],
+  );
+
   const handleScrollBeginDrag = () => {
     autoScrollPausedByDragRef.current = autoScrollRef.current;
     setAutoScroll(false);
@@ -943,12 +968,15 @@ export default function ReaderScreen({
     autoScrollGenerationRef.current += 1;
     autoScrollPausedByDragRef.current = false;
     if (autoScroll && !pagedMode && pages.length > 0) {
+        autoScrollCameraZoomedRef.current = false;
       scheduleAutoScroll();
     } else if (autoScrollTimerRef.current) {
       clearTimeout(autoScrollTimerRef.current);
       autoScrollTimerRef.current = null;
     }
   }, [autoScroll, pagedMode, pages.length, scheduleAutoScroll]);
+
+  autoScrollSchedulerRef.current = scheduleAutoScroll;
 
   useEffect(
     () => () => {
@@ -1929,6 +1957,7 @@ export default function ReaderScreen({
             resetKey={`${source}:${chapterId}`}
             initialOffset={pageOffsets[currentDisplayIndex] ?? 0}
             onScroll={handleStripScroll}
+            onViewportChange={handleStripViewportChange}
             onScrollBeginDrag={handleScrollBeginDrag}
             onTap={handleStripTap}
             onLongPress={(index) => {

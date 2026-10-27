@@ -30,7 +30,7 @@ Mangora is a reader and translation tool. Add a compatible extension repository 
 - **Library and history:** organize titles and keep track of chapters and reading progress.
 - **Offline chapters:** save chapters as `.cbz` files to your device.
 - **On device translations :** translate a manga page on demand or as you read.
-- **AI translations:** Translation Quality comparable officially translated manga.
+- **AI translations:** Context aware translation with AI
 - **Android builds:** APKs are available for 64-bit ARM (`arm64-v8a`) and 32-bit ARM (`armeabi-v7a`).
 
 ## Download

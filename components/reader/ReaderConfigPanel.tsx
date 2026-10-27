@@ -149,7 +149,7 @@ function ReadingTab(props: ReaderConfigPanelProps) {
         min={1}
         max={5}
         step={1}
-        dotCount={20}
+        dotCount={5}
         disabled={paged}
         leftLabel="Slow"
         rightLabel="Fast"

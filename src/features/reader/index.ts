@@ -51,6 +51,7 @@ export { default as StripReader } from "./views/strip/StripReader";
 export type {
   StripReaderHandle,
   StripReaderProps,
+  StripViewportState,
 } from "./views/strip/StripReader";
 export {
   createInitialReaderSessionState,

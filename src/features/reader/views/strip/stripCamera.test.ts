@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   clampStripCameraTranslation,
+  stripCameraAtBase,
   stripCameraWindowFor,
   stripCameraScreenPointToWorld,
   stripCameraTranslationForScale,
@@ -17,6 +18,14 @@ const base = {
   viewportHeight: 800,
   contentHeight: 5000,
 };
+
+test("camera base-scale detection tolerates pinch rounding", () => {
+  assert.equal(stripCameraAtBase(1), true);
+  assert.equal(stripCameraAtBase(1.009), true);
+  assert.equal(stripCameraAtBase(0.991), true);
+  assert.equal(stripCameraAtBase(1.02), false);
+  assert.equal(stripCameraAtBase(0.98), false);
+});
 
 test("unzoomed strip camera has no translation", () => {
   assert.deepEqual(clampStripCameraTranslation(base, 40, -30), {

@@ -18,6 +18,14 @@ export interface StripCameraWindow {
   visibleHeight: number;
 }
 
+/** Pinch gestures rarely land on an exact 1.0; treat this as fit scale. */
+export const STRIP_CAMERA_BASE_EPSILON = 0.01;
+
+export function stripCameraAtBase(scale: number): boolean {
+  "worklet";
+  return Math.abs(scale - 1) <= STRIP_CAMERA_BASE_EPSILON;
+}
+
 export function clampStripCameraTranslation(
   metrics: StripCameraMetrics,
   translationX: number,

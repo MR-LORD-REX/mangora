@@ -30,6 +30,7 @@ import type { ReaderDisplayItem } from "../../domain/layout/readerItems";
 import { stripWindowForOffset } from "../../domain/layout/stripWindow";
 import {
   clampStripCameraTranslation,
+  stripCameraAtBase,
   stripCameraScreenPointToWorld,
   stripCameraWindowFor,
   stripCameraTranslationForScale,
@@ -57,6 +58,15 @@ export interface StripTapEvent {
   index: number;
 }
 
+export interface StripViewportState {
+  /** Latest native ScrollView offset, even while the camera is zoomed. */
+  offset: number;
+  /** True when pinch rounding has returned the camera to fit scale. */
+  atBase: boolean;
+  /** True while a pinch or camera pan is in progress. */
+  interacting: boolean;
+}
+
 export interface StripReaderProps {
   items: ReaderDisplayItem[];
   offsets: readonly number[];
@@ -66,6 +76,8 @@ export interface StripReaderProps {
   onScroll: (offset: number) => void;
   /** Called after the native ScrollView reports its current offset. */
   onScrollOffset?: (offset: number) => void;
+  /** Reports camera interaction and settlement for auto-scroll coordination. */
+  onViewportChange?: (state: StripViewportState) => void;
   onScrollBeginDrag: () => void;
   onTap: (event: StripTapEvent) => void;
   onLongPress: (index: number) => void;
@@ -103,6 +115,7 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
       initialOffset = 0,
       onScroll,
       onScrollOffset,
+      onViewportChange,
       onScrollBeginDrag,
       onTap,
       onLongPress,
@@ -161,11 +174,13 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
     const onTapRef = useRef(onTap);
     const onLongPressRef = useRef(onLongPress);
     const onScrollOffsetRef = useRef(onScrollOffset);
+    const onViewportChangeRef = useRef(onViewportChange);
     useEffect(() => {
       onTapRef.current = onTap;
       onLongPressRef.current = onLongPress;
       onScrollOffsetRef.current = onScrollOffset;
-    }, [onLongPress, onScrollOffset, onTap]);
+      onViewportChangeRef.current = onViewportChange;
+    }, [onLongPress, onScrollOffset, onViewportChange, onTap]);
 
     const dispatchTap = useCallback((event: StripTapEvent) => {
       onTapRef.current(event);
@@ -173,6 +188,17 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
     const dispatchLongPress = useCallback((index: number) => {
       onLongPressRef.current(index);
     }, []);
+
+    const notifyViewportChange = useCallback(
+      (offset: number, currentScale: number, interacting: boolean) => {
+        onViewportChangeRef.current?.({
+          offset: Math.max(0, offset),
+          atBase: stripCameraAtBase(currentScale),
+          interacting,
+        });
+      },
+      [],
+    );
 
     const updateWindow = useCallback(
       (offset: number, pageIndex?: number) => {
@@ -275,13 +301,16 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
       panStartX.value = 0;
       panStartY.value = 0;
       setCameraAtBase(true);
+      notifyViewportChange(scrollY.value, 1, false);
     }, [
+      notifyViewportChange,
       panStartX,
       panStartY,
       pinchStartScale,
       scale,
       translateX,
       translateY,
+      scrollY,
     ]);
 
     const scrollToOffset = useCallback(
@@ -332,9 +361,9 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
 
     const handleScroll = useCallback(
       (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-        if (scale.value !== 1) return;
         const offset = Math.max(0, event.nativeEvent.contentOffset.y);
         scrollOffsetRef.current = offset;
+        if (scale.value !== 1) return;
         scrollY.value = offset;
         onScroll(offset);
         onScrollOffsetRef.current?.(offset);
@@ -374,7 +403,8 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
       const pinch = Gesture.Pinch()
         .onStart(() => {
           pinchStartScale.value = scale.value;
-          runOnJS(setCameraAtBase)(scale.value === 1);
+          runOnJS(setCameraAtBase)(stripCameraAtBase(scale.value));
+          runOnJS(notifyViewportChange)(scrollY.value, scale.value, true);
         })
         .onUpdate((event) => {
           const nextScale = Math.min(
@@ -396,9 +426,15 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
           translateX.value = nextTranslation.x;
           translateY.value = nextTranslation.y;
         })
-        .onEnd(() => {
+        .onFinalize(() => {
+          if (stripCameraAtBase(scale.value)) {
+            scale.value = 1;
+            translateX.value = 0;
+            translateY.value = 0;
+          }
           pinchStartScale.value = scale.value;
-          runOnJS(setCameraAtBase)(scale.value === 1);
+          runOnJS(setCameraAtBase)(stripCameraAtBase(scale.value));
+          runOnJS(notifyViewportChange)(scrollY.value, scale.value, false);
         });
 
       const pan = Gesture.Pan()
@@ -406,6 +442,7 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
         .onStart(() => {
           panStartX.value = translateX.value;
           panStartY.value = translateY.value;
+          runOnJS(notifyViewportChange)(scrollY.value, scale.value, true);
         })
         .onUpdate((event) => {
           const nextTranslation = clampStripCameraTranslation(
@@ -416,10 +453,11 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
           translateX.value = nextTranslation.x;
           translateY.value = nextTranslation.y;
         })
-        .onEnd(() => {
+        .onFinalize(() => {
           panStartX.value = translateX.value;
           panStartY.value = translateY.value;
-          runOnJS(setCameraAtBase)(scale.value === 1);
+          runOnJS(setCameraAtBase)(stripCameraAtBase(scale.value));
+          runOnJS(notifyViewportChange)(scrollY.value, scale.value, false);
         });
 
       const singleTap = Gesture.Tap()
@@ -465,6 +503,7 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
       panStartX,
       panStartY,
       pinchStartScale,
+      notifyViewportChange,
       scale,
       scrollY,
       translateX,
