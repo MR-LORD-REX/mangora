@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { Dimensions, FlatList, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -8,7 +8,6 @@ import {
   ReaderLoadingState,
 } from "../components/screens/ReaderScreenStates";
 import { useReaderSession } from "../state/ReaderSessionProvider";
-import type { StripReaderHandle, StripTapEvent } from "../views/strip/StripReader";
 import { AddToLibraryButton } from "@features/library";
 import { ReaderDownloadButton } from "@features/downloads";
 import {
@@ -16,40 +15,30 @@ import {
   isGapLessMode,
   isHorizontalMode,
   isLongStripMode,
-  isPagedMode,
   orientationToLock,
   type ReaderChromeSettings,
 } from "../components/panels/readerChrome";
 import { autoLanguageForReader } from "../components/panels/readerLanguages";
 import ReaderChromeRenderer from "../blocks/ReaderChromeRenderer";
 import ReaderPageRenderer from "../blocks/ReaderPageRenderer";
-import { resolveTapZoneAction } from "../domain/navigation/tapZones";
 import { clearTranslationCacheForManga } from "@core/db/repositories/translationRepository";
 import { updateSettings } from "@core/settings";
-import { imageHeadersForPage } from "@shared/net/imageHeaders";
-import { buildPageOffsets } from "../domain/layout/pageOffsets";
 import { readerBackgroundColor } from "../domain/readerBackground";
 import { chromeToSettingsPatch } from "../domain/readerChromeSettings";
-import {
-  buildReaderDisplayItems,
-  type ReaderDisplayItem,
-} from "../domain/layout/readerItems";
+import type { ReaderDisplayItem } from "../domain/layout/readerItems";
+import type { StripReaderHandle } from "../views/strip/StripReader";
 import { useReaderTranslation } from "../translation/useReaderTranslation";
-import { useReaderAutoScroll } from "../hooks/useReaderAutoScroll";
 import { useReaderChapterPages } from "../hooks/useReaderChapterPages";
-import { usePagedTap } from "../hooks/usePagedTap";
 import { useReaderSessionLedger } from "../hooks/useReaderSessionLedger";
 import { useReaderDownloadState } from "../hooks/useReaderDownloadState";
-import { usePagedDisplayAnchor } from "../hooks/usePagedDisplayAnchor";
-import { useReaderDisplayIndex } from "../hooks/useReaderDisplayIndex";
-import { useReaderPageDims } from "../hooks/useReaderPageDims";
 import { useReaderPageFlash } from "../hooks/useReaderPageFlash";
 import { useReaderPageStatus } from "../hooks/useReaderPageStatus";
 import { useReaderChromeController } from "../hooks/useReaderChromeController";
-import { useReaderScrollTracking } from "../hooks/useReaderScrollTracking";
 import { useReaderSettings } from "../hooks/useReaderSettings";
 import { useReaderSettingsBridge } from "../hooks/useReaderSettingsBridge";
 import { useReaderScreenLifetime } from "../hooks/useReaderScreenLifetime";
+import { useReaderViewportState } from "../hooks/useReaderViewportState";
+import { useReaderViewportControls } from "../hooks/useReaderViewportControls";
 import ReaderViewport from "../views/ReaderViewport/ReaderViewport";
 
 const windowDimensions = Dimensions.get("window");
@@ -98,6 +87,10 @@ export default function ReaderScreen({
   const clearTranslationCacheRef = useRef<() => Promise<number>>(
     async () => 0,
   );
+  const resetViewportRef = useRef<() => void>(() => {});
+  const setConfigOpenRef = useRef<(open: boolean) => void>(() => {});
+  const pagedListRef = useRef<FlatList<ReaderDisplayItem> | null>(null);
+  const stripListRef = useRef<StripReaderHandle | null>(null);
 
   const {
     readerIdentity,
@@ -145,12 +138,8 @@ export default function ReaderScreen({
     setLoading,
     resetTranslationPipeline: () => resetTranslationPipelineRef.current(),
     onChapterStart: () => {
-      lastPageIndexRef.current = 0;
-      lastDisplayIndexRef.current = 0;
-      setCurrentPageIndex(0);
-      setCurrentDisplayIndex(0);
-      setImageWindow(new Set([0, 1, 2, 3, 4]));
-      setConfigOpen(false);
+      resetViewportRef.current();
+      setConfigOpenRef.current(false);
     },
   });
 
@@ -196,108 +185,72 @@ export default function ReaderScreen({
     setShowHeader,
   });
 
-  const pagedListRef = useRef<FlatList<ReaderDisplayItem>>(null);
-  const stripListRef = useRef<StripReaderHandle>(null);
-  const lastPageIndexRef = useRef(0);
-  const lastDisplayIndexRef = useRef(0);
-  const [currentDisplayIndex, setCurrentDisplayIndex] = useState(0);
-  const [imageWindow, setImageWindow] = useState<Set<number>>(
-    () => new Set([0, 1, 2, 3, 4]),
-  );
-  const pagedModeRef = useRef(false);
-  const pagedMode = isPagedMode(chrome.readingMode);
-  pagedModeRef.current = pagedMode;
-  const [bodySize, setBodySize] = useState({
-    width: screenWidth,
-    height: screenHeight,
-  });
-  const { pageDims, rememberPageDims } = useReaderPageDims({
+  const {
+    bodySize,
+    setBodySize,
+    currentDisplayIndex,
+    setCurrentDisplayIndex,
+    imageWindow,
+    pageDims,
+    rememberPageDims,
+    pageImageHeaders,
+    displayItems,
+    displayItemsRef,
+    pageOffsets,
+    pagedMode,
+    getItemLayout,
+    syncPageIndexFromOffset,
+    lastPageIndexRef,
+    lastDisplayIndexRef,
+    onViewableItemsChanged,
+    resetViewport,
+  } = useReaderViewportState({
     pages,
     source,
-    readingMode: chrome.readingMode,
+    chrome,
     currentPageIndex,
-    imageWindow,
+    setCurrentPageIndex,
+    initialSize: { width: screenWidth, height: screenHeight },
   });
+  resetViewportRef.current = resetViewport;
+  setConfigOpenRef.current = setConfigOpen;
 
-  const scrollToReaderIndex = useCallback(
-    (index: number, animated = false, viewPosition?: number) => {
-      if (isPagedMode(chrome.readingMode)) {
-        pagedListRef.current?.scrollToIndex({
-          index,
-          animated,
-          viewPosition,
-        });
-      } else {
-        stripListRef.current?.scrollToIndex({ index, animated, viewPosition });
-      }
-    },
-    [chrome.readingMode],
-  );
-
-  const scrollToReaderOffset = useCallback(
-    (offset: number, animated = false) => {
-      if (isPagedMode(chrome.readingMode)) {
-        pagedListRef.current?.scrollToOffset({ offset, animated });
-      } else {
-        stripListRef.current?.scrollToOffset({ offset, animated });
-      }
-    },
-    [chrome.readingMode],
-  );
-
-  const stepReaderViewport = useCallback(
-    (direction: "previous" | "next") => {
-      stripListRef.current?.stepByViewport(direction);
-    },
-    [],
-  );
-
-  // Resolve headers once per page list. Passing a freshly looked-up object on
-  // every render would retrigger SubsamplingStripImage's download effect when
-  // unrelated chrome settings (such as crop) change.
-  const pageImageHeaders = useMemo(() => {
-    const byUrl = new Map<string, Record<string, string> | undefined>();
-    for (const url of pages) {
-      byUrl.set(url, imageHeadersForPage(source, url));
-    }
-    return byUrl;
-  }, [pages, source]);
-
-  const displayItems = useMemo(
-    () =>
-      buildReaderDisplayItems(pages, pageDims, {
-        splitWidePages: chrome.splitWidePages,
-        rotateWidePagesToFit: chrome.rotateWidePagesToFit,
-        pagedDirection: chrome.pagedDirection,
-        sliceTallPages: isPagedMode(chrome.readingMode),
-        viewportHeight: bodySize.height,
-        imageScaleType: chrome.imageScaleType,
-        sidePadding: chrome.sidePadding,
-        body: bodySize,
-      }),
-    [
-      bodySize,
-      chrome.pagedDirection,
-      chrome.imageScaleType,
-      chrome.readingMode,
-      chrome.rotateWidePagesToFit,
-      chrome.sidePadding,
-      chrome.splitWidePages,
-      pageDims,
-      pages,
-    ],
-  );
-
-  const { displayItemsRef } = useReaderDisplayIndex({
-    displayItems,
+  const {
+    scrollToReaderIndex,
+    scrollToPage,
+    handleScrollToIndexFailed,
+    handlePagedTap,
+    releasePagedTapLock,
+    handleStripTap,
+    handleStripScroll,
+    autoScroll,
+    scrollSpeed,
+    setAutoScroll,
+    setAutoScrollSpeed,
+    handleScrollBeginDrag,
+    handleStripViewportChange,
+  } = useReaderViewportControls({
+    chrome,
+    sheet,
+    bodySize,
     pagesLength: pages.length,
+    displayItems,
+    pageOffsets,
     currentPageIndex,
+    setCurrentPageIndex,
     currentDisplayIndex,
-    lastDisplayIndexRef,
     setCurrentDisplayIndex,
+    pagedMode,
+    lastPageIndexRef,
+    lastDisplayIndexRef,
+    pagedListRef,
+    stripListRef,
+    syncPageIndexFromOffset,
+    setShowHeader,
   });
 
-
+  // Settings and translation own their persisted values. The bridge below
+  // updates chrome/auto-scroll after the store subscription is applied.
   const {
     readerLanguage,
     targetLanguage,
@@ -336,7 +289,6 @@ export default function ReaderScreen({
   } = useReaderSettings();
   const ocrLanguage = readerLanguage || autoLanguage;
 
-  // Owns the scan -> OCR -> translation queues, RAM cache and metrics.
   const {
     translationPages,
     pipelineError,
@@ -385,51 +337,6 @@ export default function ReaderScreen({
     return removed;
   };
 
-
-  /**
-   * Prefix offsets for the current strip layout. Recomputing every page's
-   * geometry inside onScroll was O(pages) on every frame; lookups now use a
-   * binary search over this table, and jumps reuse the same offsets.
-   */
-  const pageOffsets = useMemo(
-    () =>
-      buildPageOffsets(
-        displayItems,
-        chrome.readingMode,
-        chrome.sidePadding,
-        bodySize,
-        pageDims,
-        chrome.imageScaleType,
-        chrome.rotateWidePagesToFit,
-        chrome.webtoonPageGap,
-      ),
-    [
-      bodySize,
-      chrome.imageScaleType,
-      chrome.readingMode,
-      chrome.rotateWidePagesToFit,
-      chrome.sidePadding,
-      chrome.webtoonPageGap,
-      displayItems,
-      pageDims,
-    ],
-  );
-
-  const { syncPageIndexFromOffset: syncPagedOffset, getItemLayout } =
-    useReaderScrollTracking({
-      displayItems,
-      pageOffsets,
-      lastDisplayIndexRef,
-      lastPageIndexRef,
-      setCurrentDisplayIndex,
-      setCurrentPageIndex,
-    });
-
-  const syncPageIndexFromOffset = (offset: number) => {
-    if (pagedModeRef.current) return;
-    syncPagedOffset(offset);
-  };
-
   useReaderSessionLedger({
     source,
     chapterId,
@@ -449,77 +356,6 @@ export default function ReaderScreen({
     setCurrentDisplayIndex,
     scrollToReaderIndex,
   });
-  const handleStripScroll = (offset: number) => {
-    syncPageIndexFromOffset(offset);
-  };
-
-  const {
-    active: autoScroll,
-    speed: scrollSpeed,
-    setActive: setAutoScroll,
-    setSpeed: setAutoScrollSpeed,
-    handleScrollBeginDrag,
-    handleViewportChange: handleStripViewportChange,
-  } = useReaderAutoScroll({
-    readingMode: chrome.readingMode,
-    pageOffsets,
-    contentReady: pages.length > 0,
-    viewportHeight: bodySize.height,
-    stripRef: stripListRef,
-    scrollToOffset: scrollToReaderOffset,
-  });
-
-  useEffect(() => {
-    if (displayItems.length === 0) {
-      setImageWindow(new Set());
-      return;
-    }
-
-    // Keep the prefetch window tight: each entry can hold a decoded tiled
-    // page, and a 300-page chapter should not keep seven huge images alive.
-    const radius = isPagedMode(chrome.readingMode) ? 1 : 3;
-    const start = Math.max(0, currentDisplayIndex - radius);
-    const end = Math.min(displayItems.length - 1, currentDisplayIndex + radius);
-    const nextWindow = new Set<number>();
-    for (let index = start; index <= end; index += 1) {
-      nextWindow.add(index);
-    }
-
-    setImageWindow((previous) => {
-      if (
-        previous.size === nextWindow.size &&
-        [...nextWindow].every((index) => previous.has(index))
-      ) {
-        return previous;
-      }
-      return nextWindow;
-    });
-  }, [chrome.readingMode, currentDisplayIndex, displayItems.length]);
-
-  // Paged modes only: every page fills the viewport, so viewability is
-  // exact there. Scroll modes are handled by syncPageIndexFromOffset.
-  const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
-    if (!pagedModeRef.current) return;
-    if (viewableItems && viewableItems.length > 0) {
-      const displayIndex = viewableItems[0].index ?? 0;
-      const item = viewableItems[0].item as ReaderDisplayItem | undefined;
-      const pageIndex = item?.pageIndex ?? displayIndex;
-      if (lastDisplayIndexRef.current !== displayIndex) {
-        lastDisplayIndexRef.current = displayIndex;
-        setCurrentDisplayIndex(displayIndex);
-      }
-      if (lastPageIndexRef.current !== pageIndex) {
-        lastPageIndexRef.current = pageIndex;
-        setCurrentPageIndex(pageIndex);
-      }
-    }
-  }, [setCurrentPageIndex]);
-
-  useEffect(() => {
-    if (pagedMode) {
-      setAutoScroll(false);
-    }
-  }, [pagedMode, setAutoScroll]);
 
   const {
     handleSelectScrollSpeed,
@@ -573,7 +409,6 @@ export default function ReaderScreen({
     queueSettingsPatch(chromeToSettingsPatch(safePatch));
   };
 
-
   const horizontalList = isHorizontalMode(chrome.readingMode);
   const longStripMode = isLongStripMode(chrome.readingMode);
   const pageGap =
@@ -585,119 +420,6 @@ export default function ReaderScreen({
     orientationLock: orientationToLock(chrome.orientation),
     keepScreenOn: chrome.keepScreenOn,
   });
-
-  const scrollRetryRef = useRef(0);
-
-  const scrollToDisplayItem = useCallback(
-    (index: number, animated = false) => {
-      if (displayItems.length === 0) return;
-      const target = Math.min(Math.max(index, 0), displayItems.length - 1);
-      const item = displayItems[target];
-      if (!item) return;
-      scrollRetryRef.current = 0;
-      setCurrentDisplayIndex(target);
-      lastDisplayIndexRef.current = target;
-      setCurrentPageIndex(item.pageIndex);
-      lastPageIndexRef.current = item.pageIndex;
-      if (isPagedMode(chrome.readingMode)) {
-        scrollToReaderIndex(target, animated);
-        return;
-      }
-      scrollToReaderOffset(pageOffsets[target] ?? 0, false);
-    },
-    [
-      chrome.readingMode,
-      displayItems,
-      pageOffsets,
-      setCurrentPageIndex,
-      scrollToReaderIndex,
-      scrollToReaderOffset,
-    ],
-  );
-
-  const { scrollToPage } = usePagedDisplayAnchor({
-    displayItems,
-    pagesLength: pages.length,
-    currentPageIndex,
-    currentDisplayIndex,
-    pagedMode,
-    lastDisplayIndexRef,
-    setCurrentPageIndex,
-    setCurrentDisplayIndex,
-    scrollToDisplayItem,
-    scrollToReaderIndex,
-  });
-
-  const handleScrollToIndexFailed = useCallback(
-    ({ index, averageItemLength }: { index: number; averageItemLength: number }) => {
-      const target = Math.min(
-        Math.max(index, 0),
-        Math.max(displayItems.length - 1, 0),
-      );
-      const estimated =
-        pageOffsets[target] ?? Math.max(0, averageItemLength) * target;
-      scrollToReaderOffset(estimated, false);
-      // FlatList needs one frame after the estimated offset before the target
-      // row exists. Retry once so variable-height pages land exactly.
-      if (scrollRetryRef.current < 1) {
-        scrollRetryRef.current += 1;
-        setTimeout(() => {
-          scrollToReaderIndex(target, false, 0);
-        }, 120);
-      }
-    },
-    [displayItems.length, pageOffsets, scrollToReaderIndex, scrollToReaderOffset],
-  );
-
-  /**
-   * Paged-mode tap handling: the active tap-zone preset turns pages from the
-   * 30% edge bands and the remaining middle space toggles the header/footer.
-   * While the chrome is open, any tap closes it first - that keeps the bar
-   * buttons and the page-turn zones from fighting over the same touches.
-   */
-  const { handlePagedTap, releasePagedTapLock } = usePagedTap({
-    chrome,
-    configOpen: sheet.configOpen,
-    bodySize,
-    currentDisplayIndex,
-    displayCount: displayItems.length,
-    scrollToDisplayItem,
-    setShowHeader,
-  });
-
-  /**
-   * Strip-mode tap handling. A tap is measured against the viewport (page rows
-   * can be many screens tall). Page-turn zones move by a fraction of the
-   * viewport so tall pages are not skipped; the whole strip camera owns zoom
-   * and pan.
-   */
-  const handleStripTap = useCallback(
-    ({ x, y }: StripTapEvent) => {
-      if (sheet.configOpen) return;
-      const action = resolveTapZoneAction({
-        layout: chrome.tapZoneLayout,
-        invert: chrome.invertTapZones,
-        x,
-        y,
-        width: bodySize.width,
-        height: bodySize.height,
-      });
-      if (action === "toggle") {
-        setShowHeader(true);
-        return;
-      }
-      stepReaderViewport(action === "next" ? "next" : "previous");
-    },
-    [
-      bodySize.height,
-      bodySize.width,
-      chrome.invertTapZones,
-      chrome.tapZoneLayout,
-      sheet.configOpen,
-      setShowHeader,
-      stepReaderViewport,
-    ],
-  );
 
   const pageFlashOpacity = useReaderPageFlash({
     pageIndex: currentPageIndex,

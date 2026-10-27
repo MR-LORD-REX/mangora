@@ -50,6 +50,8 @@ hooks/
   useReaderSessionLedger.ts
   useReaderSettings.ts
   useReaderSettingsBridge.ts
+  useReaderViewportControls.ts
+  useReaderViewportState.ts
 state/
   readerSessionReducer.ts
   ReaderSessionProvider.tsx
@@ -81,15 +83,19 @@ index.ts
 `ReaderScreen` composes the reader session and gesture wiring. Settings-store
 subscription and chrome callbacks live in `useReaderSettingsBridge`;
 orientation/keep-awake lifecycle effects live in `useReaderScreenLifetime`;
-scroll-offset tracking lives in `useReaderScrollTracking`; chrome sheets and
-chapter navigation live in `useReaderChromeController`; and page-change flash
-animation lives in `useReaderPageFlash`. Page loading, restore/progress
-persistence, download metadata and translation live in their hooks and
-`translation/`. `ReaderPageRenderer` turns one display row into `ReaderPage`
-props, `ReaderChromeRenderer` maps session callbacks onto the chrome stack, and
+scroll-offset tracking lives in `useReaderScrollTracking`;
+`useReaderViewportState` owns body sizing, prefetch, display rows and page
+offsets, while `useReaderViewportControls` owns list refs, scroll jumps, paged
+anchoring, tap handlers and auto-scroll. Chrome sheets and chapter navigation
+live in `useReaderChromeController`; page-change flash animation lives in
+`useReaderPageFlash`. Page loading, restore/progress persistence, download
+metadata and translation live in their hooks and `translation/`.
+`ReaderPageRenderer` turns one display row into `ReaderPage` props,
+`ReaderChromeRenderer` maps session callbacks onto the chrome stack, and
 `ReaderScreenStates` owns the loading and empty-chapter states. `ReaderViewport`
-owns the paged/strip presentation branch and viewport overlays. Further screen
-decomposition remains Phase 3 work.
+owns the paged/strip presentation branch and viewport overlays. The screen is
+656 LOC, an explicit exception to the 400-line screen target in `plan.md`; its remaining
+JSX is intentionally one composition surface rather than another prop bundle.
 `ReaderChromeStack.types.ts` and `useReaderSettings.types.ts` keep large
 prop/state contracts out of the component and hook implementation files.
 

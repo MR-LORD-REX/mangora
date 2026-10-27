@@ -130,9 +130,10 @@ uses `PagedReader` with the default `FlatList`; strip mode uses
 `StripReader`, a custom `ScrollView` that mounts only the active world window.
 The strip viewport now owns the shared world camera, viewport-level tap zones
 and long-press page identity; while zoomed, camera pan is the only vertical pan
-owner. The next cut is remaining large-screen decomposition, then hooks and
-presentation; on-device page, gesture and translation validation remains the
-release gate.
+owner. `ReaderScreen` is now the 656-line session composer; viewport state and
+gesture wiring live in `useReaderViewportState` and
+`useReaderViewportControls`. On-device page, gesture and translation validation
+remains the release gate.
 
 ## Validation
 

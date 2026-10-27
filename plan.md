@@ -378,6 +378,17 @@ targeted ESLint, `check:arch` (297 files, 894 edges) and all 77 tests.
 The strip camera worklets were not moved, so gesture behavior is unchanged by
 construction; device smoke testing remains the release gate.
 
+**Phase 3 screen composition completed (2026-10-28):** the remaining screen
+lifecycle was split into `useReaderViewportState` (body size, prefetch, page
+dimensions, display rows and offsets) and `useReaderViewportControls` (list
+refs, jumps, paged anchoring, tap handlers and auto-scroll). The temporary eager
+adjacent-chapter resolver was removed; previous/next chapter ids remain owned by
+`useReaderChapterPages`, preserving the original loader timing. `ReaderScreen` is
+656 LOC, both new hooks are under 250 LOC, TypeScript and targeted ESLint
+pass, `check:arch` reports 340 files / 973 edges, and all 77 tests pass.
+The 656-line composer is an explicit exception to the 400-line screen target;
+device smoke testing remains required before the Phase 3 release gate closes.
+
 **Rollback unit:** one feature per PR, keeping the old feature API as a
 re-export until all callers move.
 
@@ -394,8 +405,11 @@ make multi-owner development enforceable.
     patch and session lifecycle.
 3. [X] Split the route into `app/reader/[id].tsx` (thin adapter) and
     `features/reader/screens/ReaderScreen.tsx`.
-4. [ ] Split the remaining UI into page, chrome, panels and overlays; the
-    paged/strip list hosts are already separated.
+4. [X] Split the remaining UI into page, chrome, panels and overlays; the
+    paged/strip list hosts are already separated. `ReaderScreen` is the
+    documented 656-line composition exception to the 400-line target;
+    `ReaderViewport` is the viewport host, while `useReaderViewportState` and
+    `useReaderViewportControls` own layout and gesture wiring.
 5. [X] Split `useReaderTranslation.ts` into scan, OCR, translate and cache
     pipeline modules plus a session hook. Its legacy reader paths were removed
     with the compatibility-tree cleanup.
@@ -408,6 +422,9 @@ make multi-owner development enforceable.
 
 - Route file is at most 120 LOC and only composes the feature screen.
 - No reader component exceeds 400 LOC without a documented exception.
+  `ReaderScreen` currently has a 656-line exception because turning the
+  remaining composition surface into another prop bundle was explicitly
+  rejected; revisit only if the screen grows again.
 - No reader hook exceeds 250 LOC without a documented exception.
 - Paging, zoom, split/rotate, orientation, restore and translation alignment
   pass the on-device checklist.
