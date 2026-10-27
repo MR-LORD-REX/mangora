@@ -36,7 +36,7 @@ import {
   detectBorderCrop,
   shouldAnalyzeBorderCrop,
   type BorderCrop,
-} from "@/utils/reader/borderCrop";
+} from "./borderCrop";
 
 const TILED_EXTENSIONS = /\.(jpe?g|png|webp|avif)(\?|#|$)/i;
 const ENABLE_TILED_RENDERER = true;

@@ -5,7 +5,7 @@ import {
 } from "@/services/db/repositories/catalogRepository";
 import { prepareReaderOpen } from "@features/library";
 import { resolveReaderIdentity } from "@/utils/reader/readerIdentity";
-import { chapterTitleFromId } from "@/utils/reader/chapterLabel";
+import { chapterTitleFromId } from "../domain/navigation/chapterLabel";
 export { chapterNavigationFlipped } from "../domain/navigation/chapterDirection";
 
 interface ReaderChapterNavigationOptions {

@@ -28,8 +28,8 @@ import { clearTranslationCacheForManga } from "@/services/db/repositories/transl
 import { updateSettings } from "@core/settings";
 import { imageHeadersForPage } from "@/utils/reader/imageHeaders";
 import { buildPageOffsets } from "../domain/layout/pageOffsets";
-import { readerBackgroundColor } from "@/utils/reader/readerBackground";
-import { chromeToSettingsPatch } from "@/utils/reader/readerChromeSettings";
+import { readerBackgroundColor } from "../domain/readerBackground";
+import { chromeToSettingsPatch } from "../domain/readerChromeSettings";
 import {
   buildReaderDisplayItems,
   type ReaderDisplayItem,

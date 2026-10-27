@@ -15,7 +15,7 @@ import type {
 } from "../components/panels/readerChrome";
 import type { ReaderConfigTab } from "../components/panels/ReaderConfigPanel";
 import type { ReaderTranslationTab } from "../components/panels/ReaderTranslationPanel";
-import { chapterNumberLabel } from "@/utils/reader/chapterLabel";
+import { chapterNumberLabel } from "../domain/navigation/chapterLabel";
 import {
   chapterNavigationFlipped,
   openAdjacentChapter,

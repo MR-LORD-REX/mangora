@@ -22,7 +22,7 @@ import type {
   ReaderOverlayFont,
 } from "../components/panels/readerChrome";
 import { canonicalChineseForReader } from "../components/panels/readerLanguages";
-import { chromeFromSettings } from "@/utils/reader/readerChromeSettings";
+import { chromeFromSettings } from "../domain/readerChromeSettings";
 export interface ReaderSettingsControls {
   applySettings: (settings: AppSettings, autoLanguage: string) => void;
   translationEngine: AppSettings["readerTranslationEngine"];

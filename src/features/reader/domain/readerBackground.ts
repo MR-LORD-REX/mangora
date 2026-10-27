@@ -5,7 +5,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import type { ReaderChromeSettings } from "@features/reader/components/panels/readerChrome";
+import type { ReaderChromeSettings } from "../components/panels/readerChrome";
 
 /** Reader background colour for the given preference. */
 export function readerBackgroundColor(

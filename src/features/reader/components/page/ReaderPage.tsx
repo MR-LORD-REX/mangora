@@ -29,7 +29,7 @@ import type {
   ReaderPageSplitHalf,
 } from "../../domain/layout/pageGeometry";
 import type { PageTranslationState } from "@features/translation";
-import type { BorderCrop } from "@/utils/reader/borderCrop";
+import type { BorderCrop } from "./borderCrop";
 
 export interface ReaderPageProps {
   url: string;
