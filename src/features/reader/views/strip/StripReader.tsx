@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from "react";
 import {
   StyleSheet,
@@ -26,84 +25,34 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 
-import type { ReaderDisplayItem } from "../../domain/layout/readerItems";
-import { stripWindowForOffset } from "../../domain/layout/stripWindow";
+import type {
+  StripReaderHandle,
+  StripReaderProps,
+  StripTapEvent,
+} from "./StripReader.types";
+import { useStripWindow } from "./useStripWindow";
 import {
   clampStripCameraTranslation,
   stripCameraAtBase,
   stripCameraScreenPointToWorld,
-  stripCameraWindowFor,
   stripCameraTranslationForScale,
+  stripCameraMetricsFor,
   stripPageIndexForWorldY,
   type StripCameraMetrics,
 } from "./stripCamera";
 
-export interface StripReaderHandle {
-  scrollToOffset: (options: { offset: number; animated?: boolean }) => void;
-  scrollToIndex: (options: {
-    index: number;
-    animated?: boolean;
-    viewPosition?: number;
-  }) => void;
-  stepByViewport: (direction: "previous" | "next") => void;
-  /** Latest rendered scroll offset and the clamped content end. */
-  getScrollMetrics: () => { offset: number; maxOffset: number };
-}
-
-export interface StripTapEvent {
-  /** Tap coordinates inside the strip viewport, not inside a page row. */
-  x: number;
-  y: number;
-  /** Display item under the tapped world point. */
-  index: number;
-}
-
-export interface StripViewportState {
-  /** Latest native ScrollView offset, even while the camera is zoomed. */
-  offset: number;
-  /** True when pinch rounding has returned the camera to fit scale. */
-  atBase: boolean;
-  /** True while a pinch or camera pan is in progress. */
-  interacting: boolean;
-}
-
-export interface StripReaderProps {
-  items: ReaderDisplayItem[];
-  offsets: readonly number[];
-  viewport: { width: number; height: number };
-  resetKey: string;
-  initialOffset?: number;
-  onScroll: (offset: number) => void;
-  /** Called after the native ScrollView reports its current offset. */
-  onScrollOffset?: (offset: number) => void;
-  /** Reports camera interaction and settlement for auto-scroll coordination. */
-  onViewportChange?: (state: StripViewportState) => void;
-  onScrollBeginDrag: () => void;
-  onTap: (event: StripTapEvent) => void;
-  onLongPress: (index: number) => void;
-  renderPage: (item: ReaderDisplayItem, index: number) => ReactNode;
-}
+export type {
+  StripReaderHandle,
+  StripReaderProps,
+  StripTapEvent,
+  StripViewportState,
+} from "./StripReader.types";
 
 const MAX_CAMERA_SCALE = 4;
 const MIN_CAMERA_SCALE = 0.25;
 const TAP_TRAVEL_LIMIT = 12;
 const TAP_STEP_RATIO = 0.35;
 
-function metricsFor(
-  scale: number,
-  scrollY: number,
-  viewport: { width: number; height: number },
-  contentHeight: number,
-): StripCameraMetrics {
-  "worklet";
-  return {
-    scale,
-    scrollY,
-    viewportWidth: viewport.width,
-    viewportHeight: viewport.height,
-    contentHeight,
-  };
-}
 
 const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
   function StripReader(
@@ -126,16 +75,7 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
     const scrollRef = useRef<GestureScrollView>(null);
     const scrollOffsetRef = useRef(Math.max(0, initialOffset));
     const lastResetKeyRef = useRef(resetKey);
-    const lastVisibleItemRef = useRef(0);
     const [cameraAtBase, setCameraAtBase] = useState(true);
-    const [windowRange, setWindowRange] = useState(() =>
-      stripWindowForOffset(
-        offsets,
-        items.length,
-        Math.max(0, initialOffset),
-        viewport.height,
-      ),
-    );
 
     const scale = useSharedValue(1);
     const pinchStartScale = useSharedValue(1);
@@ -155,13 +95,27 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
       viewport.height,
     );
 
+    const {
+      indices,
+      updateWindow,
+      applyCameraWindow,
+      syncCameraWindow,
+    } = useStripWindow({
+      offsets,
+      itemCount: items.length,
+      initialOffset,
+      viewport,
+      contentHeight,
+      onScroll,
+    });
+
     const workletMetrics = useCallback(
       (
         currentScale: number,
         currentScrollY: number,
       ): StripCameraMetrics => {
         "worklet";
-        return metricsFor(
+        return stripCameraMetricsFor(
           currentScale,
           currentScrollY,
           { width: viewportWidth.value, height: viewportHeight.value },
@@ -198,79 +152,6 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
         });
       },
       [],
-    );
-
-    const updateWindow = useCallback(
-      (offset: number, pageIndex?: number) => {
-        const next = stripWindowForOffset(
-          offsets,
-          items.length,
-          offset,
-          viewport.height,
-        );
-        setWindowRange((current) =>
-          current.start === next.start && current.end === next.end
-            ? current
-            : next,
-        );
-        if (pageIndex === undefined || items.length === 0) return;
-        const index = Math.max(0, Math.min(items.length - 1, pageIndex));
-        if (index === lastVisibleItemRef.current) return;
-        lastVisibleItemRef.current = index;
-        onScroll(Math.max(0, offsets[index] ?? 0));
-      },
-      [items.length, offsets, onScroll, viewport.height],
-    );
-
-    const applyCameraWindow = useCallback(
-      (start: number, end: number, pageIndex: number) => {
-        setWindowRange((current) =>
-          current.start === start && current.end === end
-            ? current
-            : (() => {
-                lastVisibleItemRef.current = -1;
-                return { start, end };
-              })(),
-        );
-        if (items.length === 0) return;
-        const index = Math.max(0, Math.min(items.length - 1, pageIndex));
-        if (index === lastVisibleItemRef.current) return;
-        lastVisibleItemRef.current = index;
-        onScroll(Math.max(0, offsets[index] ?? 0));
-      },
-      [items.length, offsets, onScroll],
-    );
-
-    const syncCameraWindow = useCallback(
-      (
-        currentScale: number,
-        currentScrollY: number,
-        translationY: number,
-      ) => {
-        const window = stripCameraWindowFor(
-          offsets,
-          items.length,
-          metricsFor(
-            currentScale,
-            currentScrollY,
-            viewport,
-            contentHeight,
-          ),
-          translationY,
-        );
-        applyCameraWindow(
-          window.start,
-          window.end,
-          stripPageIndexForWorldY(offsets, window.visibleOffset),
-        );
-      },
-      [
-        applyCameraWindow,
-        contentHeight,
-        items.length,
-        offsets,
-        viewport,
-      ],
     );
 
     useEffect(() => {
@@ -319,7 +200,7 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
         scrollY.value = target;
         if (!keepCamera) resetCamera();
         const bounded = clampStripCameraTranslation(
-          metricsFor(scale.value, target, viewport, contentHeight),
+          stripCameraMetricsFor(scale.value, target, viewport, contentHeight),
           translateX.value,
           translateY.value,
         );
@@ -589,17 +470,6 @@ const StripReader = forwardRef<StripReaderHandle, StripReaderProps>(
       ],
     }));
 
-    const indices = useMemo(() => {
-      const next: number[] = [];
-      for (
-        let index = windowRange.start;
-        index <= windowRange.end;
-        index += 1
-      ) {
-        next.push(index);
-      }
-      return next;
-    }, [windowRange.end, windowRange.start]);
 
     return (
       <View style={styles.viewport}>

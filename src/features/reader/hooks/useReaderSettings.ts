@@ -20,7 +20,10 @@ import {
 
 import type { ReaderOverlayFont } from "../components/panels/readerChrome";
 import { canonicalChineseForReader } from "../components/panels/readerLanguages";
-import type { ReaderSettingsState } from "./useReaderSettings.types";
+import type {
+  ReaderSettingsState,
+  ReaderSettingsValues,
+} from "./useReaderSettings.types";
 
 export function useReaderSettings(): ReaderSettingsState {
   const [readerLanguage, setReaderLanguageState] = useState("");
@@ -206,7 +209,7 @@ export function useReaderSettings(): ReaderSettingsState {
 
   useEffect(() => flushSettingsPatch, [flushSettingsPatch]);
 
-  return {
+  const values: ReaderSettingsValues = {
     readerLanguage,
     targetLanguage,
     translationEngine,
@@ -224,6 +227,9 @@ export function useReaderSettings(): ReaderSettingsState {
     ocrLookahead,
     aiMaxContextPages,
     defaultZoomScale,
+  };
+  return {
+    ...values,
     applySettings,
     setAutoModelSwitch,
     setDefaultZoomScale,

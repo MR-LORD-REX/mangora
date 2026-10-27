@@ -21,6 +21,22 @@ export interface StripCameraWindow {
 /** Pinch gestures rarely land on an exact 1.0; treat this as fit scale. */
 export const STRIP_CAMERA_BASE_EPSILON = 0.01;
 
+export function stripCameraMetricsFor(
+  scale: number,
+  scrollY: number,
+  viewport: { width: number; height: number },
+  contentHeight: number,
+): StripCameraMetrics {
+  "worklet";
+  return {
+    scale,
+    scrollY,
+    viewportWidth: viewport.width,
+    viewportHeight: viewport.height,
+    contentHeight,
+  };
+}
+
 export function stripCameraAtBase(scale: number): boolean {
   "worklet";
   return Math.abs(scale - 1) <= STRIP_CAMERA_BASE_EPSILON;

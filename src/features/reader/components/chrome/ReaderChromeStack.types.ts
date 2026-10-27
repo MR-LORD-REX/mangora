@@ -6,8 +6,12 @@
  */
 import type { ReactNode } from "react";
 
-import type { ReaderPipelineMetrics } from "../../translation/types";
+import type {
+  ReaderTranslationEngine,
+  ReaderTranslationMode,
+} from "@core/settings";
 import type { GeminiModelId } from "@features/translation";
+import type { ReaderPipelineMetrics } from "../../translation/types";
 
 import type {
   ReaderChromeSettings,
@@ -57,9 +61,9 @@ export interface ReaderChromeStackProps {
   targetLanguage: string;
   handleSelectReaderLanguage: (code: string) => void;
   handleSelectTargetLanguage: (code: string) => void;
-  translationEngine: "free" | "ai";
-  handleSelectTranslationEngine: (engine: "free" | "ai") => void;
-  handleSelectTranslationMode: (mode: "off" | "single" | "auto") => void;
+  translationEngine: ReaderTranslationEngine;
+  handleSelectTranslationEngine: (engine: ReaderTranslationEngine) => void;
+  handleSelectTranslationMode: (mode: ReaderTranslationMode) => void;
   geminiModelId: GeminiModelId;
   handleSelectGeminiModel: (model: GeminiModelId) => void;
   autoModelSwitch: boolean;

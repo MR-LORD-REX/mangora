@@ -5,6 +5,26 @@ import type { AppSettings } from "@core/settings";
 import type { GeminiModelId } from "@features/translation";
 
 import type { ReaderOverlayFont } from "../components/panels/readerChrome";
+export type ReaderSettingsValues = Omit<
+  ReaderSettingsState,
+  | "applySettings"
+  | "setAutoModelSwitch"
+  | "setDefaultZoomScale"
+  | "setOverlayFont"
+  | "setOverlayFontWeight"
+  | "setOverlayFontScale"
+  | "setOverlayTextColor"
+  | "setReaderLanguage"
+  | "setTargetLanguage"
+  | "setTranslationEngine"
+  | "setTranslationMode"
+  | "setShowPageStatus"
+  | "setHideTranslated"
+  | "setGeminiModelId"
+  | "setOcrLookahead"
+  | "queueSettingsPatch"
+  | "flushSettingsPatch"
+>;
 
 export interface ReaderSettingsState {
   readerLanguage: string;

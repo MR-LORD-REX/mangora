@@ -196,7 +196,8 @@ export function useReaderChapterPages({
       cancelled = true;
       if (downloadedSession) void downloadedSession.cleanup();
     };
-    // The reader deliberately reloads only when the route identity changes.
+    // The reader deliberately reloads only when the route identity changes;
+    // callbacks are read through latestRef so this effect stays identity-scoped.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterId, source]);
 

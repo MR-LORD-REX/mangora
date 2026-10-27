@@ -314,6 +314,42 @@ gate is green: TypeScript, targeted ESLint, `check:arch` (282 files, 860
 edges) and all 69 tests. This remains a behavior-preserving refactor; the
 device smoke checklist is still open until the V2311L is reconnected.
 
+**Phase 3 settings bridge and screen lifetime (2026-10-27):**
+`useReaderSettingsBridge` now owns the persisted settings subscription,
+chrome/auto-scroll refresh, debounced write flush and the chrome-facing
+translation/overlay callbacks. `useReaderScreenLifetime` owns orientation
+locking and focus-scoped keep-awake. `useReaderScrollTracking` owns the
+row-offset lookup and FlatList layout callback, with the pure offset lookup in
+`domain/layout/scrollOffset.ts`. The bridge is invoked at the original
+settings-effect position so reader effect ordering is unchanged. `ReaderScreen`
+is 1,068 LOC, down from 1,157. TypeScript, targeted ESLint, `check:arch` (287
+files, 870 edges) and all 72 tests pass. Behavior is unchanged; device smoke
+testing remains open until the V2311L is reconnected.
+
+**Phase 3 page-layout and screen-state cut (2026-10-27):** `pageOffsets.ts` now
+owns both display-row geometry and the prefix table; `ReaderScreen`, scroll
+tracking and FlatList layout consume that one source of truth. The screen no
+longer contains an inline page renderer, page-flash animation or loading/empty
+JSX. `ReaderPageRenderer` owns display-row-to-page wiring,
+`ReaderScreenStates` owns route states, and `useReaderPageFlash` owns the flash
+timeline. The chrome stack contract now uses the shared translation engine and
+mode types. `ReaderScreen` is 935 LOC, down from 1,157 at the start of this
+pass. The full gate is green: TypeScript, targeted ESLint, `check:arch` (294
+files, 889 edges) and all 77 tests, including five new page-offset tests.
+Device smoke testing remains open because the V2311L is disconnected.
+
+**Phase 3 strip window and chrome composition (2026-10-27):** `StripReader`
+public interfaces now live in `StripReader.types.ts`; the tested camera metrics
+constructor lives in `stripCamera.ts`; and `useStripWindow` owns the mounted-row
+window, camera-derived visible range and page-notification de-duplication.
+`ReaderChromeRenderer` owns the chrome-stack prop mapping, leaving
+`ReaderScreen` as the session/lifecycle composer. `StripReader` is 537 LOC
+(down from 631), `ReaderScreen` remains 934 LOC, and
+`ReaderChromeRenderer` is 284 LOC. The full gate is green: TypeScript,
+targeted ESLint, `check:arch` (297 files, 894 edges) and all 77 tests.
+The strip camera worklets were not moved, so gesture behavior is unchanged by
+construction; device smoke testing remains the release gate.
+
 **Rollback unit:** one feature per PR, keeping the old feature API as a
 re-export until all callers move.
 
@@ -324,21 +360,21 @@ make multi-owner development enforceable.
 
 **Order**
 
-1. [x] Extract reader domain modules: geometry, layouts, modes, tap zones,
-   overlay fitting and page items.
-2. [x] Add `ReaderSessionProvider` and a reducer for active page, chrome, settings
-   patch and session lifecycle.
-3. [x] Split the route into `app/reader/[id].tsx` (thin adapter) and
-   `features/reader/screens/ReaderScreen.tsx`.
+1. [X] Extract reader domain modules: geometry, layouts, modes, tap zones,
+    overlay fitting and page items.
+2. [X] Add `ReaderSessionProvider` and a reducer for active page, chrome, settings
+    patch and session lifecycle.
+3. [X] Split the route into `app/reader/[id].tsx` (thin adapter) and
+    `features/reader/screens/ReaderScreen.tsx`.
 4. [ ] Split the remaining UI into page, chrome, panels and overlays; the
-   paged/strip list hosts are already separated.
-5. [x] Split `useReaderTranslation.ts` into scan, OCR, translate and cache
-   pipeline modules plus a session hook. The compatibility shim remains until
-   the legacy-reader cleanup in item 6.
+    paged/strip list hosts are already separated.
+5. [X] Split `useReaderTranslation.ts` into scan, OCR, translate and cache
+    pipeline modules plus a session hook. The compatibility shim remains until
+    the legacy-reader cleanup in item 6.
 6. [ ] Remove legacy shims and the temporary `@/*` alias.
-7. [x] Add the CI matrix, device smoke checklist, CODEOWNERS review rules, ADRs
-   and feature contribution templates. CODEOWNERS activation remains pending
-   real GitHub handles; the example file documents the intended ownership map.
+7. [X] Add the CI matrix, device smoke checklist, CODEOWNERS review rules, ADRs
+    and feature contribution templates. CODEOWNERS activation remains pending
+    real GitHub handles; the example file documents the intended ownership map.
 
 **Exit gates**
 
@@ -432,9 +468,9 @@ features/reader/
 
 **Tap-zone contract**
 
-| View | `previous` / `next` | `toggle` |
-| --- | --- | --- |
-| Paged | Previous/next page | Toggle reader chrome |
+| View  | `previous` / `next`                                                     | `toggle`           |
+| ----- | --------------------------------------------------------------------------- | -------------------- |
+| Paged | Previous/next page                                                          | Toggle reader chrome |
 | Strip | Move approximately 90% of the viewport, divided by the current camera scale | Toggle reader chrome |
 
 The tap-zone preview remains a non-interactive overlay. Header, footer and
@@ -795,7 +831,7 @@ shrink each phase and be deleted at the end of Phase 3.
 | `utils/reader/useReaderTranslation.ts`           | reader translation hook + translation pipeline             | 2/3      |
 | `components/reader/ReaderTranslationPanel.tsx`   | reader translation panels                                  | 3        |
 | `components/extensions/ExtensionFilterSheet.tsx` | extension filter components                                | 2 (done) |
-| `services/downloader/scheduler.ts`               | `features/downloads/queue/scheduler.ts`                    | 2 (done) |
+| `services/downloader/scheduler.ts`               | `features/downloads/queue/scheduler.ts`                  | 2 (done) |
 | `services/translation/pretranslateQueue.ts`      | `features/translation/jobs/pretranslateQueue.ts`         | 2 (done) |
 | `services/db/**`                                 | `src/core/db/**`                                         | 2        |
 | `services/settings/settingsStore.ts`             | `src/core/settings/settingsStore.ts`                     | 2        |
