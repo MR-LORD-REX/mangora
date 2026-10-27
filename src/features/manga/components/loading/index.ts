@@ -1,0 +1,1 @@
+export { default as MangaDetailSkeleton } from "./MangaDetailSkeleton";

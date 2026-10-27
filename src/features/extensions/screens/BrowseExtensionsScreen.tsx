@@ -32,6 +32,7 @@ import FilterChip from "@shared/ui/navigation/FilterChip";
 import { colors } from "@shared/theme";
 
 import EmptyState from "../components/browse/EmptyState";
+import BrowseSkeleton from "../components/browse/BrowseSkeleton";
 import { ExtensionCatalogRow } from "../components/browse/ExtensionCatalogRow";
 import RepoIntro from "../components/browse/RepoIntro";
 import { SourceListRow } from "../components/browse/SourceListRow";
@@ -186,23 +187,6 @@ export default function BrowseExtensionsScreen({
     );
   };
 
-  if (state.loading) {
-    return (
-      <SafeAreaView style={styles.screen} edges={["top"]}>
-        <AppHeader
-          title="Browse"
-          query={state.query}
-          onQueryChange={state.setQuery}
-          searchPlaceholder="Search sources and extensions"
-          actions={headerActions}
-        />
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.accent} />
-          <Text style={styles.mutedText}>Loading repositories...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -241,7 +225,9 @@ export default function BrowseExtensionsScreen({
         onSelect={(key) => state.setTab(key as typeof state.tab)}
       />
 
-      {state.banner ? (
+      {state.loading ? <BrowseSkeleton /> : null}
+
+      {!state.loading && state.banner ? (
         <View style={styles.banner}>
           <AlertTriangle
             color={state.banner.tone === "error" ? colors.danger : colors.gold}
@@ -261,11 +247,11 @@ export default function BrowseExtensionsScreen({
         </View>
       ) : null}
 
-      {(state.settings?.extensionRepos.length ?? 0) === 0 ? (
+      {!state.loading && (state.settings?.extensionRepos.length ?? 0) === 0 ? (
         <ScrollView contentContainerStyle={styles.emptyContent}>
           <RepoIntro onAdd={() => state.setRepoOpen(true)} />
         </ScrollView>
-      ) : state.tab === "sources" ? (
+      ) : state.loading ? null : state.tab === "sources" ? (
         <SectionList
           sections={sourceSections}
           keyExtractor={(item) => `${item.extension.packageName}:${item.source.id}`}

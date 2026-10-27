@@ -6,15 +6,23 @@ import {
     Settings,
 } from "lucide-react-native";
 
+import { useAppMotion } from "@shared/motion";
 import { colors } from "@shared/theme";
 import "../../global.css";
 
 export default function RootLayout() {
+  const { reduceMotion } = useAppMotion();
+
   return (
     <Tabs
       initialRouteName="library"
       screenOptions={{
         headerShown: false,
+        sceneStyle: { backgroundColor: colors.bg },
+        animation: reduceMotion ? "none" : "fade",
+        transitionSpec: reduceMotion
+          ? undefined
+          : { animation: "timing", config: { duration: 180 } },
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textFaint,
         tabBarStyle: {

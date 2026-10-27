@@ -23,6 +23,7 @@ import { colors, radius } from "@shared/theme";
 import { DOWNLOADS_LIBRARY_ID } from "@core/db/bootstrap";
 import { isSystemLibrary, type LibraryCard as LibraryCardRow } from "@core/db/repositories/libraryRepository";
 import LibraryCard from "../components/cards/LibraryCard";
+import { LibrarySkeleton } from "../components/loading";
 import {
   BulkDeleteLibrariesDialog,
   CreateLibraryDialog,
@@ -187,9 +188,7 @@ export default function LibraryScreen({ onOpenManga }: LibraryScreenProps) {
         renderItem={({ item }) => <LibraryCard item={item} onOpen={openCard} />}
         ListEmptyComponent={
           state.loading ? (
-            <View style={styles.emptyWrap}>
-              <ActivityIndicator color={colors.accent} />
-            </View>
+            <LibrarySkeleton />
           ) : (
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyTitle}>

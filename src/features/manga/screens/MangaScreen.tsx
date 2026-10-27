@@ -8,6 +8,7 @@ import {
 } from "lucide-react-native";
 import { setStringAsync } from "expo-clipboard";
 import MangaHero from "../components/detail/MangaHero";
+import { MangaDetailSkeleton } from "../components/loading";
 import { useMangaData } from "../hooks/useMangaData";
 import { useChapterFilters } from "../hooks/useChapterFilters";
 import { useDownloadSelection } from "../hooks/useDownloadSelection";
@@ -16,7 +17,6 @@ import React, {
   useMemo,
 } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Keyboard,
   LayoutAnimation,
@@ -446,13 +446,25 @@ const {
     ];
   }, [applyReadState, menuRow, progress, rows]);
 
-  const renderLoading = () => (
-    <SafeAreaView style={[styles.safeArea, styles.center]}>
-      <ActivityIndicator color={accent} size="large" />
-    </SafeAreaView>
-  );
-
-  if (loading && !data) return renderLoading();
+  if (loading && !data) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.headerRow}>
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={8}
+            style={styles.iconBtn}
+          >
+            <ArrowLeft color={colors.text} size={24} />
+          </Pressable>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {source.label}
+          </Text>
+        </View>
+        <MangaDetailSkeleton />
+      </SafeAreaView>
+    );
+  }
 
   if (!meta) {
     return (

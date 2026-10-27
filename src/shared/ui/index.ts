@@ -1,5 +1,6 @@
 export * from "./layout";
 export * from "./overlays";
+export * from "./feedback";
 export { default as ChipTabBar } from "./navigation/ChipTabBar";
 export type { ChipTab } from "./navigation/ChipTabBar";
 export { default as FilterChip } from "./navigation/FilterChip";

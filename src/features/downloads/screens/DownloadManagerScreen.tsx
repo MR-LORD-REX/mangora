@@ -14,6 +14,7 @@ import {
 
 import AppHeader from "@shared/ui/layout/AppHeader";
 import { ConfirmDialog } from "@shared/ui/overlays";
+import { DownloadChaptersSkeleton } from "../components/loading";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, radius } from "@shared/theme";
 import { listDownloadsForManga } from "../catalog/catalog";
@@ -207,7 +208,9 @@ export default function DownloadedMangaScreen() {
           ) : null
         }
         ListEmptyComponent={
-          loading ? null : (
+          loading ? (
+            <DownloadChaptersSkeleton />
+          ) : (
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyTitle}>No chapters left</Text>
               <Text style={styles.emptyHint}>

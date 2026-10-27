@@ -21,6 +21,7 @@ import {
 import AppHeader from "@shared/ui/layout/AppHeader";
 import ChipTabBar from "@shared/ui/navigation/ChipTabBar";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { DownloadsSkeleton } from "../components/loading";
 import { colors, radius } from "@shared/theme";
 import {
   listDownloadedManga,
@@ -38,8 +39,10 @@ export default function DownloadManagerScreen() {
   const [provider, setProvider] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       setEntries(await listDownloadedManga());
       setError(null);
@@ -49,6 +52,8 @@ export default function DownloadManagerScreen() {
           ? loadError.message
           : "Could not read the download library.",
       );
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -131,13 +136,17 @@ export default function DownloadManagerScreen() {
           ) : null
         }
         ListEmptyComponent={
-          <View style={styles.emptyWrap}>
-            <Text style={styles.emptyTitle}>No downloaded chapters</Text>
-            <Text style={styles.emptyHint}>
-              Download a chapter from a manga page or the reader and it shows up
-              here.
-            </Text>
-          </View>
+          loading && entries.length === 0 ? (
+            <DownloadsSkeleton />
+          ) : (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.emptyTitle}>No downloaded chapters</Text>
+              <Text style={styles.emptyHint}>
+                Download a chapter from a manga page or the reader and it shows up
+                here.
+              </Text>
+            </View>
+          )
         }
         renderItem={({ item }) => (
           <Pressable

@@ -17,17 +17,18 @@ prove touch or image behavior.
 
 ## Baseline
 
-- [ ] Open a network chapter from at least one extension source.
-- [ ] Open the same chapter after downloading it.
+- [X] Open a network chapter from at least one extension source.
+- [X] Open the same chapter after downloading it.
 - [ ] Paged vertical and paged horizontal LTR/RTL reach the same source pages.
-- [ ] Strip webtoon and gapless strip show a continuous column with the chosen
+- [X] Strip webtoon and gapless strip show a continuous column with the chosen
   page gap.
-- [ ] Header, footer and sheets are above the page and receive taps first.
+- [X] Header, footer and sheets are above the page and receive taps first.
 
 ## Paged view
 
 - [ ] Swipe/tap previous and next at the edges and in the middle toggle zone.
-- [ ] Original-fit pinch zoom, two-finger pan, double-tap zoom and zoom reset
+
+- [X] Original-fit pinch zoom, two-finger pan, double-tap zoom and zoom reset
   work without fighting the pager.
 - [ ] Split wide pages show the correct half order in LTR and RTL.
 - [ ] Rotate wide pages fits the page without losing the visible source page.

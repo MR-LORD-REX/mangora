@@ -21,6 +21,7 @@ import {
 
 import AppHeader from "@shared/ui/layout/AppHeader";
 import ExtensionFilterSheet from "../components/catalog/ExtensionFilterSheet";
+import ExtensionSourceSkeleton from "../components/browse/ExtensionSourceSkeleton";
 import { MediaGridCard, MediaListRow } from "@shared/ui/navigation/MediaCards";
 import ChipTabBar from "@shared/ui/navigation/ChipTabBar";
 import type { OpenMangaInfo } from "../types/navigation";
@@ -307,11 +308,9 @@ export default function ExtensionSourceScreen({
           </Text>
         </View>
       ) : null}
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.accent} />
-        </View>
-      ) : (
+      {loading && items.length === 0 ? (
+        <ExtensionSourceSkeleton layout={cardLayout} />
+      ) : loading ? null : (
         <FlatList
           key={cardLayout}
           data={items}

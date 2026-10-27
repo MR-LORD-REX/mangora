@@ -11,6 +11,7 @@ import {
 } from "react-native";
 
 import AppHeader from "@shared/ui/layout/AppHeader";
+import { HistorySkeleton } from "@shared/ui";
 import { colors, radius } from "@shared/theme";
 import {
     clearHistory,
@@ -27,8 +28,10 @@ export default function HistoryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       setEntries(await listHistory(search.trim() || undefined));
       setError(null);
@@ -38,6 +41,8 @@ export default function HistoryScreen() {
           ? loadError.message
           : "Could not load history.",
       );
+    } finally {
+      setLoading(false);
     }
   }, [search]);
 
@@ -181,13 +186,17 @@ export default function HistoryScreen() {
           )
         }
         ListEmptyComponent={
-          <View style={styles.emptyWrap}>
-            <BookOpen size={34} color={colors.textFaint} />
-            <Text style={styles.emptyTitle}>No reading history yet</Text>
-            <Text style={styles.emptyHint}>
-              Chapters you open will show up here.
-            </Text>
-          </View>
+          loading && entries.length === 0 ? (
+            <HistorySkeleton />
+          ) : (
+            <View style={styles.emptyWrap}>
+              <BookOpen size={34} color={colors.textFaint} />
+              <Text style={styles.emptyTitle}>No reading history yet</Text>
+              <Text style={styles.emptyHint}>
+                Chapters you open will show up here.
+              </Text>
+            </View>
+          )
         }
       />
 
