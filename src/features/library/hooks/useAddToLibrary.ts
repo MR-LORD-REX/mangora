@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 
 import type { ProviderId } from "@core/catalog";
-import { upsertManga } from "@/services/db/repositories/catalogRepository";
+import { upsertManga } from "@core/db/repositories/catalogRepository";
 import {
   addMangaToLibrary,
   getMangaLibraryIds,
   listLibraries,
   removeMangaIdentitiesFromLibrary,
   type LibrarySummary,
-} from "@/services/db/repositories/libraryRepository";
+} from "@core/db/repositories/libraryRepository";
 import { libraryIdentityIds } from "../domain/libraryIdentity";
 
 export interface UseAddToLibraryOptions {

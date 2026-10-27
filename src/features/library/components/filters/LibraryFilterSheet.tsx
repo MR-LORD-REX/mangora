@@ -18,7 +18,7 @@ import {
 import type { LucideIcon } from "lucide-react-native";
 
 import { colors, radius } from "@shared/theme";
-import type { LibrarySort } from "@/services/db/repositories/libraryRepository";
+import type { LibrarySort } from "@core/db/repositories/libraryRepository";
 import {
   cachedInstalledExtensions,
   extensionProviderFor,

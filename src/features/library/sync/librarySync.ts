@@ -1,12 +1,12 @@
 import { and, eq, inArray } from "drizzle-orm";
 
-import { db } from "@/services/db/client";
+import { db } from "@core/db/client";
 import {
     chapters,
     libraryManga,
     manga,
     readingProgress,
-} from "@/services/db/schema";
+} from "@core/db/schema";
 import { trySyncProviderManga } from "@core/catalog";
 import type { ProviderId } from "@core/catalog";
 import type { TrackedChapterProgress } from "@shared/contracts";

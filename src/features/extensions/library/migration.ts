@@ -9,8 +9,8 @@
 
 import { like } from "drizzle-orm";
 
-import { db } from "@/services/db/client";
-import { manga } from "@/services/db/schema";
+import { db } from "@core/db/client";
+import { manga } from "@core/db/schema";
 import { cachedExtensionSources } from "../registry/registry";
 export interface ExtensionMangaRecord {
   provider: string;

@@ -62,7 +62,8 @@ import {
   pruneTranslationCache,
   saveTranslationPage,
   translationPageKey,
-} from "@/services/db/repositories/translationRepository";import { isCjkLanguageCode } from "../domain/languages";
+} from "@core/db/repositories/translationRepository";
+import { isCjkLanguageCode } from "../domain/languages";
 
 const MAX_CROPS_PER_PAGE = 24;
 const STORE_FILE = "trapp-translation-jobs.json";

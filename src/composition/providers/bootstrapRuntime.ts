@@ -3,7 +3,7 @@
  * presentation concern and startup order is testable in one place.
  */
 
-import { initializeDatabase } from "@/services/db/bootstrap";
+import { initializeDatabase } from "@core/db/bootstrap";
 import {
   clearAbandonedDownloadedPageSessions,
   initDownloadScheduler,

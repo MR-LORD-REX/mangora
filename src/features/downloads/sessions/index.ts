@@ -4,7 +4,7 @@
  */
 
 import type { DownloadSessionPort } from "@shared/contracts";
-import { getDownload } from "@/services/db/repositories/downloadRepository";
+import { getDownload } from "@core/db/repositories/downloadRepository";
 import {
   cleanupDownloadedPageSession,
   openDownloadedPageSession,

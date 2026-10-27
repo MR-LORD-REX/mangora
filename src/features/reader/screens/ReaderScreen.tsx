@@ -24,7 +24,7 @@ import { autoLanguageForReader } from "../components/panels/readerLanguages";
 import ReaderChromeRenderer from "../blocks/ReaderChromeRenderer";
 import ReaderPageRenderer from "../blocks/ReaderPageRenderer";
 import { resolveTapZoneAction } from "../domain/navigation/tapZones";
-import { clearTranslationCacheForManga } from "@/services/db/repositories/translationRepository";
+import { clearTranslationCacheForManga } from "@core/db/repositories/translationRepository";
 import { updateSettings } from "@core/settings";
 import { imageHeadersForPage } from "@shared/net/imageHeaders";
 import { buildPageOffsets } from "../domain/layout/pageOffsets";

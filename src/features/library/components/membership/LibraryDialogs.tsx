@@ -2,7 +2,7 @@ import { Check } from "lucide-react-native";
 import React from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
-import type { LibrarySummary } from "@/services/db/repositories/libraryRepository";
+import type { LibrarySummary } from "@core/db/repositories/libraryRepository";
 import { colors, radius } from "@shared/theme";
 
 interface CreateLibraryDialogProps {

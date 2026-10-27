@@ -2,7 +2,7 @@
 
 import {
   getChapterDownloadInfo,
-} from "@/services/db/repositories/catalogRepository";
+} from "@core/db/repositories/catalogRepository";
 import { prepareReaderOpen } from "@features/library";
 import { resolveReaderIdentity } from "@core/catalog/readerIdentity";
 import { chapterTitleFromId } from "../domain/navigation/chapterLabel";

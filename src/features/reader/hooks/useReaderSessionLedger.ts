@@ -1,15 +1,15 @@
 import { useEffect, useRef } from "react";
 
-import { updateChapterPageCount } from "@/services/db/repositories/catalogRepository";
+import { updateChapterPageCount } from "@core/db/repositories/catalogRepository";
 import {
   recordHistoryOpen,
   updateHistoryPage,
-} from "@/services/db/repositories/historyRepository";
+} from "@core/db/repositories/historyRepository";
 import {
   getProgress,
   markChapterGroupCompleted,
   updateProgress,
-} from "@/services/db/repositories/progressRepository";
+} from "@core/db/repositories/progressRepository";
 import type { ReaderIdentity } from "@core/catalog/readerIdentity";
 
 interface ReaderRecord {

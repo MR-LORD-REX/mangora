@@ -3,7 +3,7 @@ import React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors, radius } from "@shared/theme";
-import type { LibrarySummary } from "@/services/db/repositories/libraryRepository";
+import type { LibrarySummary } from "@core/db/repositories/libraryRepository";
 
 export interface AddLibraryModalProps {
   open: boolean;

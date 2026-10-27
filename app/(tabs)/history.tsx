@@ -17,7 +17,7 @@ import {
     deleteHistoryEntry,
     listHistory,
     type ReaderParamsSnapshot,
-} from "@/services/db/repositories/historyRepository";
+} from "@core/db/repositories/historyRepository";
 import { imageSourceForUrl } from "@shared/net/imageHeaders";
 
 type HistoryEntry = Awaited<ReturnType<typeof listHistory>>[number];

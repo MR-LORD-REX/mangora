@@ -2,7 +2,7 @@ import {
     markMangaSyncError,
     upsertChapter,
     upsertManga,
-} from "@/services/db/repositories/catalogRepository";
+} from "@core/db/repositories/catalogRepository";
 import {
     getProviderAdapter,
     type ProviderId,

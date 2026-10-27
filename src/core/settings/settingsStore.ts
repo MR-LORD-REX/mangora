@@ -3,7 +3,7 @@ import { Directory, File, Paths } from "expo-file-system";
 import {
   getStoredSettingsJson,
   upsertStoredSettingsJson,
-} from "@/services/db/repositories/settingsRepository";
+} from "@core/db/repositories/settingsRepository";
 import {
   AppSettings,
   DEFAULT_SETTINGS,

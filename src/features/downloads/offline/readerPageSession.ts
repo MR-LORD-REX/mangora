@@ -1,6 +1,6 @@
 import { Directory, File, Paths } from "expo-file-system";
 
-import type { Download } from "@/services/db/schema";
+import type { Download } from "@core/db/schema";
 import { listCachedPages } from "../storage/pageFiles";
 import { extractSafArchivePages } from "@core/storage/saf";
 

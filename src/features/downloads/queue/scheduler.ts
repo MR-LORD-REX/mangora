@@ -26,7 +26,7 @@ import {
   resetInterruptedDownloads,
   updateDownload,
   type DownloadRecordInput,
-} from "@/services/db/repositories/downloadRepository";
+} from "@core/db/repositories/downloadRepository";
 import { getSettings, subscribeSettings } from "@core/settings";
 import { notifyDownloadsFinished } from "@/services/notifications/notifications";
 import { assertDecodableImageUri } from "@/services/images/decode";

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { DownloadedMangaSummary } from "@/services/db/repositories/downloadRepository";
+import type { DownloadedMangaSummary } from "@core/db/repositories/downloadRepository";
 import {
   downloadedMangaToLibraryCards,
   hasActiveLibraryFilters,

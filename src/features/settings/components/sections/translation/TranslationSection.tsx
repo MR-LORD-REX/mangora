@@ -24,7 +24,7 @@ import { colors } from "@shared/theme";
 import {
   clearTranslationCache,
   countTranslationCachePages,
-} from "@/services/db/repositories/translationRepository";
+} from "@core/db/repositories/translationRepository";
 import {
   maxOcrBubbleWorkers,
   modelIdForLanguage,

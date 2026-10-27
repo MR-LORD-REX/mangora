@@ -238,6 +238,10 @@ existing import cycle.
   detail/chapter screens, chapter grouping and filters, download selection,
   loading hooks and provider adapters. The legacy `components/manga` tree is
   removed and the feature has a README plus four focused domain tests.
+- Completed the database ownership batch: schema, client, bootstrap, backup,
+  repositories and bundled migration assets moved from `services/db/**` to
+  `src/core/db/**`; `drizzle.config.ts` and every consumer now use `@core/db`.
+  The legacy tree was removed after TypeScript and architecture checks passed.
 - Completed the shared extension identity/page ownership batch:
   `imageHeaders.ts` moved to `@shared/net/imageHeaders`,
   `readerIdentity.ts` and `loadChapterPages.ts` moved to `@core/catalog`, and
@@ -841,7 +845,7 @@ shrink each phase and be deleted at the end of Phase 3.
 | `components/extensions/ExtensionFilterSheet.tsx` | extension filter components                                | 2 (done) |
 | `services/downloader/scheduler.ts`               | `features/downloads/queue/scheduler.ts`                  | 2 (done) |
 | `services/translation/pretranslateQueue.ts`      | `features/translation/jobs/pretranslateQueue.ts`         | 2 (done) |
-| `services/db/**`                                 | `src/core/db/**`                                         | 2        |
+| `services/db/**`                                 | `src/core/db/**`                                         | 2 (done) |
 | `services/settings/settingsStore.ts`             | `src/core/settings/settingsStore.ts`                     | 2        |
 | `services/images/**`                             | `src/core/images/**`                                     | 2        |
 | `services/net/**`                                | `src/core/net/**`                                        | 2        |
@@ -874,7 +878,7 @@ The remaining legacy inventory is intentionally small:
 | `utils/reader/readerIdentity.ts` | `src/core/catalog/readerIdentity.ts` | Canonical provider/chapter identity shared by reader and downloads. | Done: `ProviderId` now lives in `@core/catalog/providerId`; reader and downloads import the core identity module. |
 | `utils/reader/loadChapterPages.ts` | `src/core/catalog/loadChapterPages.ts` | Extension page loading shared by reader and downloads; not reader presentation. | Done: reader and downloads import the core page loader; it uses the shared image-header registry. |
 | `utils/reader/imageHeaders.ts` | `src/shared/net/imageHeaders.ts` | Process-wide extension image-header registry used by shared UI, reader, downloads, manga and extensions. | Done: moved to shared, so `MediaCards` can consume it without a `shared -> core` dependency. |
-| `services/db/**` | `src/core/db/**` | Persistence and repositories are core data infrastructure. | Move as one batch; update `drizzle.config.ts` `schema`/`out`, generated migration imports and every `@/services/db/...` caller. Verify the bundled migration map before build. |
+| `services/db/**` | `src/core/db/**` | Persistence and repositories are core data infrastructure. | Done: moved with schema, client, bootstrap, backup, repositories and migration assets; `drizzle.config.ts` and all callers use `@core/db`. |
 | `services/images/**` | `src/core/images/**` | AVIF transcoding and image validation are core image infrastructure. | Update vision, downloads, reader and any test imports in the same batch. |
 | `services/net/**` | `src/core/net/**` | Cookie-aware fetch policy is core networking. | Update vision and download storage imports. |
 | `services/notifications/notifications.ts` | `src/core/platform/notifications.ts` | Platform notification policy behind shared ports. | Composition may import core; downloads must keep using the notification port, not the implementation. |
@@ -884,9 +888,10 @@ The remaining legacy inventory is intentionally small:
 | `services/updates/index.ts` | `src/features/updates/services/updater.ts` | Orchestrates check/download/verify/install for the About surface. | Native install bridge moves to `src/platform/native/`; extension installer consumes only that bridge. |
 | `services/updates/native.ts` | `src/platform/native/updater.ts` | Typed bridge to `MangoraDownloader` installer/hash calls. | Update extension installer and updates service imports; platform must not import features. |
 
-Recommended execution order: `services/db`, images/net/notifications, then
-deeplink/updates. The identity/page-loading and image-header batch is complete;
-`utils/reader` and `utils/providerLabel.ts` have been removed.
+Recommended execution order: images/net/notifications, then deeplink/updates.
+The identity/page-loading, image-header and database ownership batches are
+complete; `utils/reader`, `utils/providerLabel.ts` and `services/db` have been
+removed.
 
 ## 7. Validation checklist
 

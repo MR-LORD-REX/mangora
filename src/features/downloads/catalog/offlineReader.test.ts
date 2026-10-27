@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { Download } from "@/services/db/schema";
+import type { Download } from "@core/db/schema";
 import { offlineReaderTarget } from "./offlineReader";
 
 const download: Download = {

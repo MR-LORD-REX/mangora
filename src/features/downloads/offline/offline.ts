@@ -18,9 +18,9 @@ import type {
   ViewerChapterRow,
 } from "@shared/contracts";
 import { canonicalId } from "@core/catalog";
-import { getMangaCatalogRow } from "@/services/db/repositories/catalogRepository";
-import { listDownloadsForManga } from "@/services/db/repositories/downloadRepository";
-import type { Download } from "@/services/db/schema";
+import { getMangaCatalogRow } from "@core/db/repositories/catalogRepository";
+import { listDownloadsForManga } from "@core/db/repositories/downloadRepository";
+import type { Download } from "@core/db/schema";
 
 
 /** Row payload used by the offline viewer; keeps the underlying download. */

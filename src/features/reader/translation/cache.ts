@@ -12,7 +12,7 @@ import {
   pruneTranslationCache,
   saveTranslationPage,
   translationPageKey,
-} from "@/services/db/repositories/translationRepository";
+} from "@core/db/repositories/translationRepository";
 
 import type { ReaderIdentity } from "@core/catalog/readerIdentity";
 

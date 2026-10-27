@@ -6,7 +6,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { listDownloadedManga } from "@/services/db/repositories/downloadRepository";
+import { listDownloadedManga } from "@core/db/repositories/downloadRepository";
 import { trySyncProviderManga } from "@core/catalog";
 import type { ProviderId } from "@core/catalog";
 

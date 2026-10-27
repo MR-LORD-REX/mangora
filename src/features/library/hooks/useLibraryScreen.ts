@@ -1,7 +1,7 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 
-import { DOWNLOADS_LIBRARY_ID } from "@/services/db/bootstrap";
+import { DOWNLOADS_LIBRARY_ID } from "@core/db/bootstrap";
 import {
   createLibrary,
   deleteLibrary,
@@ -11,7 +11,7 @@ import {
   type LibraryCard,
   type LibrarySort,
   type LibrarySummary,
-} from "@/services/db/repositories/libraryRepository";
+} from "@core/db/repositories/libraryRepository";
 import { listDownloadedManga } from "@features/downloads";
 import { syncLibrary } from "../sync/librarySync";
 import { downloadedMangaToLibraryCards } from "../domain/libraryCards";

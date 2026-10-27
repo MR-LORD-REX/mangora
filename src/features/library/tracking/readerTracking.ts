@@ -3,12 +3,12 @@ import {
     upsertChapter,
     upsertManga,
     type TrackedChapterInput,
-} from "@/services/db/repositories/catalogRepository";
-import { setChaptersReadState } from "@/services/db/repositories/progressRepository";
+} from "@core/db/repositories/catalogRepository";
+import { setChaptersReadState } from "@core/db/repositories/progressRepository";
 import {
     recordHistoryOpen,
     type ReaderParamsSnapshot,
-} from "@/services/db/repositories/historyRepository";
+} from "@core/db/repositories/historyRepository";
 
 export interface ReaderOpenInput {
   provider: ProviderId;

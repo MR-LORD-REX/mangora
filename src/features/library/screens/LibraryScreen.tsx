@@ -20,8 +20,8 @@ import { ConfirmDialog } from "@shared/ui/overlays";
 import MenuSheet from "@shared/ui/overlays/MenuSheet";
 import { OnboardingOverlay } from "@features/onboarding";
 import { colors, radius } from "@shared/theme";
-import { DOWNLOADS_LIBRARY_ID } from "@/services/db/bootstrap";
-import { isSystemLibrary, type LibraryCard as LibraryCardRow } from "@/services/db/repositories/libraryRepository";
+import { DOWNLOADS_LIBRARY_ID } from "@core/db/bootstrap";
+import { isSystemLibrary, type LibraryCard as LibraryCardRow } from "@core/db/repositories/libraryRepository";
 import LibraryCard from "../components/cards/LibraryCard";
 import {
   BulkDeleteLibrariesDialog,

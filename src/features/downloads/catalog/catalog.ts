@@ -6,17 +6,17 @@
 import {
   getDownload,
   getDownloadByProviderChapter,
-} from "@/services/db/repositories/downloadRepository";
+} from "@core/db/repositories/downloadRepository";
 import { getSettings, updateSettings } from "@core/settings";
-import type { Download } from "@/services/db/schema";
+import type { Download } from "@core/db/schema";
 
 export {
   getDownloadStatusMap,
   listDownloadedManga,
   listDownloads,
   listDownloadsForManga,
-} from "@/services/db/repositories/downloadRepository";
-export type { DownloadedMangaSummary } from "@/services/db/repositories/downloadRepository";
+} from "@core/db/repositories/downloadRepository";
+export type { DownloadedMangaSummary } from "@core/db/repositories/downloadRepository";
 
 /** Today's date key ("YYYY-MM-DD") used by the confirm-suppression setting. */
 function todayKey(): string {

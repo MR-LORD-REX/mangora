@@ -1,7 +1,7 @@
 import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { LibraryCard as LibraryCardRow } from "@/services/db/repositories/libraryRepository";
+import type { LibraryCard as LibraryCardRow } from "@core/db/repositories/libraryRepository";
 import { colors, radius } from "@shared/theme";
 import { imageSourceForUrl } from "@shared/net/imageHeaders";
 import { providerLabel } from "@features/extensions";

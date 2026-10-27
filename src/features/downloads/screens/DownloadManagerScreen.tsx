@@ -19,8 +19,8 @@ import { colors, radius } from "@shared/theme";
 import { listDownloadsForManga } from "../catalog/catalog";
 import { removeDownload, retryDownload } from "../queue/scheduler";
 import { getFolderState, removeMangaFolder } from "../storage/storage";
-import { deleteDownloadsForManga } from "@/services/db/repositories/downloadRepository";
-import type { Download } from "@/services/db/schema";
+import { deleteDownloadsForManga } from "@core/db/repositories/downloadRepository";
+import type { Download } from "@core/db/schema";
 import { formatBytes } from "@core/settings/storageUsage";
 import { imageSourceForUrl } from "@shared/net/imageHeaders";
 

@@ -22,7 +22,7 @@ import {
   countTranslationUsageSince,
   insertTranslationUsage,
   sumTranslationInputTokensSince,
-} from "@/services/db/repositories/translationRepository";
+} from "@core/db/repositories/translationRepository";
 
 const DAY_MS = 86_400_000;
 const MINUTE_MS = 60_000;

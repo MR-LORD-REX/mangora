@@ -19,13 +19,13 @@ import {
   addMangaToLibrary,
   isMangaInAnyLibrary,
   listLibraries,
-} from "@/services/db/repositories/libraryRepository";
+} from "@core/db/repositories/libraryRepository";
 import {
   upsertManga,
   type ProviderId,
-} from "@/services/db/repositories/catalogRepository";
-import { listDownloadsForManga } from "@/services/db/repositories/downloadRepository";
-import { DOWNLOADS_LIBRARY_ID } from "@/services/db/bootstrap";
+} from "@core/db/repositories/catalogRepository";
+import { listDownloadsForManga } from "@core/db/repositories/downloadRepository";
+import { DOWNLOADS_LIBRARY_ID } from "@core/db/bootstrap";
 import type { DownloadCandidate } from "../catalog/identity";
 import {
   isDownloadConfirmSuppressed,

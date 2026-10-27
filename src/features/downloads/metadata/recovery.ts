@@ -14,7 +14,7 @@ import {
   deleteDownload as deleteDownloadRow,
   importCompletedDownload,
   listDownloads,
-} from "@/services/db/repositories/downloadRepository";
+} from "@core/db/repositories/downloadRepository";
 import { ArchiveValidationError, validateSafArchive } from "../storage/archive";
 import {
   DownloadMetadataError,

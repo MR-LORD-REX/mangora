@@ -1,6 +1,6 @@
 import type { ProviderId } from "@core/catalog";
-import type { ReaderParamsSnapshot } from "@/services/db/repositories/historyRepository";
-import type { Download } from "@/services/db/schema";
+import type { ReaderParamsSnapshot } from "@core/db/repositories/historyRepository";
+import type { Download } from "@core/db/schema";
 import { encodeProviderParam } from "./identity";
 
 export interface OfflineReaderTarget {

@@ -10,7 +10,7 @@
 
 import { Directory, File, Paths } from "expo-file-system";
 
-import type { Download } from "@/services/db/schema";
+import type { Download } from "@core/db/schema";
 import {
   deleteSafArchive,
 } from "../adapters/nativeDownloader";

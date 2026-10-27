@@ -8,7 +8,7 @@
 
 import { Paths } from "expo-file-system";
 
-import { sumDownloadedBytes } from "@/services/db/repositories/downloadRepository";
+import { sumDownloadedBytes } from "@core/db/repositories/downloadRepository";
 
 export interface StorageUsage {
   totalBytes: number;

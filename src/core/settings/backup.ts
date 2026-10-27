@@ -12,8 +12,8 @@
 
 import { Directory, File, Paths } from "expo-file-system";
 
-import { restoreDatabaseFromBytes, serializeDatabase } from "@/services/db/backup";
-import type { RestoreResult } from "@/services/db/backup";
+import { restoreDatabaseFromBytes, serializeDatabase } from "@core/db/backup";
+import type { RestoreResult } from "@core/db/backup";
 import { ensureStorageRoot, ensureRootChild } from "@core/storage/root";
 import { readSafDocumentToFile, writeFileToFolder } from "@core/storage/saf";
 import { reloadSettingsFromMirror, updateSettings } from "./settingsStore";

@@ -8,8 +8,8 @@
 
 import { eq } from "drizzle-orm";
 
-import { db } from "@/services/db/client";
-import { downloadFolders } from "@/services/db/schema";
+import { db } from "@core/db/client";
+import { downloadFolders } from "@core/db/schema";
 
 export const STORAGE_ROOT_ID = "default";
 

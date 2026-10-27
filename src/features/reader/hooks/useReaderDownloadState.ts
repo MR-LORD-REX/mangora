@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   getChapterDownloadInfo,
   type ChapterDownloadInfo,
-} from "@/services/db/repositories/catalogRepository";
+} from "@core/db/repositories/catalogRepository";
 import { resolveReaderIdentity } from "@core/catalog/readerIdentity";
 import {
   readerTarget,

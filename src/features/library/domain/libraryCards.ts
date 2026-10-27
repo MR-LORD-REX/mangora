@@ -1,4 +1,4 @@
-import type { LibraryCard } from "@/services/db/repositories/libraryRepository";
+import type { LibraryCard } from "@core/db/repositories/libraryRepository";
 import type { DownloadedMangaSummary } from "@features/downloads";
 
 /** Maps downloaded-manga rows into the same card shape the library grid renders. */

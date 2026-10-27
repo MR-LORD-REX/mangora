@@ -11,7 +11,7 @@ import type { NativeMangaDetails } from "@platform/extensions/types";
 import type {
   TrackedChapterInput,
   TrackedMangaInput,
-} from "@/services/db/repositories/catalogRepository";
+} from "@core/db/repositories/catalogRepository";
 import type { ProviderId } from "./providerId";
 
 export type { ProviderId } from "./providerId";

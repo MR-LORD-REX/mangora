@@ -1,4 +1,4 @@
-﻿# Translation
+# Translation
 
 Owner: translation pipeline and translation settings surfaces.
 
@@ -21,7 +21,7 @@ queue.
 - Downloaded pages and notifications arrive through `DownloadSessionPort` and
   `TranslationNotificationPort`; the queue never imports the downloader barrel
   or notification implementation.
-- Translation cache rows live in `services/db/repositories/translationRepository`
+- Translation cache rows live in `@core/db/repositories/translationRepository`
   during the current migration and import only shared contracts and core model
   IDs.
 
