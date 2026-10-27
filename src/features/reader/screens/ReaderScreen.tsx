@@ -2,14 +2,12 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { useFocusEffect } from "expo-router";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { StatusBar } from "expo-status-bar";
-import { ArrowLeft, Menu } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
   Dimensions,
   FlatList,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -17,18 +15,18 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import ReaderBottomBar from "@/components/reader/ReaderBottomBar";
+import ReaderChromeStack from "../components/chrome/ReaderChromeStack";
+import type { ReaderConfigTab } from "../components/panels/ReaderConfigPanel";
+import type { ReaderTranslationTab } from "../components/panels/ReaderTranslationPanel";
+import { ArrowLeft } from "lucide-react-native";
+import ReaderTapZonePreview from "../components/overlays/ReaderTapZonePreview";
 import { useReaderSession } from "../state/ReaderSessionProvider";
 import PagedReader from "../views/paged/PagedReader";
 import StripReader, {
   type StripReaderHandle,
   type StripTapEvent,
-  type StripViewportState,
 } from "../views/strip/StripReader";
-import {
-  AddToLibraryButton,
-  prepareReaderOpen,
-} from "@features/library";
+import { AddToLibraryButton } from "@features/library";
 import {
   getDownloadedChapter,
   openDownloadedPageSession,
@@ -49,29 +47,14 @@ import {
   type ReaderOverlayFont,
   type ReaderPagedDirection,
   type ReaderReadingMode,
-  type ReaderTapZoneLayout,
-} from "@/components/reader/readerChrome";
-import { overlayFontSupportsLanguage } from "@/components/reader/overlayFonts";
-import ReaderConfigPanel, {
-  type ReaderConfigTab,
-} from "@/components/reader/ReaderConfigPanel";
-import ReaderHeader from "@/components/reader/ReaderHeader";
+} from "../components/panels/readerChrome";
+import { overlayFontSupportsLanguage } from "../components/panels/overlayFonts";
 import {
   autoLanguageForReader,
   canonicalChineseForReader,
-} from "@/components/reader/readerLanguages";
-import ReaderPage from "@/components/reader/ReaderPage";
-import ReaderPageActionsSheet from "@/components/reader/ReaderPageActionsSheet";
-import SingleTranslateFab from "@/components/reader/SingleTranslateFab";
-import ReaderReadingModeSheet from "@/components/reader/ReaderReadingModeSheet";
-import ReaderRotationSheet from "@/components/reader/ReaderRotationSheet";
-import ReaderTranslationPanel, {
-  type ReaderTranslationTab,
-} from "@/components/reader/ReaderTranslationPanel";
-import {
-  resolveTapZoneAction,
-  tapZoneRectsFor,
-} from "@/components/reader/tapZones";
+} from "../components/panels/readerLanguages";
+import ReaderPage from "../components/page/ReaderPage";
+import { resolveTapZoneAction } from "../domain/navigation/tapZones";
 import {
   getChapterDownloadInfo,
   type ChapterDownloadInfo,
@@ -87,26 +70,18 @@ import {
   updateProgress,
 } from "@/services/db/repositories/progressRepository";
 import { clearTranslationCacheForManga } from "@/services/db/repositories/translationRepository";
-import {
-  clampOcrBubbleWorkers,
-  modelIdForLanguage,
-} from "@features/vision";
 import type { AppSettings } from "@core/settings";
 import {
   getSettings,
   subscribeSettings,
   updateSettings,
 } from "@core/settings";
-import {
-  GEMINI_DEFAULT_MODEL,
-  type GeminiModelId,
-} from "@features/translation";
-import { chapterNumberLabel, chapterTitleFromId } from "@/utils/reader/chapterLabel";
+import { chapterNumberLabel } from "@/utils/reader/chapterLabel";
 import { imageHeadersForPage } from "@/utils/reader/imageHeaders";
 import {
   loadChapterPages,
 } from "@/utils/reader/loadChapterPages";
-import { pageGeometry, type PageDims } from "@/utils/reader/pageGeometry";
+import { pageGeometry } from "@/utils/reader/pageGeometry";
 import { readerBackgroundColor } from "@/utils/reader/readerBackground";
 import {
   chromeFromSettings,
@@ -118,18 +93,21 @@ import {
 } from "@/utils/reader/readerItems";
 import { resolveReaderIdentity } from "@/utils/reader/readerIdentity";
 import { useReaderTranslation } from "@/utils/reader/useReaderTranslation";
+import { useReaderAutoScroll } from "../hooks/useReaderAutoScroll";
+import { useReaderPageDims } from "../hooks/useReaderPageDims";
+import { useReaderSettings } from "../hooks/useReaderSettings";
+import { modelIdForLanguage } from "@features/vision";
+import type { GeminiModelId } from "@features/translation";
 import {
-  autoScrollPauseMs,
-  autoScrollSegment,
-} from "../domain/scroll/autoScroll";
+  chapterNavigationFlipped,
+  openAdjacentChapter,
+} from "./readerChapterNavigation";
 
-function paramString(value: string | string[] | undefined): string {
-  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
+const windowDimensions = Dimensions.get("window");
 
-const screenWidth = Dimensions.get("window").width;
+const screenWidth = windowDimensions.width;
 
-const screenHeight = Dimensions.get("window").height;
+const screenHeight = windowDimensions.height;
 
 export interface ReaderScreenProps {
   source: string;
@@ -249,38 +227,24 @@ export default function ReaderScreen({
     loading,
     setLoading,
   } = useReaderSession();
-  const [autoScroll, setAutoScroll] = useState(false);
-  const autoScrollRef = useRef(false);
-  const autoScrollPausedByDragRef = useRef(false);
   const pagedListRef = useRef<FlatList<ReaderDisplayItem>>(null);
   const stripListRef = useRef<StripReaderHandle>(null);
-  const [defaultZoomScale, setDefaultZoomScale] = useState(1);
-  const [pageDims, setPageDims] = useState<Record<string, PageDims>>({});
   const lastPageIndexRef = useRef(0);
   const lastDisplayIndexRef = useRef(0);
   const [currentDisplayIndex, setCurrentDisplayIndex] = useState(0);
   const pagedModeRef = useRef(false);
   const pagedMode = isPagedMode(chrome.readingMode);
   pagedModeRef.current = pagedMode;
-
-  /** Records the decoded pixel size of a page once known (getSize/onLoad). */
-  const rememberPageDims = useCallback(
-    (url: string, width: number, height: number) => {
-      if (!width || !height) return;
-      setPageDims((prev) => {
-        const current = prev[url];
-        if (current && current.width === width && current.height === height) {
-          return prev;
-        }
-        return { ...prev, [url]: { width, height } };
-      });
-    },
-    [],
-  );
-  const requestedPageDimsRef = useRef<Set<string>>(new Set());
   const [bodySize, setBodySize] = useState({
     width: screenWidth,
     height: screenHeight,
+  });
+  const { pageDims, rememberPageDims } = useReaderPageDims({
+    pages,
+    source,
+    readingMode: chrome.readingMode,
+    currentPageIndex,
+    imageWindow,
   });
 
   const scrollToReaderIndex = useCallback(
@@ -399,32 +363,43 @@ export default function ReaderScreen({
   const [pendingOrientation, setPendingOrientation] =
     useState<ReaderOrientation>("default");
 
-  const [readerLanguage, setReaderLanguage] = useState("");
-  const [targetLanguage, setTargetLanguage] = useState("en");
-  const [translationEngine, setTranslationEngine] =
-    useState<AppSettings["readerTranslationEngine"]>("free");
-  const [translationMode, setTranslationMode] =
-    useState<AppSettings["readerTranslationMode"]>("off");
-  const [showPageStatus, setShowPageStatus] = useState(true);
-  const [hideTranslated, setHideTranslated] = useState(false);
-  const [overlayFont, setOverlayFont] =
-    useState<ReaderOverlayFont>("default");
-  const [overlayFontWeight, setOverlayFontWeight] = useState(600);
-  const [overlayFontScale, setOverlayFontScale] = useState(1);
-  const [overlayTextColor, setOverlayTextColor] = useState("#000000");
-  const settingsPersistTimerRef = useRef<ReturnType<
-    typeof setTimeout
-  > | null>(null);
-  const pendingSettingsPatchRef = useRef<Partial<AppSettings>>({});
+  const {
+    readerLanguage,
+    targetLanguage,
+    translationEngine,
+    translationMode,
+    showPageStatus,
+    hideTranslated,
+    overlayFont,
+    overlayFontWeight,
+    overlayFontScale,
+    overlayTextColor,
+    geminiApiKey,
+    geminiModelId,
+    autoModelSwitch,
+    ocrBubbleWorkers,
+    ocrLookahead,
+    aiMaxContextPages,
+    defaultZoomScale,
+    applySettings: applyReaderSettings,
+    setAutoModelSwitch,
+    setDefaultZoomScale,
+    setOverlayFont,
+    setOverlayFontWeight,
+    setOverlayFontScale,
+    setOverlayTextColor,
+    setReaderLanguage,
+    setTargetLanguage,
+    setTranslationEngine,
+    setTranslationMode,
+    setShowPageStatus,
+    setHideTranslated,
+    setGeminiModelId,
+    setOcrLookahead,
+    queueSettingsPatch,
+    flushSettingsPatch,
+  } = useReaderSettings();
   const ocrLanguage = readerLanguage || autoLanguage;
-
-  const [geminiApiKey, setGeminiApiKey] = useState("");
-  const [geminiModelId, setGeminiModelId] =
-    useState<GeminiModelId>(GEMINI_DEFAULT_MODEL);
-  const [autoModelSwitch, setAutoModelSwitch] = useState(false);
-  const [ocrBubbleWorkers, setOcrBubbleWorkers] = useState(8);
-  const [ocrLookahead, setOcrLookahead] = useState(2);
-  const [aiMaxContextPages, setAiMaxContextPages] = useState(10);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [translationOpen, setTranslationOpen] = useState(false);
   const [translationTab, setTranslationTab] =
@@ -743,77 +718,10 @@ export default function ReaderScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterId, source]);
 
-  // Only measure pages near the current position. Measuring every page in a
-  // 300-page chapter fired hundreds of network requests before first paint.
-  useEffect(() => {
-    requestedPageDimsRef.current = new Set();
-  }, [pages]);
-
-  useEffect(() => {
-    if (!pages.length) return;
-    const requested = requestedPageDimsRef.current;
-    // Long strips need a few extra rows measured ahead of time; otherwise a
-    // page that enters the viewport with a placeholder height makes the whole
-    // column jump. Paged readers only need the current prefetch window.
-    const prefetchRadius = isLongStripMode(chrome.readingMode) ? 8 : 2;
-    const wanted = new Set<number>(imageWindow);
-    for (
-      let index = Math.max(0, currentPageIndex);
-      index <= Math.min(pages.length - 1, currentPageIndex + prefetchRadius);
-      index += 1
-    ) {
-      wanted.add(index);
-    }
-    for (const index of wanted) {
-      const url = pages[index];
-      if (!url || requested.has(url) || pageDims[url]) continue;
-      requested.add(url);
-      const onSize = (width: number, height: number) =>
-        rememberPageDims(url, width, height);
-      const onError = () => undefined;
-      if (url.startsWith("file://")) {
-        // Downloaded pages are already local; remote headers would break it.
-        Image.getSize(url, onSize, onError);
-        continue;
-      }
-      const headers = imageHeadersForPage(source, url);
-      if (headers && typeof (Image as any).getSizeWithHeaders === "function") {
-        // Android needs getSizeWithHeaders to attach per-host headers;
-        // when unavailable the <Image> onLoad handler records dimensions.
-        (Image as any).getSizeWithHeaders(url, headers, onSize, onError);
-      } else {
-        Image.getSize(url, onSize, onError);
-      }
-    }
-  }, [
-    chrome.readingMode,
-    currentPageIndex,
-    imageWindow,
-    pageDims,
-    pages,
-    rememberPageDims,
-    source,
-  ]);
-
-  const scrollOffset = useRef(0);
-  const [scrollSpeed, setScrollSpeed] = useState(1);
-  const scrollSpeedRef = useRef(1);
-  const autoScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
-  const autoScrollGenerationRef = useRef(0);
-  const autoScrollSchedulerRef = useRef<() => void>(() => {});
-  const autoScrollCameraZoomedRef = useRef(false);
   const pagedTapInFlightRef = useRef(false);
   const pagedTapUnlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
-
-  const handleSetSpeed = (speed: number) => {
-    setScrollSpeed(speed);
-    scrollSpeedRef.current = speed;
-    updateSettings({ readerScrollSpeed: speed }).catch(console.error);
-  };
 
   /**
    * Prefix offsets for the current strip layout. Recomputing every page's
@@ -885,108 +793,24 @@ export default function ReaderScreen({
   };
 
   const handleStripScroll = (offset: number) => {
-    scrollOffset.current = offset;
     syncPageIndexFromOffset(offset);
   };
 
-  const handleStripViewportChange = useCallback(
-    ({ offset, atBase, interacting }: StripViewportState) => {
-      scrollOffset.current = offset;
-      if (interacting || !atBase) {
-        autoScrollCameraZoomedRef.current = true;
-        if (autoScrollTimerRef.current) {
-          clearTimeout(autoScrollTimerRef.current);
-          autoScrollTimerRef.current = null;
-        }
-        autoScrollGenerationRef.current += 1;
-        return;
-      }
-      if (!autoScrollCameraZoomedRef.current) return;
-      autoScrollCameraZoomedRef.current = false;
-      if (autoScrollRef.current && !pagedModeRef.current) {
-        autoScrollGenerationRef.current += 1;
-        autoScrollSchedulerRef.current();
-      }
-    },
-    [],
-  );
-
-  const handleScrollBeginDrag = () => {
-    autoScrollPausedByDragRef.current = autoScrollRef.current;
-    setAutoScroll(false);
-  };
-
-  /**
-   * Native ScrollView owns each auto-scroll animation. One bounded segment is
-   * issued per settle event; a page boundary adds a short readable pause.
-   * Nothing writes an offset back every frame, so a native fling and the
-   * scroll events it emits cannot fight each other.
-   */
-  const scheduleAutoScroll = useCallback(() => {
-    if (autoScrollTimerRef.current) {
-      clearTimeout(autoScrollTimerRef.current);
-      autoScrollTimerRef.current = null;
-    }
-    if (
-      !autoScrollRef.current ||
-      autoScrollPausedByDragRef.current ||
-      isPagedMode(chrome.readingMode)
-    ) {
-      return;
-    }
-    const generation = autoScrollGenerationRef.current;
-    const scrollHost = stripListRef.current;
-    if (!scrollHost) return;
-    const metrics = scrollHost.getScrollMetrics();
-    const segment = autoScrollSegment({
-      offset: metrics.offset,
-      maxOffset: metrics.maxOffset,
-      speed: scrollSpeedRef.current,
-      viewportSize: bodySize.height,
-      pageOffsets,
-    });
-    if (!segment) {
-      autoScrollRef.current = false;
-      setAutoScroll(false);
-      return;
-    }
-    scrollToReaderOffset(segment.target, true);
-    autoScrollTimerRef.current = setTimeout(() => {
-      autoScrollTimerRef.current = null;
-      if (generation !== autoScrollGenerationRef.current) return;
-      scheduleAutoScroll();
-    }, 380 + autoScrollPauseMs(segment));
-  }, [
-    bodySize.height,
-    chrome.readingMode,
+  const {
+    active: autoScroll,
+    speed: scrollSpeed,
+    setActive: setAutoScroll,
+    setSpeed: setAutoScrollSpeed,
+    handleScrollBeginDrag,
+    handleViewportChange: handleStripViewportChange,
+  } = useReaderAutoScroll({
+    readingMode: chrome.readingMode,
     pageOffsets,
-    scrollToReaderOffset,
-  ]);
-
-  useEffect(() => {
-    autoScrollRef.current = autoScroll;
-    autoScrollGenerationRef.current += 1;
-    autoScrollPausedByDragRef.current = false;
-    if (autoScroll && !pagedMode && pages.length > 0) {
-        autoScrollCameraZoomedRef.current = false;
-      scheduleAutoScroll();
-    } else if (autoScrollTimerRef.current) {
-      clearTimeout(autoScrollTimerRef.current);
-      autoScrollTimerRef.current = null;
-    }
-  }, [autoScroll, pagedMode, pages.length, scheduleAutoScroll]);
-
-  autoScrollSchedulerRef.current = scheduleAutoScroll;
-
-  useEffect(
-    () => () => {
-      if (autoScrollTimerRef.current) {
-        clearTimeout(autoScrollTimerRef.current);
-        autoScrollTimerRef.current = null;
-      }
-    },
-    [],
-  );
+    contentReady: pages.length > 0,
+    viewportHeight: bodySize.height,
+    stripRef: stripListRef,
+    scrollToOffset: scrollToReaderOffset,
+  });
 
   useEffect(() => {
     if (displayItems.length === 0) {
@@ -1046,41 +870,15 @@ export default function ReaderScreen({
     if (pagedMode) {
       setAutoScroll(false);
     }
-  }, [pagedMode]);
+  }, [pagedMode, setAutoScroll]);
 
   // ---- Settings ----------------------------------------------------------
   // Keeps this screen in sync with the persisted settings store.
   useEffect(() => {
     const apply = (settings: AppSettings) => {
-      setReaderLanguage(
-        settings.readerLanguage
-          ? canonicalChineseForReader(settings.readerLanguage)
-          : "",
-      );
-      setTargetLanguage(settings.readerTargetLanguage || "en");
-      setTranslationEngine(settings.readerTranslationEngine);
-      setTranslationMode(settings.readerTranslationMode);
-      setShowPageStatus(settings.readerShowPageStatus);
-      setHideTranslated(settings.readerHideTranslated);
-      setGeminiApiKey(settings.geminiApiKey || "");
-      setGeminiModelId(settings.geminiModelId || GEMINI_DEFAULT_MODEL);
-      setAutoModelSwitch(settings.readerAutoModelSwitch);
-      const effectiveLanguage = settings.readerLanguage || autoLanguage;
-      setOcrBubbleWorkers(
-        clampOcrBubbleWorkers(
-          modelIdForLanguage(effectiveLanguage),
-          settings.ocrBubbleWorkers,
-        ),
-      );
-      setOcrLookahead(settings.ocrLookahead);
-      setAiMaxContextPages(settings.aiMaxContextPages);
-      setOverlayFont(settings.readerOverlayFont);
-      setOverlayFontWeight(settings.readerOverlayFontWeight);
-      setOverlayFontScale(settings.readerOverlayFontScale);
-      setOverlayTextColor(settings.readerOverlayTextColor);
+      applyReaderSettings(settings, autoLanguage);
       setChrome(chromeFromSettings(settings));
-      setDefaultZoomScale(settings.readerDefaultZoomScale);
-      setScrollSpeed(settings.readerScrollSpeed || 1);
+      setAutoScrollSpeed(settings.readerScrollSpeed || 1);
     };
 
     getSettings()
@@ -1090,7 +888,13 @@ export default function ReaderScreen({
       .catch(() => {});
     const unsubscribe = subscribeSettings(apply);
     return unsubscribe;
-  }, [autoLanguage, setChrome]);
+  }, [applyReaderSettings, autoLanguage, setAutoScrollSpeed, setChrome]);
+
+  /** Persist user speed changes; settings sync uses the hook setter directly. */
+  const handleSelectScrollSpeed = (speed: number) => {
+    setAutoScrollSpeed(speed);
+    updateSettings({ readerScrollSpeed: speed }).catch(console.error);
+  };
 
   const handleSelectReaderLanguage = (code: string) => {
     const nextLanguage = code ? canonicalChineseForReader(code) : "";
@@ -1101,55 +905,37 @@ export default function ReaderScreen({
       language: languageToBind,
       model: modelIdForLanguage(languageToBind),
     });
-    updateSettings({ readerLanguage: nextLanguage }).catch(console.error);
   };
   const handleSelectTargetLanguage = (code: string) => {
     setTargetLanguage(code);
-    updateSettings({ readerTargetLanguage: code }).catch(console.error);
-    console.log("[reader][settings] target language", code);
   };
   const handleSelectTranslationEngine = (
     engine: AppSettings["readerTranslationEngine"],
   ) => {
     if (engine !== translationEngine) stopTranslationRun();
     setTranslationEngine(engine);
-    updateSettings({ readerTranslationEngine: engine }).catch(console.error);
-    console.log("[reader][settings] translation engine", engine);
   };
   const handleSelectTranslationMode = (
     mode: AppSettings["readerTranslationMode"],
   ) => {
     if (mode !== translationMode) stopTranslationRun();
     setTranslationMode(mode);
-    updateSettings({ readerTranslationMode: mode }).catch(console.error);
-    console.log("[reader][settings] translation mode", mode);
   };
   const handleChangeShowPageStatus = (value: boolean) => {
     setShowPageStatus(value);
-    updateSettings({ readerShowPageStatus: value }).catch(console.error);
-    console.log("[reader][settings] show page status", value);
   };
   const handleChangeHideTranslated = (value: boolean) => {
     setHideTranslated(value);
-    updateSettings({ readerHideTranslated: value }).catch(console.error);
-    console.log("[reader][settings] hide translated", value);
   };
   const handleSelectGeminiModel = (model: GeminiModelId) => {
     if (model !== geminiModelId) stopTranslationRun();
     setGeminiModelId(model);
-    updateSettings({ geminiModelId: model }).catch(console.error);
-    console.log("[reader][settings] Gemini model", model);
   };
   const handleChangeAutoModelSwitch = (value: boolean) => {
     setAutoModelSwitch(value);
-    updateSettings({ readerAutoModelSwitch: value }).catch(console.error);
-    console.log("[reader][settings] auto model switch", value);
   };
   const handleChangeLookahead = (value: number) => {
-    const next = Math.min(5, Math.max(1, Math.round(value)));
-    setOcrLookahead(next);
-    updateSettings({ ocrLookahead: next }).catch(console.error);
-    console.log("[reader][settings] look ahead", next);
+    setOcrLookahead(value);
   };
   const handleClearTrCache = async (): Promise<number> => {
     const removed = await clearTranslationCacheForManga(readerIdentity.mangaId);
@@ -1162,62 +948,28 @@ export default function ReaderScreen({
   };
   const handleSelectOverlayFont = (font: ReaderOverlayFont) => {
     setOverlayFont(font);
-    updateSettings({ readerOverlayFont: font }).catch(console.error);
   };
   const handleSelectOverlayFontWeight = (weight: number) => {
-    const normalized = Math.min(900, Math.max(400, Math.round(weight / 100) * 100));
-    setOverlayFontWeight(normalized);
-    queueSettingsPatch({ readerOverlayFontWeight: normalized });
+    setOverlayFontWeight(weight);
   };
   const handleSelectOverlayTextColor = (color: string) => {
     setOverlayTextColor(color);
-    queueSettingsPatch({ readerOverlayTextColor: color });
   };
   const handleSelectOverlayFontScale = (scale: number) => {
-    const normalized = Math.round(Math.min(1.5, Math.max(0.5, scale)) * 100) / 100;
-    setOverlayFontScale(normalized);
-    queueSettingsPatch({ readerOverlayFontScale: normalized });
+    setOverlayFontScale(scale);
   };
   const handleSelectDefaultZoomScale = (scale: number) => {
-    const normalized = Math.min(2, Math.max(0.1, scale));
-    console.log("handleSelectDefaultZoomScale", normalized);
-    setDefaultZoomScale(normalized);
-    updateSettings({ readerDefaultZoomScale: normalized }).catch(console.error);
-  };
-
-  /** Coalesces slider drags into one file/DB write (state still updates live). */
-  const queueSettingsPatch = (patch: Partial<AppSettings>, delay = 160) => {
-    pendingSettingsPatchRef.current = {
-      ...pendingSettingsPatchRef.current,
-      ...patch,
-    };
-    if (settingsPersistTimerRef.current) {
-      clearTimeout(settingsPersistTimerRef.current);
-    }
-    settingsPersistTimerRef.current = setTimeout(() => {
-      const pending = pendingSettingsPatchRef.current;
-      pendingSettingsPatchRef.current = {};
-      settingsPersistTimerRef.current = null;
-      if (Object.keys(pending).length > 0) {
-        updateSettings(pending).catch(console.error);
-      }
-    }, delay);
+    setDefaultZoomScale(scale);
   };
 
   useEffect(
     () => () => {
-      if (settingsPersistTimerRef.current) {
-        clearTimeout(settingsPersistTimerRef.current);
-      }
+      flushSettingsPatch();
       if (pagedTapUnlockTimerRef.current) {
         clearTimeout(pagedTapUnlockTimerRef.current);
       }
-      const pending = pendingSettingsPatchRef.current;
-      if (Object.keys(pending).length > 0) {
-        updateSettings(pending).catch(console.error);
-      }
     },
-    [],
+    [flushSettingsPatch],
   );
 
   const handleChromeChange = (patch: Partial<ReaderChromeSettings>) => {
@@ -1474,12 +1226,6 @@ export default function ReaderScreen({
     ],
   );
 
-  // Short-lived preview that flashes the active tap zones whenever the user
-  // switches the tap-zone preset.
-  const flashOpacity = useRef(new Animated.Value(0)).current;
-  const [zoneFlashNonce, setZoneFlashNonce] = useState(0);
-  const lastZoneLayoutRef = useRef<ReaderTapZoneLayout | null>(null);
-
   const pageFlashOpacity = useRef(new Animated.Value(0)).current;
   const lastFlashIndexRef = useRef(currentPageIndex);
 
@@ -1495,36 +1241,6 @@ export default function ReaderScreen({
       useNativeDriver: true,
     }).start();
   }, [chrome.flashOnPageChange, currentPageIndex, pageFlashOpacity]);
-
-  useEffect(() => {
-    const layout = chrome.tapZoneLayout;
-    if (lastZoneLayoutRef.current === null) {
-      lastZoneLayoutRef.current = layout;
-      return;
-    }
-    if (lastZoneLayoutRef.current !== layout) {
-      lastZoneLayoutRef.current = layout;
-      setZoneFlashNonce((nonce) => nonce + 1);
-    }
-  }, [chrome.tapZoneLayout]);
-
-  useEffect(() => {
-    if (zoneFlashNonce > 0) {
-      setTimeout(() => setZoneFlashNonce(0), 2000);
-    }
-  }, [zoneFlashNonce]);
-
-  useEffect(() => {
-    if (zoneFlashNonce === 0) return;
-    flashOpacity.setValue(0.7);
-    const animation = Animated.timing(flashOpacity, {
-      toValue: 0,
-      duration: 2000,
-      useNativeDriver: true,
-    });
-    animation.start();
-    return () => animation.stop();
-  }, [zoneFlashNonce, flashOpacity]);
 
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 50,
@@ -1572,70 +1288,36 @@ export default function ReaderScreen({
     ? chapterTitleText
     : chapterNumberLabel(title, chapterId);
 
-  /**
-   * Jumps to an adjacent chapter. The old params are dropped, not spread:
-   * the target chapter's title/number come from the catalog when known (so
-   * the header number updates), and the manga + chapter rows are upserted
-   * first so progress/history are tracked against the right chapter.
-   */
-  const openAdjacentChapter = async (targetParam: string) => {
-    const nextId = paramString(targetParam);
-    if (!nextId) return;
-    const nextIdentity = resolveReaderIdentity({
-      source,
-      chapterId: nextId,
-      mangaId,
-    });
-    const known = await getChapterDownloadInfo(nextIdentity.chapterId).catch(
-      () => null,
-    );
-    const nextChapterTitle = known?.title ?? chapterTitleFromId(nextId);
-    const nextMangaTitle = mangaTitle || title;
-    const nextLanguage = known?.languageCode ?? language;
-    await prepareReaderOpen({
-      provider: nextIdentity.provider,
-      providerMangaId: nextIdentity.providerMangaId,
-      providerChapterId: nextIdentity.providerChapterId,
-      mangaTitle: nextMangaTitle,
-      chapterTitle: nextChapterTitle,
-      chapterNumber: known?.chapterNumber ?? null,
-      scanlationGroup: known?.scanlationGroup ?? null,
-      chapterGroupKey: known?.chapterGroupKey ?? null,
-      languageCode: nextLanguage ?? null,
-      thumbnailUrl: thumbnailUrl || null,
-      readerParams: {
-        id: nextId,
-        source: nextIdentity.provider,
-        mangaTitle: nextMangaTitle,
-        chapterTitle: nextChapterTitle,
-        ...(mangaId ? { mangaId } : {}),
-        ...(thumbnailUrl ? { thumbnailUrl } : {}),
-        ...(nextLanguage ? { language: nextLanguage } : {}),
-      },
-    });
-    onReplaceReader({
-      id: nextId,
-      source,
-      ...(mangaId ? { mangaId } : {}),
-      mangaTitle: nextMangaTitle,
-      chapterTitle: nextChapterTitle,
-      ...(known?.chapterNumber != null
-        ? { chapterNumber: known.chapterNumber }
-        : {}),
-      ...(thumbnailUrl ? { thumbnailUrl } : {}),
-      ...(nextLanguage ? { language: nextLanguage } : {}),
-    });
-  };
-
   const goPrevChapter = () => {
-    if (prevChapterId) void openAdjacentChapter(prevChapterId);
+    if (prevChapterId) {
+      void openAdjacentChapter(prevChapterId, {
+        source,
+        mangaId,
+        title,
+        mangaTitle,
+        thumbnailUrl,
+        language,
+        onReplaceReader,
+      });
+    }
   };
   const goNextChapter = () => {
-    if (nextChapterId) void openAdjacentChapter(nextChapterId);
+    if (nextChapterId) {
+      void openAdjacentChapter(nextChapterId, {
+        source,
+        mangaId,
+        title,
+        mangaTitle,
+        thumbnailUrl,
+        language,
+        onReplaceReader,
+      });
+    }
   };
-
-  const navFlipped =
-    chrome.readingMode === "pagedHorizontal" && chrome.pagedDirection === "rtl";
+  const navFlipped = chapterNavigationFlipped(
+    chrome.readingMode,
+    chrome.pagedDirection,
+  );
   const canPrevChapter = navFlipped ? !!nextChapterId : !!prevChapterId;
   const canNextChapter = navFlipped ? !!prevChapterId : !!nextChapterId;
   const onPrevChapter = navFlipped ? goNextChapter : goPrevChapter;
@@ -1723,196 +1405,119 @@ export default function ReaderScreen({
           setBodySize({ width, height });
         }}
       >
-        {showHeader && (
-          <ReaderHeader
-            mangaTitle={mangaTitle}
-            chapterLabel={chapterLabel}
-            translateActive={autoTranslation}
-            translationBusy={activeTranslationJobs > 0}
-            showTranslateToggle={translationMode !== "single"}
-            onToggleTranslate={toggleAutoTranslation}
-            onOpenTranslation={openTranslationOptions}
-            onBack={goBack}
-            onClose={() => {
-              setConfigOpen(false);
-              setTranslationOpen(false);
-              setReadingModeSheetOpen(false);
-              setRotationSheetOpen(false);
-              setPageActionsUrl(null);
-              setShowHeader(false);
-            }}
-            bookmarkSlot={
-              <AddToLibraryButton
-                provider={readerIdentity.provider}
-                providerMangaId={readerIdentity.providerMangaId}
-                title={mangaTitle}
-                thumbnailUrl={thumbnailUrl}
-                variant="icon"
-                iconVariant="bookmark"
-              />
-            }
-            downloadSlot={
-              <ReaderDownloadButton
-                candidate={downloadCandidate}
-                context={downloadContext}
-                variant="header"
-              />
-            }
-          />
-        )}
+        <ReaderChromeStack
+          showHeader={showHeader}
+          setShowHeader={setShowHeader}
+          chrome={chrome}
+          mangaTitle={mangaTitle}
+          chapterLabel={chapterLabel}
+          autoTranslation={autoTranslation}
+          activeTranslationJobs={activeTranslationJobs}
+          translationMode={translationMode}
+          toggleAutoTranslation={toggleAutoTranslation}
+          openTranslationOptions={openTranslationOptions}
+          goBack={goBack}
+          closeChrome={() => {
+            setConfigOpen(false);
+            setTranslationOpen(false);
+            setReadingModeSheetOpen(false);
+            setRotationSheetOpen(false);
+            setPageActionsUrl(null);
+            setShowHeader(false);
+          }}
+          bookmarkSlot={
+            <AddToLibraryButton
+              provider={readerIdentity.provider}
+              providerMangaId={readerIdentity.providerMangaId}
+              title={mangaTitle}
+              thumbnailUrl={thumbnailUrl}
+              variant="icon"
+              iconVariant="bookmark"
+            />
+          }
+          downloadSlot={
+            <ReaderDownloadButton
+              candidate={downloadCandidate}
+              context={downloadContext}
+              variant="header"
+            />
+          }
+          configOpen={configOpen}
+          configTab={configTab}
+          setConfigTab={setConfigTab}
+          closeConfig={() => setConfigOpen(false)}
+          handleChromeChange={handleChromeChange}
+          defaultZoomScale={defaultZoomScale}
+          handleSelectDefaultZoomScale={handleSelectDefaultZoomScale}
+          scrollSpeed={scrollSpeed}
+          handleSelectScrollSpeed={handleSelectScrollSpeed}
+          translationOpen={translationOpen}
+          translationTab={translationTab}
+          setTranslationTab={setTranslationTab}
+          closeTranslation={() => setTranslationOpen(false)}
+          readerLanguage={readerLanguage}
+          ocrLanguage={ocrLanguage}
+          autoLanguage={autoLanguage}
+          targetLanguage={targetLanguage}
+          handleSelectReaderLanguage={handleSelectReaderLanguage}
+          handleSelectTargetLanguage={handleSelectTargetLanguage}
+          translationEngine={translationEngine}
+          handleSelectTranslationEngine={handleSelectTranslationEngine}
+          handleSelectTranslationMode={handleSelectTranslationMode}
+          geminiModelId={geminiModelId}
+          handleSelectGeminiModel={handleSelectGeminiModel}
+          autoModelSwitch={autoModelSwitch}
+          handleChangeAutoModelSwitch={handleChangeAutoModelSwitch}
+          ocrLookahead={ocrLookahead}
+          handleChangeLookahead={handleChangeLookahead}
+          metrics={metrics}
+          handleClearTrCache={handleClearTrCache}
+          overlayFont={overlayFont}
+          handleSelectOverlayFont={handleSelectOverlayFont}
+          overlayFontWeight={overlayFontWeight}
+          handleSelectOverlayFontWeight={handleSelectOverlayFontWeight}
+          overlayFontScale={overlayFontScale}
+          handleSelectOverlayFontScale={handleSelectOverlayFontScale}
+          overlayTextColor={overlayTextColor}
+          handleSelectOverlayTextColor={handleSelectOverlayTextColor}
+          showPageStatus={showPageStatus}
+          handleChangeShowPageStatus={handleChangeShowPageStatus}
+          hideTranslated={hideTranslated}
+          handleChangeHideTranslated={handleChangeHideTranslated}
+          currentPageIndex={currentPageIndex}
+          pagesLength={pages.length}
+          scrollToPage={scrollToPage}
+          canPrevChapter={canPrevChapter}
+          canNextChapter={canNextChapter}
+          onPrevChapter={onPrevChapter}
+          onNextChapter={onNextChapter}
+          readingMode={chrome.readingMode}
+          openReadingModeSheet={openReadingModeSheet}
+          openRotationSheet={openRotationSheet}
+          autoScroll={autoScroll}
+          setAutoScroll={setAutoScroll}
+          pagedMode={pagedMode}
+          pendingReadingMode={pendingReadingMode}
+          pendingDirection={pendingDirection}
+          setPendingReadingMode={setPendingReadingMode}
+          setPendingDirection={setPendingDirection}
+          readingModeSheetOpen={readingModeSheetOpen}
+          setReadingModeSheetOpen={setReadingModeSheetOpen}
+          pendingOrientation={pendingOrientation}
+          setPendingOrientation={setPendingOrientation}
+          rotationSheetOpen={rotationSheetOpen}
+          setRotationSheetOpen={setRotationSheetOpen}
+          pageActionsUrl={pageActionsUrl}
+          setPageActionsUrl={setPageActionsUrl}
+          retryPage={retryPage}
+          openSettings={openSettings}
+          pipelineError={pipelineError}
+          singlePageUrl={singlePageUrl}
+          singleStage={singleStage}
+          singlePageBusy={singlePageBusy}
+          translateSinglePage={translateSinglePage}
+        />
 
-        {showHeader && configOpen && (
-          <ReaderConfigPanel
-            tab={configTab}
-            onTabChange={setConfigTab}
-            onClose={() => setConfigOpen(false)}
-            chrome={chrome}
-            onChangeChrome={handleChromeChange}
-            defaultZoomScale={defaultZoomScale}
-            onChangeDefaultZoomScale={handleSelectDefaultZoomScale}
-            scrollSpeed={scrollSpeed}
-            onSelectScrollSpeed={handleSetSpeed}
-          />
-        )}
-
-        {showHeader && translationOpen && !configOpen && (
-          <ReaderTranslationPanel
-            tab={translationTab}
-            onTabChange={setTranslationTab}
-            onClose={() => setTranslationOpen(false)}
-            readerLanguage={readerLanguage}
-            ocrLanguage={ocrLanguage}
-            autoLanguage={autoLanguage}
-            targetLanguage={targetLanguage}
-            onSelectReaderLanguage={handleSelectReaderLanguage}
-            onSelectTargetLanguage={handleSelectTargetLanguage}
-            translationEngine={translationEngine}
-            onSelectTranslationEngine={handleSelectTranslationEngine}
-            translationMode={translationMode}
-            onSelectTranslationMode={handleSelectTranslationMode}
-            geminiModelId={geminiModelId}
-            onSelectGeminiModel={handleSelectGeminiModel}
-            autoModelSwitch={autoModelSwitch}
-            onChangeAutoModelSwitch={handleChangeAutoModelSwitch}
-            ocrLookahead={ocrLookahead}
-            onChangeLookahead={handleChangeLookahead}
-            metrics={metrics}
-            onClearTrCache={handleClearTrCache}
-            overlayFont={overlayFont}
-            onChangeOverlayFont={handleSelectOverlayFont}
-            overlayFontWeight={overlayFontWeight}
-            onChangeOverlayFontWeight={handleSelectOverlayFontWeight}
-            overlayFontScale={overlayFontScale}
-            onChangeOverlayFontScale={handleSelectOverlayFontScale}
-            overlayTextColor={overlayTextColor}
-            onChangeOverlayTextColor={handleSelectOverlayTextColor}
-            showPageStatus={showPageStatus}
-            onChangeShowPageStatus={handleChangeShowPageStatus}
-            hideTranslated={hideTranslated}
-            onChangeHideTranslated={handleChangeHideTranslated}
-          />
-        )}
-
-        {showHeader && !configOpen && !translationOpen && (
-          <ReaderBottomBar
-            currentIndex={currentPageIndex}
-            totalPages={pages.length}
-            onScrub={scrollToPage}
-            canPrevChapter={canPrevChapter}
-            canNextChapter={canNextChapter}
-            onPrevChapter={onPrevChapter}
-            onNextChapter={onNextChapter}
-            readingMode={chrome.readingMode}
-            onOpenReadingModeSheet={openReadingModeSheet}
-            onOpenRotationSheet={openRotationSheet}
-            autoScrollActive={autoScroll}
-            autoScrollDisabled={pagedMode}
-            onToggleAutoScroll={() => setAutoScroll((value) => !value)}
-            pagedDirection={chrome.pagedDirection}
-            orientation={chrome.orientation}
-            cropEnabled={chrome.cropBorders}
-            onToggleCrop={() =>
-              handleChromeChange({ cropBorders: !chrome.cropBorders })
-            }
-            onOpenSettings={openSettings}
-          />
-        )}
-
-        {readingModeSheetOpen && (
-          <ReaderReadingModeSheet
-            value={pendingReadingMode}
-            pagedDirection={pendingDirection}
-            onSelect={setPendingReadingMode}
-            onSelectDirection={setPendingDirection}
-            onRevert={() => {
-              setPendingReadingMode("webtoon");
-              setPendingDirection("ltr");
-            }}
-            onApply={() => {
-              handleChromeChange({
-                readingMode: pendingReadingMode,
-                pagedDirection: pendingDirection,
-              });
-              setReadingModeSheetOpen(false);
-            }}
-          />
-        )}
-
-        {rotationSheetOpen && (
-          <ReaderRotationSheet
-            value={pendingOrientation}
-            onSelect={setPendingOrientation}
-            onApply={() => {
-              handleChromeChange({ orientation: pendingOrientation });
-              setRotationSheetOpen(false);
-            }}
-          />
-        )}
-
-        {pageActionsUrl && (
-          <ReaderPageActionsSheet
-            pageUrl={pageActionsUrl}
-            hideTranslated={hideTranslated}
-            onClose={() => setPageActionsUrl(null)}
-            onToggleHideTranslated={() =>
-              handleChangeHideTranslated(!hideTranslated)
-            }
-            onRetryTranslation={retryPage}
-          />
-        )}
-
-        {chrome.showPageNumber && !showHeader && (
-          <View style={styles.pageChip} pointerEvents="none">
-            <Text style={styles.pageChipText}>
-              {currentPageIndex + 1} / {pages.length}
-            </Text>
-          </View>
-        )}
-
-        {!showHeader && (
-          <Pressable
-            onPress={() => setShowHeader(true)}
-            style={styles.floatingMenuBtn}
-            hitSlop={8}
-            accessibilityLabel="Show reader controls"
-          >
-            <Menu color="#fff" size={22} />
-          </Pressable>
-        )}
-
-        {pipelineError && (
-          <View style={styles.errorToast}>
-            <Text style={styles.errorToastText}>{pipelineError}</Text>
-          </View>
-        )}
-
-        {translationMode === "single" && singlePageUrl ? (
-          <SingleTranslateFab
-            stage={singleStage}
-            busy={singlePageBusy}
-            onPress={() => translateSinglePage(singlePageUrl)}
-          />
-        ) : null}
         {pagedMode ? (
           <PagedReader
             listRef={pagedListRef}
@@ -1970,35 +1575,16 @@ export default function ReaderScreen({
           />
         )}
 
-        {zoneFlashNonce > 0 && (
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.zoneFlash, { opacity: flashOpacity }]}
-          >
-            {tapZoneRectsFor(
-              chrome.tapZoneLayout,
-              bodySize.width,
-              bodySize.height,
-              chrome.readingMode === "pagedHorizontal" &&
-                chrome.pagedDirection === "rtl",
-              chrome.invertTapZones,
-            ).map((rect) => (
-              <View
-                key={rect.edge}
-                style={[
-                  styles.zoneFlashBand,
-                  {
-                    left: rect.x,
-                    top: rect.y,
-                    width: rect.width,
-                    height: rect.height,
-                    backgroundColor: rect.color,
-                  },
-                ]}
-              />
-            ))}
-          </Animated.View>
-        )}
+        <ReaderTapZonePreview
+          layout={chrome.tapZoneLayout}
+          invert={chrome.invertTapZones}
+          rtl={
+            chrome.readingMode === "pagedHorizontal" &&
+            chrome.pagedDirection === "rtl"
+          }
+          width={bodySize.width}
+          height={bodySize.height}
+        />
 
         <Animated.View
           pointerEvents="none"
@@ -2010,26 +1596,6 @@ export default function ReaderScreen({
 }
 
 const styles = StyleSheet.create({
-  singleTrFab: {
-    position: "absolute",
-    right: 18,
-    bottom: 118,
-    zIndex: 30,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(14,165,233,0.92)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.25)",
-    shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  singleTrFabBusy: { backgroundColor: "rgba(14,116,144,0.95)" },
   safeArea: { flex: 1, backgroundColor: "#000" },
   container: {
     flex: 1,
@@ -2045,60 +1611,9 @@ const styles = StyleSheet.create({
   },
   verticalContent: { paddingBottom: 24 },
   horizontalContent: { paddingHorizontal: 0 },
-  pageChip: {
-    position: "absolute",
-    bottom: 28,
-    alignSelf: "center",
-    backgroundColor: "rgba(10,10,14,0.7)",
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    zIndex: 20,
-  },
-  pageChipText: { color: "#fff", fontSize: 12, fontWeight: "600" },
-  floatingMenuBtn: {
-    position: "absolute",
-    bottom: 26,
-    right: 16,
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(10,10,14,0.82)",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(255,255,255,0.28)",
-    zIndex: 35,
-  },
-  zoneFlash: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    // Above the config panel (zIndex 60) so the preview is visible while the
-    // user is still picking a preset.
-    zIndex: 70,
-  },
-  zoneFlashBand: {
-    position: "absolute",
-    backgroundColor: "rgba(251,191,36,0.35)",
-  },
   pageFlash: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "#000",
     zIndex: 15,
   },
-  errorToast: {
-    position: "absolute",
-    bottom: 150,
-    alignSelf: "center",
-    backgroundColor: "#7f1d1d",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    zIndex: 30,
-    maxWidth: screenWidth * 0.9,
-  },
-  errorToastText: { color: "#fff", fontSize: 12 },
 });

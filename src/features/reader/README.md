@@ -15,12 +15,23 @@ are inert; a viewport tap surface owns both views' tap and long-press handling.
 ## Layout
 
 ```text
+components/
+  chrome/                 ReaderHeader, ReaderBottomBar, ReaderChromeStack
+  overlays/               translation badge/overlay, tap preview, single-page FAB
+  page/                   ReaderPage, ZoomablePage, tiled image, text fitting
+  panels/                 config, reading-mode, rotation, translation panels
 domain/
   modes.ts
   legacyReadingModes.ts
   layout/pageGeometry.ts
   layout/readerItems.ts
+  navigation/chapterDirection.ts
   navigation/tapZones.ts
+  scroll/autoScroll.ts
+hooks/
+  useReaderAutoScroll.ts
+  useReaderPageDims.ts
+  useReaderSettings.ts
 state/
   readerSessionReducer.ts
   ReaderSessionProvider.tsx
@@ -30,9 +41,16 @@ views/
     StripReader.tsx
     stripCamera.ts
     stripCamera.test.ts
-screens/ReaderScreen.tsx
+screens/
+  ReaderScreen.tsx
+  readerChapterNavigation.ts
 index.ts
 ```
+
+`ReaderScreen` still composes the reader lifecycle (page loading, progress,
+orientation and gesture wiring), while the modules above own their individual
+contracts. `ReaderChromeStack.types.ts` and `useReaderSettings.types.ts` keep
+large prop/state contracts out of the component and hook implementation files.
 
 `ReaderSessionProvider` owns active page, chrome visibility/settings and
 loading state. The route at `app/reader/[id].tsx` only parses route params,

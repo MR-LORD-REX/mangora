@@ -1,7 +1,7 @@
 ﻿# Mangora Refactor Plan
 
 Status: active, branch `refactor`
-Last updated: 2026-10-26
+Last updated: 2026-10-27
 
 This plan reorganizes the Expo/React Native app into feature slices with explicit
 runtime boundaries. It preserves the existing reader, extension, cache,
@@ -277,13 +277,19 @@ current camera zoom, and camera worklets read only Reanimated shared values.
 The feature screen still needs its large-screen decomposition.
 
 **Phase 3 static gate:** TypeScript, targeted ESLint, `check:arch` (220 files,
-666 edges), all 53 feature tests, and the Android debug APK build pass. The
-remaining gate is on-device validation of strip touch pass-through, pinch
-focal anchoring, pan limits, zoom-out below 1x, tap zones at 1x and while
-zoomed, auto-scroll stability, long-press actions, translation-overlay
-alignment, paged tall-page panning, split / rotate, orientation, chapter jump
-and saved-position restore. Do not remove legacy reader shims or split
-`ReaderScreen` further until that pass is recorded.
+666 edges), all 53 feature tests, and the Android debug APK build pass.
+
+**Phase 3 device checkpoint (2026-10-27):** the user confirmed paged/strip tap
+zones, zoom, and scroll behavior on the V2311L after the auto-scroll fix, then
+disconnected the device. The remaining UI cut has started: settings, page
+measurement/prefetch and chapter-arrow resolution are extracted; the chrome
+stack has its own component and prop contract. `ReaderScreen` is still about
+1,619 LOC and owns several lifecycle/gesture concerns, so the screen split and
+the legacy-shim removal remain open. The extracted chrome component (323 LOC)
+and settings hook (245 LOC) currently meet the 400/250 LOC targets; keep the
+screen itself as the documented exception until its lifecycle cut lands. Re-run
+`docs/qa/reader-device-smoke.md` on the next device connection before treating
+the reader release gate as closed.
 
 **Rollback unit:** one feature per PR, keeping the old feature API as a
 re-export until all callers move.
