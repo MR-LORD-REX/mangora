@@ -2,7 +2,7 @@ import { X } from "lucide-react-native";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { isPagedMode } from "./readerChrome";
-import { TabBar } from "./ReaderPanelPrimitives";
+import { TabBar, TabContentTransition } from "./ReaderPanelPrimitives";
 import { READER_PANEL_BG, READER_PILL_BORDER } from "./readerTheme";
 import FilterTab from "./config/FilterTab";
 import GeneralTab from "./config/GeneralTab";
@@ -23,6 +23,9 @@ export const READER_CONFIG_TABS: { key: ReaderConfigTab; label: string }[] = [
 export default function ReaderConfigPanel(props: ReaderConfigPanelProps) {
   const { tab, onTabChange, onClose, chrome } = props;
   const paged = isPagedMode(chrome.readingMode);
+  const activeIndex = READER_CONFIG_TABS.findIndex(
+    (item) => item.key === tab,
+  );
 
   return (
     <View style={styles.panel}>
@@ -39,9 +42,11 @@ export default function ReaderConfigPanel(props: ReaderConfigPanelProps) {
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
       >
-        {tab === "reading" && <ReadingTab {...props} />}
-        {tab === "general" && <GeneralTab {...props} />}
-        {tab === "filter" && <FilterTab {...props} />}
+        <TabContentTransition activeIndex={activeIndex}>
+          {tab === "reading" && <ReadingTab {...props} />}
+          {tab === "general" && <GeneralTab {...props} />}
+          {tab === "filter" && <FilterTab {...props} />}
+        </TabContentTransition>
         <Text style={styles.footerNote}>
           {paged && tab === "reading"
             ? "Auto-scroll is only available in Scroll reading modes."

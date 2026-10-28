@@ -10,6 +10,7 @@ import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { ReaderChromeStackProps } from "./ReaderChromeStack.types";
 import ReaderConfigPanel from "../panels/ReaderConfigPanel";
+import ReaderConfigSheetMotion from "../panels/ReaderConfigSheetMotion";
 import ReaderPageActionsSheet from "../panels/ReaderPageActionsSheet";
 import ReaderReadingModeSheet from "../panels/ReaderReadingModeSheet";
 import ReaderRotationSheet from "../panels/ReaderRotationSheet";
@@ -126,18 +127,20 @@ export default function ReaderChromeStack({
         />
       )}
 
-      {showHeader && configOpen && (
-        <ReaderConfigPanel
-          tab={configTab}
-          onTabChange={setConfigTab}
-          onClose={closeConfig}
-          chrome={chrome}
-          onChangeChrome={handleChromeChange}
-          defaultZoomScale={defaultZoomScale}
-          onChangeDefaultZoomScale={handleSelectDefaultZoomScale}
-          scrollSpeed={scrollSpeed}
-          onSelectScrollSpeed={handleSelectScrollSpeed}
-        />
+      {showHeader && (
+        <ReaderConfigSheetMotion visible={configOpen}>
+          <ReaderConfigPanel
+            tab={configTab}
+            onTabChange={setConfigTab}
+            onClose={closeConfig}
+            chrome={chrome}
+            onChangeChrome={handleChromeChange}
+            defaultZoomScale={defaultZoomScale}
+            onChangeDefaultZoomScale={handleSelectDefaultZoomScale}
+            scrollSpeed={scrollSpeed}
+            onSelectScrollSpeed={handleSelectScrollSpeed}
+          />
+        </ReaderConfigSheetMotion>
       )}
 
       {showHeader && translationOpen && !configOpen && (

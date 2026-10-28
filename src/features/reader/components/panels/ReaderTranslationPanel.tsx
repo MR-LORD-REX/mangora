@@ -10,7 +10,7 @@
 import { X } from "lucide-react-native";
 import { Pressable, ScrollView, View } from "react-native";
 
-import { TabBar } from "./ReaderPanelPrimitives";
+import { TabBar, TabContentTransition } from "./ReaderPanelPrimitives";
 import AdvanceTab from "./translation/AdvanceTab";
 import LanguageTab from "./translation/LanguageTab";
 import MetricsTab from "./translation/MetricsTab";
@@ -30,6 +30,9 @@ export default function ReaderTranslationPanel(
   props: ReaderTranslationPanelProps,
 ) {
   const { tab, onTabChange, onClose } = props;
+  const activeIndex = READER_TRANSLATION_TABS.findIndex(
+    (item) => item.key === tab,
+  );
   return (
     <View style={styles.panel}>
       <View style={styles.handle} />
@@ -49,11 +52,13 @@ export default function ReaderTranslationPanel(
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
       >
-        {tab === "language" && <LanguageTab {...props} />}
-        {tab === "trMode" && <ModeTab {...props} />}
-        {tab === "advance" && <AdvanceTab {...props} />}
-        {tab === "metrics" && <MetricsTab {...props} />}
-        {tab === "overlay" && <OverlayTab {...props} />}
+        <TabContentTransition activeIndex={activeIndex}>
+          {tab === "language" && <LanguageTab {...props} />}
+          {tab === "trMode" && <ModeTab {...props} />}
+          {tab === "advance" && <AdvanceTab {...props} />}
+          {tab === "metrics" && <MetricsTab {...props} />}
+          {tab === "overlay" && <OverlayTab {...props} />}
+        </TabContentTransition>
       </ScrollView>
     </View>
   );

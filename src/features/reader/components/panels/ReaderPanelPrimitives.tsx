@@ -8,8 +8,16 @@
  */
 
 import { Check } from "lucide-react-native";
-import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useAppMotion } from "@shared/motion";
 
 import {
   READER_ACCENT,
@@ -92,13 +100,56 @@ export function TabBar<T extends string>({
   active: T;
   onChange: (tab: T) => void;
 }) {
+  const { reduceMotion } = useAppMotion();
+  const [barWidth, setBarWidth] = useState(0);
+  const activeIndex = Math.max(
+    0,
+    tabs.findIndex((tab) => tab.key === active),
+  );
+  const position = useRef(new Animated.Value(activeIndex)).current;
+  const tabWidth = tabs.length > 0 ? barWidth / tabs.length : 0;
+
+  useEffect(() => {
+    if (!tabWidth) return;
+    position.stopAnimation();
+    if (reduceMotion) {
+      position.setValue(activeIndex);
+      return;
+    }
+    const animation = Animated.spring(position, {
+      toValue: activeIndex,
+      damping: 20,
+      stiffness: 220,
+      mass: 0.8,
+      useNativeDriver: true,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [activeIndex, position, reduceMotion, tabWidth]);
+
+  const translateX = position.interpolate({
+    inputRange: [0, Math.max(1, tabs.length - 1)],
+    outputRange: [
+      tabWidth * 0.15,
+      tabWidth * Math.max(0, tabs.length - 1) + tabWidth * 0.15,
+    ],
+  });
+
   return (
-    <View style={styles.tabBar}>
+    <View
+      style={styles.tabBar}
+      onLayout={(event) => {
+        const width = event.nativeEvent.layout.width;
+        setBarWidth((current) => (current === width ? current : width));
+      }}
+    >
       {tabs.map((tab) => (
         <Pressable
           key={tab.key}
           style={styles.tabItem}
           onPress={() => onChange(tab.key)}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: active === tab.key }}
         >
           <Text
             style={[
@@ -109,13 +160,69 @@ export function TabBar<T extends string>({
           >
             {tab.label}
           </Text>
-          {active === tab.key && <View style={styles.tabUnderline} />}
         </Pressable>
       ))}
+      {tabWidth > 0 ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.tabUnderline,
+            { width: tabWidth * 0.7, transform: [{ translateX }] },
+          ]}
+        />
+      ) : null}
     </View>
   );
 }
 
+export function TabContentTransition({
+  activeIndex,
+  children,
+}: {
+  activeIndex: number;
+  children: React.ReactNode;
+}) {
+  const { reduceMotion } = useAppMotion();
+  const opacity = useRef(new Animated.Value(1)).current;
+  const translateX = useRef(new Animated.Value(0)).current;
+  const previousIndex = useRef(activeIndex);
+
+  useEffect(() => {
+    const direction = activeIndex >= previousIndex.current ? 1 : -1;
+    previousIndex.current = activeIndex;
+    opacity.stopAnimation();
+    translateX.stopAnimation();
+    if (reduceMotion) {
+      opacity.setValue(1);
+      translateX.setValue(0);
+      return;
+    }
+    opacity.setValue(0);
+    translateX.setValue(direction * 14);
+    const animation = Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateX, {
+        toValue: 0,
+        duration: 180,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]);
+    animation.start();
+    return () => animation.stop();
+  }, [activeIndex, opacity, reduceMotion, translateX]);
+
+  return (
+    <Animated.View style={{ opacity, transform: [{ translateX }] }}>
+      {children}
+    </Animated.View>
+  );
+}
 const styles = StyleSheet.create({
   pillGrid: {
     flexDirection: "row",
@@ -166,14 +273,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   helperText: { color: READER_TEXT_MUTED, fontSize: 12, marginBottom: 10 },
-  tabBar: { flex: 1, flexDirection: "row" },
-  tabItem: { flex: 1, alignItems: "center", paddingBottom: 12 },
+  tabBar: { flex: 1, flexDirection: "row", position: "relative" },
+  tabItem: { flex: 1, alignItems: "center", justifyContent: "flex-end", paddingBottom: 12 },
   tabLabel: { color: READER_TEXT_MUTED, fontSize: 13, fontWeight: "600" },
   tabLabelActive: { color: "#fff" },
   tabUnderline: {
-    marginTop: 8,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
     height: 2,
-    width: "70%",
     borderRadius: 1,
     backgroundColor: READER_ACCENT,
   },
