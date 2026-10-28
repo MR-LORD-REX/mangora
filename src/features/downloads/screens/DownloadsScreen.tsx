@@ -6,7 +6,7 @@
  * ---------------------------------------------------------------------------
  */
 
-import { router, useFocusEffect } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { BookOpen, ChevronRight, HardDriveDownload } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import {
@@ -29,12 +29,16 @@ import {
 } from "../catalog/catalog";
 
 import { formatBytes } from "@core/settings/storageUsage";
-import { openMangaInfo } from "@composition/navigation/manga";
+import type { DownloadManagerScreenProps } from "./downloadsScreen.types";
 import { imageSourceForUrl } from "@shared/net/imageHeaders";
-import { providerLabel } from "@features/extensions";
 
 
-export default function DownloadManagerScreen() {
+export default function DownloadManagerScreen({
+  onBack,
+  providerLabel,
+  onOpenDownloadedManga,
+  onManageDownloadedManga,
+}: DownloadManagerScreenProps) {
   const [entries, setEntries] = useState<DownloadedMangaSummary[]>([]);
   const [provider, setProvider] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -72,7 +76,7 @@ export default function DownloadManagerScreen() {
       key,
       label: `${providerLabel(key)} (${count})`,
     }));
-  }, [entries]);
+  }, [entries, providerLabel]);
 
   const activeProvider =
     provider && tabs.some((tab) => tab.key === provider)
@@ -98,7 +102,7 @@ export default function DownloadManagerScreen() {
       <AppHeader
         title="Downloaded chapters"
         accent={colors.accent}
-        onBack={() => router.back()}
+        onBack={onBack}
         searchPlaceholder="Search downloads"
         query={search}
         onQueryChange={setSearch}
@@ -151,19 +155,13 @@ export default function DownloadManagerScreen() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() =>
-              openMangaInfo({
+              onOpenDownloadedManga({
                 provider: item.provider,
                 id: item.providerMangaId,
                 thumbnailUrl: item.thumbnailPath ?? item.thumbnailUrl ?? null,
-                downloadsOnly: true,
               })
             }
-            onLongPress={() =>
-              router.push({
-                pathname: "/downloads/[mangaId]",
-                params: { mangaId: item.mangaId },
-              })
-            }
+            onLongPress={() => onManageDownloadedManga(item.mangaId)}
             style={({ pressed }) => [styles.entryRow, pressed && styles.pressed]}
           >
             {item.thumbnailPath || item.thumbnailUrl ? (

@@ -19,7 +19,7 @@ import {
   cachedExtensionSource,
   extensionProviderFor,
   refreshExtensionRegistry,
-} from "@features/extensions/registry/registry";
+} from "@features/extensions";
 import { registerExtensionHeaders } from "@shared/net/imageHeaders";
 
 const STATUS_LABELS: Record<number, string> = {

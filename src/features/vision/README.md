@@ -48,5 +48,5 @@ prove ONNX runtime availability or bubble-mask alignment.
 - Keep `@shared/geometry` as the coordinate vocabulary (`Box`, `Point`) and
   `@shared/contracts/bubbleMask` as the mask contract.
 - Do not import translation, reader, downloads or extension internals.
-- Update `docs/architecture/README.md` and the architecture test if a new
-  public operation is added.
+- Update the owning page under `docs/architecture/` and the architecture test if
+  a new public operation is added.

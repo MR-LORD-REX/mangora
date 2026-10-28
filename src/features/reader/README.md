@@ -94,8 +94,8 @@ metadata and translation live in their hooks and `translation/`.
 `ReaderChromeRenderer` maps session callbacks onto the chrome stack, and
 `ReaderScreenStates` owns the loading and empty-chapter states. `ReaderViewport`
 owns the paged/strip presentation branch and viewport overlays. The screen is
-656 LOC, an explicit exception to the 400-line screen target in `plan.md`; its remaining
-JSX is intentionally one composition surface rather than another prop bundle.
+656 LOC, an explicit exception to the 400-line screen target; its remaining JSX
+is intentionally one composition surface rather than another prop bundle.
 `ReaderChromeStack.types.ts` and `useReaderSettings.types.ts` keep large
 prop/state contracts out of the component and hook implementation files.
 
@@ -127,7 +127,7 @@ homes: canonical identity and page resolution are under
 process-wide image-header registry is `@shared/net/imageHeaders`.
 
 The required release gate is
-[`docs/qa/reader-device-smoke.md`](../../../docs/qa/reader-device-smoke.md).
+[the reader device smoke checklist](../../../docs/architecture/operations/validation-and-qa.md).
 Static checks (`npm run check`) do not prove gesture, overlay or restore
 behavior. The view-model decision is recorded in
 [ADR 0002](../../../docs/architecture/adr/0002-reader-two-view-contract.md).

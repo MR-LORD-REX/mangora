@@ -1,6 +1,6 @@
 import type { ChapterSourceModule } from "@shared/contracts";
 import { extensionModuleFor } from "./extension";
-import { sourceIdFromProvider } from "@features/extensions/registry/registry";
+import { sourceIdFromProvider } from "@features/extensions";
 
 export function chapterSourceFor(
   provider: string | undefined | null,

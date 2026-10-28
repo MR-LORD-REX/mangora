@@ -117,3 +117,6 @@ export { useDownloadSnapshot } from "./hooks/useDownloadSnapshot";
 export { ChapterDownloadButton, ReaderDownloadButton, SeriesDownloadButton } from "./components/buttons/DownloadButtons";
 export { default as DownloadProgressPanel } from "./components/queue/DownloadProgressPanel";
 export { default as DownloadSheetHost } from "./components/sheets/DownloadSheetHost";
+export { default as DownloadsScreen } from "./screens/DownloadsScreen";
+export { default as DownloadManagerScreen } from "./screens/DownloadManagerScreen";
+export type { DownloadManagerScreenProps } from "./screens/downloadsScreen.types";
