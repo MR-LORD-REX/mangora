@@ -10,20 +10,21 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  Check,
-  Grid2X2,
-  Grid3X3,
-  List,
-  SlidersHorizontal,
-  X,
-} from "lucide-react-native";
+import { Check, SlidersHorizontal, X } from "lucide-react-native";
 
 import AppHeader from "@shared/ui/layout/AppHeader";
 import ExtensionFilterSheet from "../components/catalog/ExtensionFilterSheet";
 import ExtensionSourceSkeleton from "../components/browse/ExtensionSourceSkeleton";
 import { MediaGridCard, MediaListRow } from "@shared/ui/navigation/MediaCards";
 import ChipTabBar from "@shared/ui/navigation/ChipTabBar";
+import AnimatedBanner from "@shared/ui/motion/AnimatedBanner";
+import FadeInView from "@shared/ui/motion/FadeInView";
+import type { SourceCardLayout } from "@core/settings";
+import { useAppSettings } from "@features/settings";
+import {
+  SOURCE_CARD_LAYOUT_OPTIONS,
+  sourceCardLayoutOption,
+} from "../domain/cardLayout";
 import type { OpenMangaInfo } from "../types/navigation";
 import { colors } from "@shared/theme";
 import { removeFilterPath, type ExtensionFilterSelection } from "../filters/filters";
@@ -40,19 +41,8 @@ import type {
 } from "@platform/extensions/types";
 
 type FeedMode = "popular" | "latest";
-type CardLayout = "grid2" | "grid4" | "list";
 
 const EMPTY_FILTER_PATCHES: ExtensionFilterPatch[] = [];
-
-const CARD_LAYOUT_OPTIONS: {
-  key: CardLayout;
-  label: string;
-  icon: typeof Grid2X2;
-}[] = [
-  { key: "grid2", label: "Grid · 2 columns", icon: Grid2X2 },
-  { key: "grid4", label: "Grid · 4 columns", icon: Grid3X3 },
-  { key: "list", label: "List", icon: List },
-];
 
 
 const MangaCell = React.memo(function MangaCell({
@@ -63,7 +53,7 @@ const MangaCell = React.memo(function MangaCell({
 }: {
   item: NativeManga;
   sourceId: string;
-  layout: CardLayout;
+  layout: SourceCardLayout;
   onOpenManga: OpenMangaInfo;
 }) {
   const entry = {
@@ -101,7 +91,8 @@ export default function ExtensionSourceScreen({
   >({});
   const [filterOpen, setFilterOpen] = useState(false);
   const [filterView, setFilterView] = useState<"overview" | "active">("overview");
-  const [cardLayout, setCardLayout] = useState<CardLayout>("grid2");
+  const { settings, update } = useAppSettings();
+  const cardLayout = settings.sourceCardLayout;
   const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
   const [items, setItems] = useState<NativeManga[]>([]);
   const [page, setPage] = useState(1);
@@ -109,6 +100,7 @@ export default function ExtensionSourceScreen({
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resultRevision, setResultRevision] = useState(0);
   const requestId = useRef(0);
   const filterSelection = filterSelections[sourceId];
   const filters = filterSelection?.patches ?? EMPTY_FILTER_PATCHES;
@@ -157,6 +149,7 @@ export default function ExtensionSourceScreen({
         setItems((current) =>
           replace ? result.mangas : [...current, ...result.mangas],
         );
+        if (replace) setResultRevision((current) => current + 1);
         setPage(nextPage);
         setHasNext(result.hasNextPage);
       } catch (reason) {
@@ -196,11 +189,9 @@ export default function ExtensionSourceScreen({
     [cardLayout, onOpenManga, sourceId],
   );
 
-  const layoutOption = CARD_LAYOUT_OPTIONS.find(
-    (option) => option.key === cardLayout,
-  )!;
+  const layoutOption = sourceCardLayoutOption(cardLayout);
   const LayoutIcon = layoutOption.icon;
-  const columns = cardLayout === "grid4" ? 4 : cardLayout === "grid2" ? 2 : 1;
+  const columns = layoutOption.columns;
 
   const keyExtractor = useCallback((item: NativeManga) => item.url, []);
 
@@ -310,40 +301,55 @@ export default function ExtensionSourceScreen({
       ) : null}
       {loading && items.length === 0 ? (
         <ExtensionSourceSkeleton layout={cardLayout} />
-      ) : loading ? null : (
-        <FlatList
-          key={cardLayout}
-          data={items}
-          keyExtractor={keyExtractor}
-          numColumns={columns}
-          columnWrapperStyle={columns > 1 ? styles.columns : undefined}
-          contentContainerStyle={[
-            styles.list,
-            columns === 4 && styles.compactGrid,
-          ]}
-          renderItem={renderItem}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.6}
-          initialNumToRender={8}
-          maxToRenderPerBatch={8}
-          updateCellsBatchingPeriod={40}
-          windowSize={7}
-          removeClippedSubviews
-          ListEmptyComponent={
-            <View style={styles.center}>
-              <Text style={styles.mutedText}>No results.</Text>
-            </View>
-          }
-          ListFooterComponent={
-            loadingMore ? (
-              <ActivityIndicator
-                color={colors.accent}
-                style={styles.footerLoader}
+      ) : (
+        <View style={styles.listArea}>
+          {loading ? (
+            <View pointerEvents="none" style={styles.refreshBanner}>
+              <AnimatedBanner
+                message="Updating results..."
+                accessibilityRole="none"
               />
-            ) : null
-          }
-          showsVerticalScrollIndicator={false}
-        />
+            </View>
+          ) : null}
+          <FadeInView
+            style={styles.listArea}
+            key={cardLayout}
+            transitionKey={`${cardLayout}:${resultRevision}`}
+          >
+            <FlatList
+              data={items}
+              keyExtractor={keyExtractor}
+              numColumns={columns}
+              columnWrapperStyle={columns > 1 ? styles.columns : undefined}
+              contentContainerStyle={[
+                styles.list,
+                columns === 4 && styles.compactGrid,
+              ]}
+              renderItem={renderItem}
+              onEndReached={loadMore}
+              onEndReachedThreshold={0.6}
+              initialNumToRender={8}
+              maxToRenderPerBatch={8}
+              updateCellsBatchingPeriod={40}
+              windowSize={7}
+              removeClippedSubviews
+              ListEmptyComponent={
+                <View style={styles.center}>
+                  <Text style={styles.mutedText}>No results.</Text>
+                </View>
+              }
+              ListFooterComponent={
+                loadingMore ? (
+                  <ActivityIndicator
+                    color={colors.accent}
+                    style={styles.footerLoader}
+                  />
+                ) : null
+              }
+              showsVerticalScrollIndicator={false}
+            />
+          </FadeInView>
+        </View>
       )}
 
       <ExtensionFilterSheet
@@ -371,7 +377,7 @@ export default function ExtensionSourceScreen({
         >
           <View style={styles.layoutMenu}>
             <Text style={styles.layoutTitle}>Display manga as</Text>
-            {CARD_LAYOUT_OPTIONS.map((option) => {
+            {SOURCE_CARD_LAYOUT_OPTIONS.map((option) => {
               const Icon = option.icon;
               const selected = cardLayout === option.key;
               return (
@@ -380,7 +386,7 @@ export default function ExtensionSourceScreen({
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   onPress={() => {
-                    setCardLayout(option.key);
+                    update({ sourceCardLayout: option.key });
                     setLayoutMenuOpen(false);
                   }}
                   style={({ pressed }) => [
@@ -416,7 +422,16 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   list: { padding: 14, paddingBottom: 80 },
   compactGrid: { paddingHorizontal: 10 },
+  listArea: { flex: 1 },
   columns: { gap: 8 },
+  refreshBanner: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+    elevation: 1,
+  },
   layoutBackdrop: {
     flex: 1,
     justifyContent: "center",

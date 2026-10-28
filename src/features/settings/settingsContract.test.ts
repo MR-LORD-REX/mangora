@@ -21,6 +21,18 @@ test("settings schema migrates the legacy combined translation mode", () => {
   assert.equal(sanitized.readerTranslationEngine, "ai");
 });
 
+test("settings schema defaults and sanitizes the source card layout", () => {
+  assert.equal(sanitizeSettings({}).sourceCardLayout, "grid2");
+  assert.equal(
+    sanitizeSettings({ sourceCardLayout: "grid4" }).sourceCardLayout,
+    "grid4",
+  );
+  assert.equal(
+    sanitizeSettings({ sourceCardLayout: "three-columns" }).sourceCardLayout,
+    "grid2",
+  );
+});
+
 test("settings schema clamps numeric and enum values", () => {
   const sanitized = sanitizeSettings({
     downloadSourceConcurrency: 99,

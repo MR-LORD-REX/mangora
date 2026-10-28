@@ -21,10 +21,16 @@ settings/
   components/
     layout/      full-screen settings shell
     primitives/  rows, toggles, sliders and action pills
-    sections/    about, downloads, OCR, queue, storage and translation
+    sections/    about, display, downloads, OCR, queue, storage and translation
   hooks/         React binding for the core settings store
   index.ts       public route and hook API
 ```
+
+## Display preference
+
+`sourceCardLayout` (`grid2`, `grid4`, `list`) is persisted in `@core/settings`.
+The Settings -> Display page and the extension source header both update that
+same value; the route lives at `app/settings/display.tsx`.
 
 ## Validation
 

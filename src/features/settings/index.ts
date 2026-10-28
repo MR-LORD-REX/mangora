@@ -2,6 +2,7 @@
 export { SettingsHomeScreen } from "./screens/SettingsHomeScreen";
 export { AboutSettingsScreen } from "./screens/AboutSettingsScreen";
 export { DownloadsSettingsScreen } from "./screens/DownloadsSettingsScreen";
+export { DisplaySettingsScreen } from "./screens/DisplaySettingsScreen";
 export { OcrModelsSettingsScreen } from "./screens/OcrModelsSettingsScreen";
 export { QueueSettingsScreen } from "./screens/QueueSettingsScreen";
 export { StorageSettingsScreen } from "./screens/StorageSettingsScreen";

@@ -3,14 +3,14 @@ import { StyleSheet, View } from "react-native";
 
 import { SkeletonBlock, SkeletonPulse } from "@shared/ui";
 import { colors } from "@shared/theme";
+import type { SourceCardLayout } from "@core/settings";
 
-type CardLayout = "grid2" | "grid4" | "list";
 
 /** First-load placeholder matching the selected source grid or list layout. */
 export default function ExtensionSourceSkeleton({
   layout,
 }: {
-  layout: CardLayout;
+  layout: SourceCardLayout;
 }) {
   const columns = layout === "grid4" ? 4 : layout === "grid2" ? 2 : 1;
   const count = layout === "list" ? 6 : layout === "grid4" ? 8 : 6;

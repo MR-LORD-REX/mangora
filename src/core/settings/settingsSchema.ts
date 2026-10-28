@@ -51,6 +51,9 @@ export type ReaderBackgroundColor = "black" | "gray" | "white" | "auto";
 
 export type ReaderOverlayFont = "default" | "comicNeue" | "bangers" | "chewy";
 
+/** Card presentation used by extension source feeds. */
+export type SourceCardLayout = "grid2" | "grid4" | "list";
+
 export interface ExtensionRepoSetting {
   url: string;
   name: string;
@@ -95,6 +98,8 @@ export interface AppSettings {
   pinnedSourceIds: string[];
   /** Last time each source was opened, keyed by source id. */
   sourceLastUsedAt: Record<string, number>;
+  /** Preferred card presentation for extension source feeds. */
+  sourceCardLayout: SourceCardLayout;
   /** Epoch millis when the user accepted the extension install terms. */
   extensionTermsAcceptedAt: number | null;
   /** Hide providers marked mature from source discovery. */
@@ -181,6 +186,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   extensionRepos: [],
   pinnedSourceIds: [],
   sourceLastUsedAt: {},
+  sourceCardLayout: "grid2",
   extensionTermsAcceptedAt: null,
   safeMode: true,
   ageRestrictedSources: false,
@@ -366,6 +372,11 @@ export function sanitizeSettings(raw: unknown): AppSettings {
             ),
           )
         : {},
+    sourceCardLayout: oneOf<SourceCardLayout>(
+      value.sourceCardLayout,
+      ["grid2", "grid4", "list"],
+      "grid2",
+    ),
     extensionTermsAcceptedAt:
       typeof value.extensionTermsAcceptedAt === "number" &&
       Number.isFinite(value.extensionTermsAcceptedAt)

@@ -161,6 +161,90 @@ export function ToggleRow({
   );
 }
 
+export interface ChoiceOption<T extends string> {
+  value: T;
+  label: string;
+  icon?: LucideIcon;
+}
+
+/** Inline segmented choices for small enums stored in settings. */
+export function ChoiceRow<T extends string>({
+  icon: Icon,
+  title,
+  subtitle,
+  value,
+  options,
+  onChange,
+  last,
+}: {
+  icon?: LucideIcon;
+  title: string;
+  subtitle?: string;
+  value: T;
+  options: readonly ChoiceOption<T>[];
+  onChange: (next: T) => void;
+  last?: boolean;
+}) {
+  return (
+    <View style={[styles.choiceRow, !last && styles.rowDivider]}>
+      <View style={styles.choiceCopy}>
+        {Icon ? (
+          <View style={styles.rowIcon}>
+            <Icon color={colors.accent} size={18} />
+          </View>
+        ) : null}
+        <View style={styles.rowBody}>
+          <Text style={styles.rowTitle}>{title}</Text>
+          {subtitle ? (
+            <Text style={styles.rowSubtitle} numberOfLines={3}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+      <View
+        style={styles.choiceGroup}
+        accessibilityRole="radiogroup"
+        accessibilityLabel={title}
+      >
+        {options.map((option) => {
+          const OptionIcon = option.icon;
+          const selected = value === option.value;
+          return (
+            <Pressable
+              key={option.value}
+              onPress={() => onChange(option.value)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: selected }}
+              accessibilityLabel={option.label}
+              style={({ pressed }) => [
+                styles.choice,
+                selected && styles.choiceSelected,
+                pressed && styles.pressed,
+              ]}
+            >
+              {OptionIcon ? (
+                <OptionIcon
+                  color={selected ? colors.accent : colors.textMuted}
+                  size={16}
+                />
+              ) : null}
+              <Text
+                style={[
+                  styles.choiceLabel,
+                  selected && styles.choiceLabelSelected,
+                ]}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 export function SettingsValue({
   text,
   accent = false,
@@ -319,6 +403,39 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   value: { color: colors.textMuted, fontSize: 13, fontWeight: "600", maxWidth: 190 },
+  choiceRow: {
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    gap: 11,
+  },
+  choiceCopy: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  choiceGroup: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 7,
+    paddingLeft: 42,
+  },
+  choice: {
+    minHeight: 36,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 11,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bg,
+  },
+  choiceSelected: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
+  },
+  choiceLabel: { color: colors.textMuted, fontSize: 12.5, fontWeight: "700" },
+  choiceLabelSelected: { color: colors.accent },
   disabled: { opacity: 0.45 },
   disabledText: { color: colors.textFaint },
   pressed: { opacity: 0.7 },

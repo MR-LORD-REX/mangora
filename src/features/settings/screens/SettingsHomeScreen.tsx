@@ -10,6 +10,7 @@ import { Link, type Href } from "expo-router";
 import {
   Download,
   HardDrive,
+  LayoutGrid,
   Info,
   Languages,
   ListChecks,
@@ -34,6 +35,14 @@ interface SettingsEntry {
 }
 
 const ENTRIES: SettingsEntry[] = [
+  {
+    key: "display",
+    title: "Display",
+    tagline: "Default card layout for extension sources",
+    icon: LayoutGrid,
+    accent: "#a78bfa",
+    href: "/settings/display",
+  },
   {
     key: "downloads",
     title: "Downloads",
