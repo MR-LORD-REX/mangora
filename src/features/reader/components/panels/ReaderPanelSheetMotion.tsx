@@ -13,7 +13,7 @@ import { useAppMotion } from "@shared/motion";
 const SLIDE_DURATION_MS = 240;
 const EXIT_DURATION_MS = 190;
 
-interface ReaderConfigSheetMotionProps {
+interface ReaderPanelSheetMotionProps {
   visible: boolean;
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -22,15 +22,15 @@ interface ReaderConfigSheetMotionProps {
 
 /**
  * Keeps a bottom sheet mounted through its exit animation and slides it up
- * from below the viewport on entry. The measured height is used so taller
- * sheets do not trail into view.
+ * from below the viewport on entry. The travel uses the viewport height so
+ * the sheet starts fully outside the reader frame.
  */
-export default function ReaderConfigSheetMotion({
+export default function ReaderPanelSheetMotion({
   visible,
   children,
   style,
   onClosed,
-}: ReaderConfigSheetMotionProps) {
+}: ReaderPanelSheetMotionProps) {
   const { reduceMotion } = useAppMotion();
   const { height: viewportHeight } = useWindowDimensions();
   const progress = useRef(new Animated.Value(visible ? 1 : 0)).current;

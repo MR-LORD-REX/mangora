@@ -10,7 +10,7 @@ import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { ReaderChromeStackProps } from "./ReaderChromeStack.types";
 import ReaderConfigPanel from "../panels/ReaderConfigPanel";
-import ReaderConfigSheetMotion from "../panels/ReaderConfigSheetMotion";
+import ReaderPanelSheetMotion from "../panels/ReaderPanelSheetMotion";
 import ReaderPageActionsSheet from "../panels/ReaderPageActionsSheet";
 import ReaderReadingModeSheet from "../panels/ReaderReadingModeSheet";
 import ReaderRotationSheet from "../panels/ReaderRotationSheet";
@@ -128,7 +128,7 @@ export default function ReaderChromeStack({
       )}
 
       {showHeader && (
-        <ReaderConfigSheetMotion visible={configOpen}>
+        <ReaderPanelSheetMotion visible={configOpen}>
           <ReaderConfigPanel
             tab={configTab}
             onTabChange={setConfigTab}
@@ -140,45 +140,47 @@ export default function ReaderChromeStack({
             scrollSpeed={scrollSpeed}
             onSelectScrollSpeed={handleSelectScrollSpeed}
           />
-        </ReaderConfigSheetMotion>
+        </ReaderPanelSheetMotion>
       )}
 
-      {showHeader && translationOpen && !configOpen && (
-        <ReaderTranslationPanel
-          tab={translationTab}
-          onTabChange={setTranslationTab}
-          onClose={closeTranslation}
-          readerLanguage={readerLanguage}
-          ocrLanguage={ocrLanguage}
-          autoLanguage={autoLanguage}
-          targetLanguage={targetLanguage}
-          onSelectReaderLanguage={handleSelectReaderLanguage}
-          onSelectTargetLanguage={handleSelectTargetLanguage}
-          translationEngine={translationEngine}
-          onSelectTranslationEngine={handleSelectTranslationEngine}
-          translationMode={translationMode}
-          onSelectTranslationMode={handleSelectTranslationMode}
-          geminiModelId={geminiModelId}
-          onSelectGeminiModel={handleSelectGeminiModel}
-          autoModelSwitch={autoModelSwitch}
-          onChangeAutoModelSwitch={handleChangeAutoModelSwitch}
-          ocrLookahead={ocrLookahead}
-          onChangeLookahead={handleChangeLookahead}
-          metrics={metrics}
-          onClearTrCache={handleClearTrCache}
-          overlayFont={overlayFont}
-          onChangeOverlayFont={handleSelectOverlayFont}
-          overlayFontWeight={overlayFontWeight}
-          onChangeOverlayFontWeight={handleSelectOverlayFontWeight}
-          overlayFontScale={overlayFontScale}
-          onChangeOverlayFontScale={handleSelectOverlayFontScale}
-          overlayTextColor={overlayTextColor}
-          onChangeOverlayTextColor={handleSelectOverlayTextColor}
-          showPageStatus={showPageStatus}
-          onChangeShowPageStatus={handleChangeShowPageStatus}
-          hideTranslated={hideTranslated}
-          onChangeHideTranslated={handleChangeHideTranslated}
-        />
+      {showHeader && !configOpen && (
+        <ReaderPanelSheetMotion visible={translationOpen}>
+          <ReaderTranslationPanel
+            tab={translationTab}
+            onTabChange={setTranslationTab}
+            onClose={closeTranslation}
+            readerLanguage={readerLanguage}
+            ocrLanguage={ocrLanguage}
+            autoLanguage={autoLanguage}
+            targetLanguage={targetLanguage}
+            onSelectReaderLanguage={handleSelectReaderLanguage}
+            onSelectTargetLanguage={handleSelectTargetLanguage}
+            translationEngine={translationEngine}
+            onSelectTranslationEngine={handleSelectTranslationEngine}
+            translationMode={translationMode}
+            onSelectTranslationMode={handleSelectTranslationMode}
+            geminiModelId={geminiModelId}
+            onSelectGeminiModel={handleSelectGeminiModel}
+            autoModelSwitch={autoModelSwitch}
+            onChangeAutoModelSwitch={handleChangeAutoModelSwitch}
+            ocrLookahead={ocrLookahead}
+            onChangeLookahead={handleChangeLookahead}
+            metrics={metrics}
+            onClearTrCache={handleClearTrCache}
+            overlayFont={overlayFont}
+            onChangeOverlayFont={handleSelectOverlayFont}
+            overlayFontWeight={overlayFontWeight}
+            onChangeOverlayFontWeight={handleSelectOverlayFontWeight}
+            overlayFontScale={overlayFontScale}
+            onChangeOverlayFontScale={handleSelectOverlayFontScale}
+            overlayTextColor={overlayTextColor}
+            onChangeOverlayTextColor={handleSelectOverlayTextColor}
+            showPageStatus={showPageStatus}
+            onChangeShowPageStatus={handleChangeShowPageStatus}
+            hideTranslated={hideTranslated}
+            onChangeHideTranslated={handleChangeHideTranslated}
+          />
+        </ReaderPanelSheetMotion>
       )}
 
       {showHeader && !configOpen && !translationOpen && (

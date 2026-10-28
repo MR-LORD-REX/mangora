@@ -186,8 +186,18 @@ export function TabContentTransition({
   const opacity = useRef(new Animated.Value(1)).current;
   const translateX = useRef(new Animated.Value(0)).current;
   const previousIndex = useRef(activeIndex);
+  const initialIndexRef = useRef(activeIndex);
 
   useEffect(() => {
+    if (activeIndex === previousIndex.current) {
+      if (activeIndex === initialIndexRef.current) {
+        initialIndexRef.current = -1;
+      }
+      opacity.setValue(1);
+      translateX.setValue(0);
+      return;
+    }
+
     const direction = activeIndex >= previousIndex.current ? 1 : -1;
     previousIndex.current = activeIndex;
     opacity.stopAnimation();
