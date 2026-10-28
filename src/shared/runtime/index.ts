@@ -5,3 +5,4 @@ export {
   usePersistentOverlay,
 } from "./OverlayHostProvider";
 export type { OverlayHostApi } from "./OverlayHostProvider";
+export { enforceLtrLayout } from "./layoutDirection";

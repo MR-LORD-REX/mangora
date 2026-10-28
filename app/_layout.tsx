@@ -8,10 +8,16 @@ import { DownloadSheetHost } from "@features/downloads";
 import { AppBootstrapGate } from "@composition/providers/AppBootstrapGate";
 import { appServices } from "@composition/providers/appServices";
 import { MotionProvider } from "@shared/motion";
-import { AppServicesProvider, OverlayHostProvider } from "@shared/runtime";
+import {
+  AppServicesProvider,
+  OverlayHostProvider,
+  enforceLtrLayout,
+} from "@shared/runtime";
 import { colors } from "@shared/theme";
 
 import "../global.css";
+
+enforceLtrLayout();
 
 const navigationTheme = {
   ...DarkTheme,

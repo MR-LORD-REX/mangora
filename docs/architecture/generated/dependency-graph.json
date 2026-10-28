@@ -9,7 +9,7 @@
   "zones": {
     "app": {
       "files": 21,
-      "lines": 726,
+      "lines": 732,
       "dependencies": 37
     },
     "composition": {
@@ -33,9 +33,9 @@
       "dependencies": 2
     },
     "shared": {
-      "files": 43,
-      "lines": 2446,
-      "dependencies": 72
+      "files": 44,
+      "lines": 2465,
+      "dependencies": 73
     }
   },
   "features": {
@@ -171,7 +171,7 @@
       "zone": "app",
       "feature": null,
       "kind": "component",
-      "lines": 54,
+      "lines": 60,
       "exports": [
         {
           "name": "default",
@@ -13034,7 +13034,7 @@
       "zone": "shared",
       "feature": null,
       "kind": "barrel",
-      "lines": 8,
+      "lines": 9,
       "exports": [
         {
           "name": "AppServicesProvider",
@@ -13055,6 +13055,12 @@
           "typeOnly": false
         },
         {
+          "name": "enforceLtrLayout",
+          "alias": "enforceLtrLayout",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
           "name": "useAppServices",
           "alias": "useAppServices",
           "kind": "named",
@@ -13070,6 +13076,21 @@
           "name": "usePersistentOverlay",
           "alias": "usePersistentOverlay",
           "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "src/shared/runtime/layoutDirection.ts",
+      "zone": "shared",
+      "feature": null,
+      "kind": "module",
+      "lines": 18,
+      "exports": [
+        {
+          "name": "enforceLtrLayout",
+          "alias": "enforceLtrLayout",
+          "kind": "declaration",
           "typeOnly": false
         }
       ]
@@ -13942,6 +13963,12 @@
         {
           "name": "OverlayHostProvider",
           "alias": "OverlayHostProvider",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "enforceLtrLayout",
+          "alias": "enforceLtrLayout",
           "kind": "named",
           "typeOnly": false
         }
@@ -37106,6 +37133,22 @@
       ]
     },
     {
+      "id": "edge:src%2Fshared%2Fruntime%2Findex.ts:src%2Fshared%2Fruntime%2FlayoutDirection.ts:re-export:.%2FlayoutDirection:1",
+      "from": "src/shared/runtime/index.ts",
+      "to": "src/shared/runtime/layoutDirection.ts",
+      "kind": "re-export",
+      "typeOnly": false,
+      "specifier": "./layoutDirection",
+      "bindings": [
+        {
+          "name": "enforceLtrLayout",
+          "alias": "enforceLtrLayout",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
       "id": "edge:src%2Fshared%2Ftheme%2Findex.ts:src%2Fshared%2Ftheme%2Ftokens.ts:re-export:.%2Ftokens:1",
       "from": "src/shared/theme/index.ts",
       "to": "src/shared/theme/tokens.ts",
@@ -38064,8 +38107,8 @@
   "violations": [],
   "warnings": [],
   "counts": {
-    "files": 367,
-    "edges": 1133,
+    "files": 368,
+    "edges": 1134,
     "zones": 6,
     "features": 10
   }

@@ -3741,6 +3741,14 @@
     },
     {
       "entry": "src/shared/runtime/index.ts",
+      "name": "enforceLtrLayout",
+      "exportedAs": "enforceLtrLayout",
+      "source": "./layoutDirection",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/runtime/index.ts",
       "name": "useAppServices",
       "exportedAs": "useAppServices",
       "source": "./AppServicesProvider",
@@ -3997,6 +4005,6 @@
     }
   ],
   "counts": {
-    "entries": 499
+    "entries": 500
   }
 }

@@ -58,6 +58,7 @@
       "./plugins/withExtensionHost",
       "./plugins/withAppLinks",
       "./plugins/withUpdater",
+      "./plugins/withLtrLayout",
       "./plugins/withSubsamplingScaleImageView",
       "./plugins/withAvifDecoder",
       "expo-sqlite",

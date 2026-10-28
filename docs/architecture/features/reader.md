@@ -80,6 +80,8 @@ If you need a new offset rule, change it there and add a focused test.
   While zoomed, camera pan is the only vertical pan owner.
 - `resolveTapZoneAction` and `tapZoneRectsFor` are pure functions in
   `domain/navigation/tapZones.ts`; invert and RTL rules belong there.
+- Device locale never controls page direction. The app layout stays LTR and
+  `readerPagedDirection` is the explicit reading-direction switch; see ADR 0004.
 - Do not reintroduce a second `ScrollView`/gesture owner in a page row. The
   current single-camera contract is recorded in ADR 0002.
 

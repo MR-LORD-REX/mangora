@@ -15,6 +15,7 @@ tree so a clean prebuild reproduces the same runtime.
 | `withOnnxruntimePackage.js` | Registers `OnnxruntimePackage` in `MainApplication`. |
 | `withAppLinks.js` | HTTPS/deep-link intent filters and generated host allow-list. |
 | `withUpdater.js` | Install permission, `FileProvider`, update paths resource and updater wiring. |
+| `withLtrLayout.js` | Keeps `android:supportsRtl="false"` so device locales cannot mirror page/overlay geometry; reading direction comes from the reader setting. |
 
 `app.json` lists the plugins. A plugin that mutates `MainApplication.kt` requires
 the generated file to still be Kotlin (the plugins throw if it is not). A plugin

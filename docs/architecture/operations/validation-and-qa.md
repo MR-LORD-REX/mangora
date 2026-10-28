@@ -69,6 +69,8 @@ Run this after any reader, zoom, scroll, overlay or orientation change:
 - [ ] Split wide pages and rotate wide pages to fit; verify overlay alignment.
 - [ ] Crop borders; verify image and translation remain aligned.
 - [ ] Change orientation and keep the current page.
+- [ ] With an Arabic (RTL) device locale, verify the whole app stays LTR and
+  translated overlays stay on their source bubbles; then test manual RTL paging.
 
 **Strip**
 - [ ] Scroll, fling and stop; no jitter or page-window gaps.
