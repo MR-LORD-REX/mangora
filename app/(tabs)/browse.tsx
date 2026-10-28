@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams, type Href } from "expo-router";
 
-import BrowseExtensionsScreen from "@features/extensions/screens/BrowseExtensionsScreen";
+import { BrowseExtensionsScreen } from "@features/extensions";
 
 function paramString(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");

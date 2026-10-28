@@ -12,7 +12,11 @@
     "check:types": "tsc --noEmit --pretty false",
     "check:arch": "node scripts/check-architecture.mjs",
     "test": "node scripts/run-tests.mjs",
-    "check": "npm run check:types && npm run check:arch && npm test"
+    "check": "npm run check:types && npm run check:arch && npm test",
+    "docs:graph": "node scripts/generate-architecture-docs.mjs",
+    "docs:check": "node scripts/generate-architecture-docs.mjs --check",
+    "docs:test": "node --test scripts/generate-architecture-docs.test.mjs",
+    "docs:links": "node scripts/check-doc-links.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/bangers": "^0.4.1",

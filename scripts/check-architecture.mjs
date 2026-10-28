@@ -57,7 +57,7 @@ function walk(dir, out = []) {
 }
 
 const files = SOURCE_ROOTS.flatMap((root) => walk(path.join(ROOT, root)));
-const rel = (file) => path.relative(ROOT, file).replaceAll("\\\\", "/");
+const rel = (file) => path.relative(ROOT, file).replaceAll("\\", "/");
 const edges = new Map(files.map((file) => [path.resolve(file), []]));
 const errors = [];
 const warnings = [];
@@ -160,7 +160,11 @@ for (const [file, targets] of edges) {
     if (fromZone !== "app" && fromZone !== "composition" && toZone === "app") {
       errors.push(`${rel(file)} -> ${rel(target)}: only routes and composition may import app zones`);
     }
-    if (fromZone !== "composition" && toZone === "composition") {
+    if (
+      fromZone !== "app" &&
+      fromZone !== "composition" &&
+      toZone === "composition"
+    ) {
       errors.push(`${rel(file)} -> ${rel(target)}: composition must not be imported by lower zones`);
     }
     if (fromZone === "shared" && toZone === "features") {

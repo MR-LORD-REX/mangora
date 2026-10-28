@@ -36,5 +36,5 @@ overlay share the same page transform.
 ## Validation
 
 Static tests cover camera math, windowing, geometry and tap zones. The
-[reader device smoke test](../../qa/reader-device-smoke.md) is the release
+[reader device smoke test](../operations/validation-and-qa.md) is the release
 gate for touch, alignment and restore behavior.

@@ -1,157 +1,54 @@
-# Mangora Architecture
+# Architecture
 
-This document is the contributor-facing summary of the structure defined in
-`plan.md`. It describes where code belongs, which direction imports may flow,
-and what a feature may expose to the rest of the app.
+This directory is the developer guide for the Mangora Android app. It explains
+the current system, its ownership boundaries and the contracts that must remain
+stable when features change. It is not a release log or a file-by-file catalogue.
 
-## Zone map
+## Reading paths
 
-| Zone | Owns | May import |
-| --- | --- | --- |
-| `app/` | Expo Router files and route params only | `@composition/*`, feature public entry points, `@shared/*`, `@core/*`, `@platform/*` |
-| `src/composition/` | App composition, providers, startup and navigation policy | Feature public entry points, `@shared/*`, `@core/*`, `@platform/*` |
-| `src/features/<name>/` | One product capability and its UI, state, domain and data adapters | Its own files, `@shared/*`, `@core/*`, `@platform/*`, other features through their public entry point |
-| `src/shared/` | Generic UI, theme, hooks, geometry and contracts with no product knowledge | Third-party packages and other `@shared/*` modules only |
-| `src/core/` | Database, settings persistence, image decode, network and device policy | `@shared/*`, `@platform/*`, other `@core/*` modules |
-| `src/platform/` | Native bridge contracts and implementations | `@shared/*`, other `@platform/*` modules |
-| `plugins/` | Canonical Expo config plugins and Kotlin sources | Not imported by JavaScript |
+| If you need to... | Start with |
+| --- | --- |
+| Understand the app in ten minutes | [Overview](overview.md) |
+| Find the owner of a capability | [System map](system-map.md) |
+| Know where code belongs and what may import what | [Boundaries](boundaries.md) |
+| Trace startup, providers, routes or storage | [Runtime](runtime/startup-and-composition.md) |
+| Change a product capability | [Features](features/reader.md) |
+| Add or consume a cross-feature port | [Contracts](contracts/shared-ports.md) |
+| Work on Kotlin or an Expo config plugin | [Native](native/config-plugins.md) |
+| Build, release, test or publish docs | [Operations](operations/build-and-release.md) |
+| Understand a long-lived decision | [Architecture decision records](adr/README.md) |
+| Explore imports and public exports | [Dependency graph](graph/README.md) |
 
-Dependencies point downward. A shared component must not know what a manga,
-chapter, reader page or download is. A core repository must not import React
-screens. A platform bridge exposes typed capabilities, not feature policy.
-
-## Feature anatomy
-
-Every feature follows the same shape, adding only folders that contain code:
+## System in one view
 
 ```text
-src/features/<feature>/
-  screens/       route-level composition
-  components/    feature-owned presentation grouped by use
-  hooks/         React state and lifecycle
-  state/         providers and external-store adapters
-  domain/        pure types, rules, sorting and validation
-  data/          feature-specific loading and persistence
-  adapters/      implementations of shared ports
-  index.ts       the only public API
-  README.md      ownership, contracts and testing notes
+Expo Router routes
+  -> feature screens and feature-owned state
+    -> shared ports / core services
+      -> platform bridge
+        -> native Android capability or network endpoint
 ```
 
-Import implementation files directly inside the owning feature. Import another
-feature only as `@features/<name>`. Never use a deep cross-feature path.
+`src/features/*` is the product surface. `src/shared/*` contains generic
+primitives and contracts. `src/core/*` owns persistence, settings, image and
+network policy. `src/platform/*` owns typed native bridges. `src/composition/*`
+is the only place that wires features together. `app/*` contains route adapters
+only.
 
-## Import rules
+The generated dependency graph and API surface are committed under
+[`generated/`](generated/); regenerate them with `npm run docs:graph` and verify
+them with `npm run docs:check`, and validate navigation with
+`npm run docs:links`. The graph is the machine-readable inventory; the prose
+pages explain intent and invariants.
 
-1. Routes compose a feature screen; they do not contain feature business logic.
-2. A feature's `index.ts` is its public contract. Export only what consumers use.
-3. `shared` and `core` never import a feature or an Expo route.
-4. `platform` never imports a feature. Feature adapters translate platform types
-   into feature contracts.
-5. No source file imports a generated file under `android/`.
-6. Barrels outside a feature's public entry point are avoided. They hide cycles
-   and make ownership unclear.
-7. A feature may use a shared port (`ChapterSource`, `NotificationPort`,
-   `DownloadSessionPort`) without importing the feature that implements it.
+## What belongs here
 
-Run `npm run check:arch` after changing imports. The checker reports cycles,
-forbidden zone edges, cross-feature deep imports and generated-native imports.
+Add a page when a contributor would otherwise have to reverse-engineer a
+cross-cutting contract from source. Keep feature-local details in the feature's
+own `README.md` and device procedures in
+[validation and QA](operations/validation-and-qa.md). Do not duplicate release
+notes or turn this tree into a second changelog.
 
-## Runtime composition
-
-The root route is intentionally small:
-
-```text
-app/_layout.tsx
-  -> AppServicesProvider
-  -> AppBootstrapGate
-  -> OverlayHostProvider
-  -> Stack + feature-owned root hosts
-```
-
-Startup work is split into three explicit operations:
-
-- `startAppRuntime()` opens the database and clears abandoned page artifacts.
-- `startBackgroundServices(services)` runs one-time refreshes after the
-  database is ready using stable services from `AppServicesProvider`.
-- `refreshDownloadedMetadataOnForeground(services)` owns the throttled
-  app-resume refresh.
-
-Keep startup operations idempotent. A retry must be safe, and background failures
-must not prevent the database-ready state from rendering the app.
-
-## Adding a feature
-
-1. Create `src/features/<name>/` with a README and an `index.ts`.
-2. Define the feature's public types and contracts before moving UI.
-3. Move the leaf data and domain modules first, then hooks, then components.
-4. Migrate one caller per pull request and keep the old import shim until the
-   final caller moves.
-5. Add the feature to the architecture checker's allowed zones if it introduces
-   a new top-level zone (features themselves are already covered).
-6. Document the owner in `CODEOWNERS` after GitHub handles are confirmed.
-
-Do not create empty scaffolding. A folder exists when it has an owner and code.
-
-## Migration status and next safe cut
-
-`vision`, `translation`, `downloads`, `extensions`, `library`, `manga`
-and `settings` are completed slices. Each owns its domain, UI and public entry
-point; the corresponding legacy service/component trees are removed.
-
-Translation consumes downloads and notifications only through shared ports.
-The composition root wires the adapters and starts the queue after notification
-initialization, so there is no notification -> translation -> downloader cycle.
-The download queue likewise receives its completion notifier through
-`DownloadNotificationPort`; `@features/downloads` never imports the
-expo-notifications adapter.
-
-`downloads` is also complete. It owns the catalog, queue, archive/page storage,
-metadata recovery, offline browsing, reader page sessions and download UI. The
-public `@features/downloads` entry point replaces the old broad barrel; internal
-files import concrete siblings and cross-feature callers never deep-import it.
-
-The picked SAF root lives in `src/core/storage/root.ts` because downloads,
-database backups and legacy reader cleanup share one directory grant. Feature
-storage owns only its subdirectory and layout. Settings persistence stays in
-`src/core/settings`; settings screens belong to the settings feature and may
-consume the core store.
-
-The shared runtime providers and external-store adapters are in place. Stable
-service identities live in `AppServicesProvider`; hot queue, settings and
-registry snapshots remain external stores.
-
-The reader's pure domain cut is in place under `src/features/reader/domain/`.
-It owns the two product views (`paged` and `strip`), geometry, display items
-and tap-zone resolution; the former reader compatibility trees have been
-removed. `ReaderSessionProvider` owns reader-local page, chrome and loading state
-and is already consumed by the route. The route is now a 54-line adapter and
-the screen lives at `src/features/reader/screens/ReaderScreen.tsx`. Paged mode
-uses `PagedReader` with the default `FlatList`; strip mode uses
-`StripReader`, a custom `ScrollView` that mounts only the active world window.
-The strip viewport now owns the shared world camera, viewport-level tap zones
-and long-press page identity; while zoomed, camera pan is the only vertical pan
-owner. `ReaderScreen` is now the 656-line session composer; viewport state and
-gesture wiring live in `useReaderViewportState` and
-`useReaderViewportControls`. On-device page, gesture and translation validation
-remains the release gate.
-
-## Validation
-
-```powershell
-npm run check
-npx eslint <touched paths>
-```
-
-`npm run check` runs type checking, the architecture graph and every feature
-test. `.github/workflows/pull-request.yml` also exports the Android bundle on
-each pull request. Reader changes additionally require the
-[device smoke test](../qa/reader-device-smoke.md); a passing static check does
-not prove touch, zoom or overlay behavior.
-
-Architecture decisions live in [adr/README.md](adr/README.md). Add an ADR when
-a change affects a boundary, a shared runtime contract or the reader view
-model.
-
-Reader, native and on-device validation remain governed by `AGENTS.md`,
-`workspace.md` and `APP.md`; passing a static check does not prove reader
-gesture or overlay behaviour.
+Before opening a documentation pull request, run the checks in the
+[documentation operations guide](operations/documentation-and-graph.md) and
+follow the [documentation home](../README.md) for the wider docs layout.

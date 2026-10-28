@@ -1,0 +1,4002 @@
+{
+  "schemaVersion": 2,
+  "generatedBy": "scripts/generate-architecture-docs.mjs",
+  "appVersion": "0.0.6",
+  "entries": [
+    {
+      "entry": "app/downloads/index.tsx",
+      "name": "default",
+      "exportedAs": "default",
+      "source": null,
+      "kind": "default-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "app/index.tsx",
+      "name": "default",
+      "exportedAs": "default",
+      "source": null,
+      "kind": "default-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/core/catalog/index.ts",
+      "name": "ProviderAdapter",
+      "exportedAs": "ProviderAdapter",
+      "source": "./providerAdapters",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/core/catalog/index.ts",
+      "name": "ProviderCatalogSnapshot",
+      "exportedAs": "ProviderCatalogSnapshot",
+      "source": "./providerAdapters",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/core/catalog/index.ts",
+      "name": "ProviderId",
+      "exportedAs": "ProviderId",
+      "source": "./providerAdapters",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/core/catalog/index.ts",
+      "name": "canonicalId",
+      "exportedAs": "canonicalId",
+      "source": "./identity",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/core/catalog/index.ts",
+      "name": "getProviderAdapter",
+      "exportedAs": "getProviderAdapter",
+      "source": "./providerAdapters",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/core/catalog/index.ts",
+      "name": "syncProviderManga",
+      "exportedAs": "syncProviderManga",
+      "source": "./catalogSync",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/core/catalog/index.ts",
+      "name": "trySyncProviderManga",
+      "exportedAs": "trySyncProviderManga",
+      "source": "./catalogSync",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/core/settings/index.ts",
+      "name": "*",
+      "exportedAs": "*",
+      "source": "./settingsSchema",
+      "kind": "star-re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/core/settings/index.ts",
+      "name": "*",
+      "exportedAs": "*",
+      "source": "./readerChrome",
+      "kind": "star-re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/core/settings/index.ts",
+      "name": "*",
+      "exportedAs": "*",
+      "source": "./settingsStore",
+      "kind": "star-re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/core/settings/index.ts",
+      "name": "*",
+      "exportedAs": "*",
+      "source": "./backup",
+      "kind": "star-re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/core/settings/index.ts",
+      "name": "*",
+      "exportedAs": "*",
+      "source": "./storageUsage",
+      "kind": "star-re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/components/loading/index.ts",
+      "name": "DownloadChaptersSkeleton",
+      "exportedAs": "DownloadChaptersSkeleton",
+      "source": "./DownloadsSkeleton",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/components/loading/index.ts",
+      "name": "default",
+      "exportedAs": "DownloadsSkeleton",
+      "source": "./DownloadsSkeleton",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "ChapterDownloadButton",
+      "exportedAs": "ChapterDownloadButton",
+      "source": "./components/buttons/DownloadButtons",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DOWNLOADS_DIR_NAME",
+      "exportedAs": "DOWNLOADS_DIR_NAME",
+      "source": "./storage/storage",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadCandidate",
+      "exportedAs": "DownloadCandidate",
+      "source": "./catalog/identity",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadContext",
+      "exportedAs": "DownloadContext",
+      "source": "./components/buttons/DownloadButtons",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadDeletionResult",
+      "exportedAs": "DownloadDeletionResult",
+      "source": "./metadata/recoveryPublic",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadFolderState",
+      "exportedAs": "DownloadFolderState",
+      "source": "./storage/storage",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadIssue",
+      "exportedAs": "DownloadIssue",
+      "source": "./metadata/recoveryPublic",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadJob",
+      "exportedAs": "DownloadJob",
+      "source": "./queue/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "default",
+      "exportedAs": "DownloadManagerScreen",
+      "source": "./screens/DownloadManagerScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadManagerScreenProps",
+      "exportedAs": "DownloadManagerScreenProps",
+      "source": "./screens/downloadsScreen.types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadProgress",
+      "exportedAs": "DownloadProgress",
+      "source": "./metadata/recoveryPublic",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "default",
+      "exportedAs": "DownloadProgressPanel",
+      "source": "./components/queue/DownloadProgressPanel",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadRecoveryResult",
+      "exportedAs": "DownloadRecoveryResult",
+      "source": "./metadata/recoveryPublic",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadRequestContext",
+      "exportedAs": "DownloadRequestContext",
+      "source": "./components/actions",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "default",
+      "exportedAs": "DownloadSheetHost",
+      "source": "./components/sheets/DownloadSheetHost",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadSnapshot",
+      "exportedAs": "DownloadSnapshot",
+      "source": "./queue/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadStatus",
+      "exportedAs": "DownloadStatus",
+      "source": "./queue/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadTarget",
+      "exportedAs": "DownloadTarget",
+      "source": "./catalog/identity",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadTargetInput",
+      "exportedAs": "DownloadTargetInput",
+      "source": "./catalog/identity",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadedMangaSummary",
+      "exportedAs": "DownloadedMangaSummary",
+      "source": "./catalog/catalog",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "DownloadedPageSession",
+      "exportedAs": "DownloadedPageSession",
+      "source": "./sessions/index",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "default",
+      "exportedAs": "DownloadsScreen",
+      "source": "./screens/DownloadsScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "EnqueueChapterInput",
+      "exportedAs": "EnqueueChapterInput",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "MISSING_METADATA_MESSAGE",
+      "exportedAs": "MISSING_METADATA_MESSAGE",
+      "source": "./metadata/recoveryPublic",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "OfflineReaderTarget",
+      "exportedAs": "OfflineReaderTarget",
+      "source": "./catalog/offlineReader",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "OfflineRowPayload",
+      "exportedAs": "OfflineRowPayload",
+      "source": "./offline/offline",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "ReaderDownloadButton",
+      "exportedAs": "ReaderDownloadButton",
+      "source": "./components/buttons/DownloadButtons",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "RemoveDownloadResult",
+      "exportedAs": "RemoveDownloadResult",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "SeriesDownloadButton",
+      "exportedAs": "SeriesDownloadButton",
+      "source": "./components/buttons/DownloadButtons",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "cancelPendingDownloads",
+      "exportedAs": "cancelPendingDownloads",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "candidateFromRow",
+      "exportedAs": "candidateFromRow",
+      "source": "./catalog/candidates",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "candidatesFromRows",
+      "exportedAs": "candidatesFromRows",
+      "source": "./catalog/candidates",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "cleanupDownloadedPageSession",
+      "exportedAs": "cleanupDownloadedPageSession",
+      "source": "./sessions/index",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "clearAbandonedDownloadedPageSessions",
+      "exportedAs": "clearAbandonedDownloadedPageSessions",
+      "source": "./sessions/index",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "deleteAllDownloads",
+      "exportedAs": "deleteAllDownloads",
+      "source": "./metadata/recoveryPublic",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "downloadSessions",
+      "exportedAs": "downloadSessions",
+      "source": "./sessions/index",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "downloadTarget",
+      "exportedAs": "downloadTarget",
+      "source": "./catalog/identity",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "encodeProviderParam",
+      "exportedAs": "encodeProviderParam",
+      "source": "./catalog/identity",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "enqueueDownloads",
+      "exportedAs": "enqueueDownloads",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "ensureFolder",
+      "exportedAs": "ensureDownloadFolder",
+      "source": "./storage/storage",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "ensureMangaFolder",
+      "exportedAs": "ensureMangaFolder",
+      "source": "./storage/storage",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "forgetFolder",
+      "exportedAs": "forgetFolder",
+      "source": "./storage/storage",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "getFolderState",
+      "exportedAs": "getDownloadFolderState",
+      "source": "./storage/storage",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "getDownloadJob",
+      "exportedAs": "getDownloadJob",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "getDownloadSnapshot",
+      "exportedAs": "getDownloadSnapshot",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "getDownloadStatusMap",
+      "exportedAs": "getDownloadStatusMap",
+      "source": "./catalog/catalog",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "getDownloadedChapter",
+      "exportedAs": "getDownloadedChapter",
+      "source": "./catalog/catalog",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "hasFolderAccess",
+      "exportedAs": "hasDownloadFolderAccess",
+      "source": "./storage/storage",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "initDownloadScheduler",
+      "exportedAs": "initDownloadScheduler",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "inspectDownloadMetadata",
+      "exportedAs": "inspectDownloadMetadata",
+      "source": "./metadata/recoveryPublic",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "isChapterDownloaded",
+      "exportedAs": "isChapterDownloaded",
+      "source": "./catalog/catalog",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "isDownloadBusy",
+      "exportedAs": "isDownloadBusy",
+      "source": "./hooks/useDownloads",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "isDownloadConfirmSuppressed",
+      "exportedAs": "isDownloadConfirmSuppressed",
+      "source": "./catalog/catalog",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "isNetworkConnected",
+      "exportedAs": "isNetworkConnected",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "isNetworkWifi",
+      "exportedAs": "isNetworkWifi",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "isQueuePaused",
+      "exportedAs": "isQueuePaused",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "listDownloadedManga",
+      "exportedAs": "listDownloadedManga",
+      "source": "./catalog/catalog",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "listDownloads",
+      "exportedAs": "listDownloads",
+      "source": "./catalog/catalog",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "listDownloadsForManga",
+      "exportedAs": "listDownloadsForManga",
+      "source": "./catalog/catalog",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "loadOfflineChapterViewer",
+      "exportedAs": "loadOfflineChapterViewer",
+      "source": "./offline/offline",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "loadOfflineGalleryMeta",
+      "exportedAs": "loadOfflineGalleryMeta",
+      "source": "./offline/offline",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "offlineReaderTarget",
+      "exportedAs": "offlineReaderTarget",
+      "source": "./catalog/offlineReader",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "offlineRowDownload",
+      "exportedAs": "offlineRowDownload",
+      "source": "./offline/offline",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "openDownloadedPageSession",
+      "exportedAs": "openDownloadedPageSession",
+      "source": "./sessions/index",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "openDownloadedPageSessionForChapter",
+      "exportedAs": "openDownloadedPageSessionForChapter",
+      "source": "./sessions/index",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "pauseAllDownloads",
+      "exportedAs": "pauseAllDownloads",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "pickFolder",
+      "exportedAs": "pickDownloadFolder",
+      "source": "./storage/storage",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "readerTarget",
+      "exportedAs": "readerTarget",
+      "source": "./catalog/identity",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "recoverDownloads",
+      "exportedAs": "recoverDownloads",
+      "source": "./metadata/recoveryPublic",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "refreshDownloadedMetadata",
+      "exportedAs": "refreshDownloadedMetadata",
+      "source": "./metadata/metadata",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "removeDownload",
+      "exportedAs": "removeDownload",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "removeMangaFolder",
+      "exportedAs": "removeMangaFolder",
+      "source": "./storage/storage",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "requestChapterDownload",
+      "exportedAs": "requestChapterDownload",
+      "source": "./components/actions",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "requestDeleteChapter",
+      "exportedAs": "requestDeleteChapter",
+      "source": "./components/actions",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "requestSeriesDownload",
+      "exportedAs": "requestSeriesDownload",
+      "source": "./components/actions",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "resumeAllDownloads",
+      "exportedAs": "resumeAllDownloads",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "retryDownload",
+      "exportedAs": "retryDownload",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "retryFailedDownloads",
+      "exportedAs": "retryFailedDownloads",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "subscribeDownloads",
+      "exportedAs": "subscribeDownloads",
+      "source": "./queue/scheduler",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "suppressDownloadConfirmForToday",
+      "exportedAs": "suppressDownloadConfirmForToday",
+      "source": "./catalog/catalog",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "useDownloadJob",
+      "exportedAs": "useDownloadJob",
+      "source": "./hooks/useDownloads",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "useDownloadSnapshot",
+      "exportedAs": "useDownloadSnapshot",
+      "source": "./hooks/useDownloadSnapshot",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/index.ts",
+      "name": "useDownloadStatuses",
+      "exportedAs": "useDownloadStatuses",
+      "source": "./hooks/useDownloads",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/sessions/index.ts",
+      "name": "DownloadedPageSession",
+      "exportedAs": "DownloadedPageSession",
+      "source": null,
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/downloads/sessions/index.ts",
+      "name": "cleanupDownloadedPageSession",
+      "exportedAs": "cleanupDownloadedPageSession",
+      "source": null,
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/sessions/index.ts",
+      "name": "clearAbandonedDownloadedPageSessions",
+      "exportedAs": "clearAbandonedDownloadedPageSessions",
+      "source": "../offline/readerPageSession",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/sessions/index.ts",
+      "name": "downloadSessions",
+      "exportedAs": "downloadSessions",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/sessions/index.ts",
+      "name": "openDownloadedPageSession",
+      "exportedAs": "openDownloadedPageSession",
+      "source": null,
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/downloads/sessions/index.ts",
+      "name": "openDownloadedPageSessionForChapter",
+      "exportedAs": "openDownloadedPageSessionForChapter",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/components/browse/index.ts",
+      "name": "default",
+      "exportedAs": "BrowseSkeleton",
+      "source": "./BrowseSkeleton",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/components/browse/index.ts",
+      "name": "default",
+      "exportedAs": "ExtensionSourceSkeleton",
+      "source": "./ExtensionSourceSkeleton",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "default",
+      "exportedAs": "BrowseExtensionsScreen",
+      "source": "./screens/BrowseExtensionsScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "BrowseExtensionsScreenProps",
+      "exportedAs": "BrowseExtensionsScreenProps",
+      "source": "./screens/BrowseExtensionsScreen",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "CatalogLoadResult",
+      "exportedAs": "CatalogLoadResult",
+      "source": "./library/repo",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "ExtensionCatalogEntry",
+      "exportedAs": "ExtensionCatalogEntry",
+      "source": "@platform/extensions/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "ExtensionDownloadProgress",
+      "exportedAs": "ExtensionDownloadProgress",
+      "source": "./installer/installer",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "ExtensionFilterPatch",
+      "exportedAs": "ExtensionFilterPatch",
+      "source": "@platform/extensions/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "ExtensionFilterSelection",
+      "exportedAs": "ExtensionFilterSelection",
+      "source": "./filters/filters",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "default",
+      "exportedAs": "ExtensionFilterSheet",
+      "source": "./components/catalog/ExtensionFilterSheet",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "ExtensionMangaRecord",
+      "exportedAs": "ExtensionMangaRecord",
+      "source": "./library/migration",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "ExtensionRegistrySnapshot",
+      "exportedAs": "ExtensionRegistrySnapshot",
+      "source": "./registry/registry",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "ExtensionRepo",
+      "exportedAs": "ExtensionRepo",
+      "source": "@platform/extensions/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "ExtensionSourceRecord",
+      "exportedAs": "ExtensionSourceRecord",
+      "source": "@platform/extensions/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "default",
+      "exportedAs": "ExtensionSourceScreen",
+      "source": "./screens/ExtensionSourceScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "ExtensionSourceScreenProps",
+      "exportedAs": "ExtensionSourceScreenProps",
+      "source": "./screens/ExtensionSourceScreen",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "FilterBlock",
+      "exportedAs": "FilterBlock",
+      "source": "./filters/filters",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "FilterChip",
+      "exportedAs": "FilterChip",
+      "source": "./filters/filters",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "FilterDraft",
+      "exportedAs": "FilterDraft",
+      "source": "./filters/filters",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "FilterSummary",
+      "exportedAs": "FilterSummary",
+      "source": "./filters/filters",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "InstalledExtensionRecord",
+      "exportedAs": "InstalledExtensionRecord",
+      "source": "@platform/extensions/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "MissingExtensionGroup",
+      "exportedAs": "MissingExtensionGroup",
+      "source": "./library/migration",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "NativeChapter",
+      "exportedAs": "NativeChapter",
+      "source": "@platform/extensions/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "NativeFilter",
+      "exportedAs": "NativeFilter",
+      "source": "@platform/extensions/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "NativeManga",
+      "exportedAs": "NativeManga",
+      "source": "@platform/extensions/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "NativeMangaDetails",
+      "exportedAs": "NativeMangaDetails",
+      "source": "@platform/extensions/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "NativeMangaPage",
+      "exportedAs": "NativeMangaPage",
+      "source": "@platform/extensions/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "NativePageList",
+      "exportedAs": "NativePageList",
+      "source": "@platform/extensions/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "RepoExtension",
+      "exportedAs": "RepoExtension",
+      "source": "@platform/extensions/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "RepoSource",
+      "exportedAs": "RepoSource",
+      "source": "@platform/extensions/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "default",
+      "exportedAs": "TermsModal",
+      "source": "./components/installation/TermsModal",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "VerifiedExtensionApk",
+      "exportedAs": "VerifiedExtensionApk",
+      "source": "./installer/installer",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "buildFilterSelection",
+      "exportedAs": "buildFilterSelection",
+      "source": "./filters/filters",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "cachedExtensionSource",
+      "exportedAs": "cachedExtensionSource",
+      "source": "./registry/registry",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "cachedExtensionSources",
+      "exportedAs": "cachedExtensionSources",
+      "source": "./registry/registry",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "cachedInstalledExtensions",
+      "exportedAs": "cachedInstalledExtensions",
+      "source": "./registry/registry",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "createFilterDraft",
+      "exportedAs": "createFilterDraft",
+      "source": "./filters/filters",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "downloadExtensionApk",
+      "exportedAs": "downloadExtensionApk",
+      "source": "./installer/installer",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "editableFilters",
+      "exportedAs": "editableFilters",
+      "source": "./filters/filters",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "extensionForSource",
+      "exportedAs": "extensionForSource",
+      "source": "./library/repo",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "extensionInstallPermission",
+      "exportedAs": "extensionInstallPermission",
+      "source": "./installer/installer",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "extensionProviderFor",
+      "exportedAs": "extensionProviderFor",
+      "source": "./registry/registry",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "fetchExtensionRepo",
+      "exportedAs": "fetchExtensionRepo",
+      "source": "./library/repo",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "filterBlocks",
+      "exportedAs": "filterBlocks",
+      "source": "./filters/filters",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "filterChanged",
+      "exportedAs": "filterChanged",
+      "source": "./filters/filters",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "filterDefault",
+      "exportedAs": "filterDefault",
+      "source": "./filters/filters",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "filterGroupLabel",
+      "exportedAs": "filterGroupLabel",
+      "source": "./filters/filters",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "filterSchema",
+      "exportedAs": "filterSchema",
+      "source": "./filters/filters",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "filterValueLabel",
+      "exportedAs": "filterValueLabel",
+      "source": "./filters/filters",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "getExtensionRegistrySnapshot",
+      "exportedAs": "getExtensionRegistrySnapshot",
+      "source": "./registry/registry",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "installExtension",
+      "exportedAs": "installExtension",
+      "source": "./installer/installer",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "isExtensionProvider",
+      "exportedAs": "isExtensionProvider",
+      "source": "./registry/registry",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "isMatureProvider",
+      "exportedAs": "isMatureProvider",
+      "source": "./domain/providerMaturity",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "listExtensionMangaRecords",
+      "exportedAs": "listExtensionMangaRecords",
+      "source": "./library/migration",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "listMissingExtensionGroups",
+      "exportedAs": "listMissingExtensionGroups",
+      "source": "./library/migration",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "loadExtensionCatalog",
+      "exportedAs": "loadExtensionCatalog",
+      "source": "./library/repo",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "mergeCatalog",
+      "exportedAs": "mergeCatalog",
+      "source": "./library/repo",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "normalizeRepoUrl",
+      "exportedAs": "normalizeRepoUrl",
+      "source": "./library/repo",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "openExtensionInstallSettings",
+      "exportedAs": "openExtensionInstallSettings",
+      "source": "./installer/installer",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "parseExtensionRepo",
+      "exportedAs": "parseExtensionRepo",
+      "source": "./library/repo",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "parseRepoJson",
+      "exportedAs": "parseRepoJson",
+      "source": "./library/repo",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "providerLabel",
+      "exportedAs": "providerLabel",
+      "source": "./domain/providerLabel",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "refreshExtensionRegistry",
+      "exportedAs": "refreshExtensionRegistry",
+      "source": "./registry/registry",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "removeFilterPath",
+      "exportedAs": "removeFilterPath",
+      "source": "./filters/filters",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "sourceIdFromProvider",
+      "exportedAs": "sourceIdFromProvider",
+      "source": "./registry/registry",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "subscribeExtensionRegistry",
+      "exportedAs": "subscribeExtensionRegistry",
+      "source": "./registry/registry",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "useExtensionRegistry",
+      "exportedAs": "useExtensionRegistry",
+      "source": "./hooks/useExtensionRegistry",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/extensions/index.ts",
+      "name": "verifyExtensionApk",
+      "exportedAs": "verifyExtensionApk",
+      "source": "./installer/installer",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/components/loading/index.ts",
+      "name": "default",
+      "exportedAs": "LibrarySkeleton",
+      "source": "./LibrarySkeleton",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "default",
+      "exportedAs": "AddToLibraryButton",
+      "source": "./components/membership/AddToLibraryButton",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "AddToLibraryButtonProps",
+      "exportedAs": "AddToLibraryButtonProps",
+      "source": "./components/membership/AddToLibraryButton",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "BulkDeleteLibrariesDialog",
+      "exportedAs": "BulkDeleteLibrariesDialog",
+      "source": "./components/membership/LibraryDialogs",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "ChapterReadWriteInput",
+      "exportedAs": "ChapterReadWriteInput",
+      "source": "./tracking/readerTracking",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "CreateLibraryDialog",
+      "exportedAs": "CreateLibraryDialog",
+      "source": "./components/membership/LibraryDialogs",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "default",
+      "exportedAs": "LibraryCard",
+      "source": "./components/cards/LibraryCard",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "default",
+      "exportedAs": "LibraryFilterSheet",
+      "source": "./components/filters/LibraryFilterSheet",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "default",
+      "exportedAs": "LibraryScreen",
+      "source": "./screens/LibraryScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "LibraryScreenProps",
+      "exportedAs": "LibraryScreenProps",
+      "source": "./screens/LibraryScreen",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "ProviderId",
+      "exportedAs": "ProviderId",
+      "source": "@core/catalog",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "ReaderOpenInput",
+      "exportedAs": "ReaderOpenInput",
+      "source": "./tracking/readerTracking",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "TrackedChapterProgress",
+      "exportedAs": "TrackedChapterProgress",
+      "source": "./sync/librarySync",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "TrackedIdentity",
+      "exportedAs": "TrackedIdentity",
+      "source": "./sync/librarySync",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "TrackedProgressLookup",
+      "exportedAs": "TrackedProgressLookup",
+      "source": "./sync/librarySync",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "downloadedMangaToLibraryCards",
+      "exportedAs": "downloadedMangaToLibraryCards",
+      "source": "./domain/libraryCards",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "getTrackedChapterProgress",
+      "exportedAs": "getTrackedChapterProgress",
+      "source": "./sync/librarySync",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "hasActiveLibraryFilters",
+      "exportedAs": "hasActiveLibraryFilters",
+      "source": "./domain/libraryCards",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "libraryIdentityIds",
+      "exportedAs": "libraryIdentityIds",
+      "source": "./domain/libraryIdentity",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "listTrackedManga",
+      "exportedAs": "listTrackedManga",
+      "source": "./sync/librarySync",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "persistChapterReadState",
+      "exportedAs": "persistChapterReadState",
+      "source": "./tracking/readerTracking",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "prepareReaderOpen",
+      "exportedAs": "prepareReaderOpen",
+      "source": "./tracking/readerTracking",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "syncAllLibraries",
+      "exportedAs": "syncAllLibraries",
+      "source": "./sync/librarySync",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "syncLibrary",
+      "exportedAs": "syncLibrary",
+      "source": "./sync/librarySync",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/library/index.ts",
+      "name": "useLibraryScreen",
+      "exportedAs": "useLibraryScreen",
+      "source": "./hooks/useLibraryScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/manga/components/loading/index.ts",
+      "name": "default",
+      "exportedAs": "MangaDetailSkeleton",
+      "source": "./MangaDetailSkeleton",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/manga/index.ts",
+      "name": "ChapterSourceModule",
+      "exportedAs": "ChapterSourceModule",
+      "source": "@shared/contracts",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/manga/index.ts",
+      "name": "default",
+      "exportedAs": "MangaScreen",
+      "source": "./screens/MangaScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/manga/index.ts",
+      "name": "MangaScreenProps",
+      "exportedAs": "MangaScreenProps",
+      "source": "./screens/MangaScreen",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/manga/index.ts",
+      "name": "chapterSourceFor",
+      "exportedAs": "chapterSourceFor",
+      "source": "./sources",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/manga/sources/index.ts",
+      "name": "chapterSourceFor",
+      "exportedAs": "chapterSourceFor",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/onboarding/index.ts",
+      "name": "default",
+      "exportedAs": "OnboardingOverlay",
+      "source": "./components/OnboardingOverlay",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "PageDims",
+      "exportedAs": "PageDims",
+      "source": "./domain/layout/pageGeometry",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "PageGeometry",
+      "exportedAs": "PageGeometry",
+      "source": "./domain/layout/pageGeometry",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "default",
+      "exportedAs": "PagedReader",
+      "source": "./views/paged/PagedReader",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "PagedReaderProps",
+      "exportedAs": "PagedReaderProps",
+      "source": "./views/paged/PagedReader",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "ReaderChromeUpdate",
+      "exportedAs": "ReaderChromeUpdate",
+      "source": "./state/readerSessionReducer",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "ReaderDisplayItem",
+      "exportedAs": "ReaderDisplayItem",
+      "source": "./domain/layout/readerItems",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "ReaderItemOptions",
+      "exportedAs": "ReaderItemOptions",
+      "source": "./domain/layout/readerItems",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "ReaderPageSplitHalf",
+      "exportedAs": "ReaderPageSplitHalf",
+      "source": "./domain/layout/pageGeometry",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "ReaderPipelineMetrics",
+      "exportedAs": "ReaderPipelineMetrics",
+      "source": "./translation/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "ReaderReadingMode",
+      "exportedAs": "ReaderReadingMode",
+      "source": "./domain/legacyReadingModes",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "default",
+      "exportedAs": "ReaderScreen",
+      "source": "./screens/ReaderScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "ReaderScreenProps",
+      "exportedAs": "ReaderScreenProps",
+      "source": "./screens/ReaderScreen",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "ReaderSessionAction",
+      "exportedAs": "ReaderSessionAction",
+      "source": "./state/readerSessionReducer",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "ReaderSessionProvider",
+      "exportedAs": "ReaderSessionProvider",
+      "source": "./state/ReaderSessionProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "ReaderSessionState",
+      "exportedAs": "ReaderSessionState",
+      "source": "./state/readerSessionReducer",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "ReaderSessionValue",
+      "exportedAs": "ReaderSessionValue",
+      "source": "./state/ReaderSessionProvider",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "ReaderTapAction",
+      "exportedAs": "ReaderTapAction",
+      "source": "./domain/navigation/tapZones",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "ReaderTranslationController",
+      "exportedAs": "ReaderTranslationController",
+      "source": "./translation/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "ReaderViewMode",
+      "exportedAs": "ReaderViewMode",
+      "source": "./domain/modes",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "ResolveTapZoneOptions",
+      "exportedAs": "ResolveTapZoneOptions",
+      "source": "./domain/navigation/tapZones",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "default",
+      "exportedAs": "StripReader",
+      "source": "./views/strip/StripReader",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "StripReaderHandle",
+      "exportedAs": "StripReaderHandle",
+      "source": "./views/strip/StripReader",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "StripReaderProps",
+      "exportedAs": "StripReaderProps",
+      "source": "./views/strip/StripReader",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "StripViewportState",
+      "exportedAs": "StripViewportState",
+      "source": "./views/strip/StripReader",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "TAP_ZONE_INSET",
+      "exportedAs": "TAP_ZONE_INSET",
+      "source": "./domain/navigation/tapZones",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "TapZoneEdge",
+      "exportedAs": "TapZoneEdge",
+      "source": "./domain/navigation/tapZones",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "TapZoneRect",
+      "exportedAs": "TapZoneRect",
+      "source": "./domain/navigation/tapZones",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "UseReaderTranslationOptions",
+      "exportedAs": "UseReaderTranslationOptions",
+      "source": "./translation/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "buildReaderDisplayItems",
+      "exportedAs": "buildReaderDisplayItems",
+      "source": "./domain/layout/readerItems",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "createInitialReaderSessionState",
+      "exportedAs": "createInitialReaderSessionState",
+      "source": "./state/readerSessionReducer",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "isGapLessMode",
+      "exportedAs": "isGapLessMode",
+      "source": "./domain/legacyReadingModes",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "isHorizontalMode",
+      "exportedAs": "isHorizontalMode",
+      "source": "./domain/legacyReadingModes",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "isLongStripMode",
+      "exportedAs": "isLongStripMode",
+      "source": "./domain/legacyReadingModes",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "isPagedMode",
+      "exportedAs": "isPagedMode",
+      "source": "./domain/legacyReadingModes",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "isReaderViewMode",
+      "exportedAs": "isReaderViewMode",
+      "source": "./domain/modes",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "isWidePage",
+      "exportedAs": "isWidePage",
+      "source": "./domain/layout/readerItems",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "pageGeometry",
+      "exportedAs": "pageGeometry",
+      "source": "./domain/layout/pageGeometry",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "readerSessionReducer",
+      "exportedAs": "readerSessionReducer",
+      "source": "./state/readerSessionReducer",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "readerViewModeFor",
+      "exportedAs": "readerViewModeFor",
+      "source": "./domain/modes",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "resolveTapZoneAction",
+      "exportedAs": "resolveTapZoneAction",
+      "source": "./domain/navigation/tapZones",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "splitOrderFor",
+      "exportedAs": "splitOrderFor",
+      "source": "./domain/layout/readerItems",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "tapZoneRectsFor",
+      "exportedAs": "tapZoneRectsFor",
+      "source": "./domain/navigation/tapZones",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "useReaderSession",
+      "exportedAs": "useReaderSession",
+      "source": "./state/ReaderSessionProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/reader/index.ts",
+      "name": "useReaderTranslation",
+      "exportedAs": "useReaderTranslation",
+      "source": "./translation/useReaderTranslation",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/settings/index.ts",
+      "name": "AboutSettingsScreen",
+      "exportedAs": "AboutSettingsScreen",
+      "source": "./screens/AboutSettingsScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/settings/index.ts",
+      "name": "DisplaySettingsScreen",
+      "exportedAs": "DisplaySettingsScreen",
+      "source": "./screens/DisplaySettingsScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/settings/index.ts",
+      "name": "DownloadsSettingsScreen",
+      "exportedAs": "DownloadsSettingsScreen",
+      "source": "./screens/DownloadsSettingsScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/settings/index.ts",
+      "name": "OcrModelsSettingsScreen",
+      "exportedAs": "OcrModelsSettingsScreen",
+      "source": "./screens/OcrModelsSettingsScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/settings/index.ts",
+      "name": "QueueSettingsScreen",
+      "exportedAs": "QueueSettingsScreen",
+      "source": "./screens/QueueSettingsScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/settings/index.ts",
+      "name": "SettingsHomeScreen",
+      "exportedAs": "SettingsHomeScreen",
+      "source": "./screens/SettingsHomeScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/settings/index.ts",
+      "name": "StorageSettingsScreen",
+      "exportedAs": "StorageSettingsScreen",
+      "source": "./screens/StorageSettingsScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/settings/index.ts",
+      "name": "TranslationQueueSettingsScreen",
+      "exportedAs": "TranslationQueueSettingsScreen",
+      "source": "./screens/TranslationQueueSettingsScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/settings/index.ts",
+      "name": "TranslationSettingsScreen",
+      "exportedAs": "TranslationSettingsScreen",
+      "source": "./screens/TranslationSettingsScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/settings/index.ts",
+      "name": "useAppSettings",
+      "exportedAs": "useAppSettings",
+      "source": "./hooks/useAppSettings",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "AUTO_MODEL_SWITCH_FAILURE_LIMIT",
+      "exportedAs": "AUTO_MODEL_SWITCH_FAILURE_LIMIT",
+      "source": "./engines/gemini/geminiFallback",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "AutoSwitchFailureState",
+      "exportedAs": "AutoSwitchFailureState",
+      "source": "./engines/gemini/geminiFallback",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "Box",
+      "exportedAs": "Box",
+      "source": "./domain/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "BubbleMask",
+      "exportedAs": "BubbleMask",
+      "source": "./domain/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "FreeBatchPage",
+      "exportedAs": "FreeBatchPage",
+      "source": "./engines/google/googleClient",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "FreeBatchRegion",
+      "exportedAs": "FreeBatchRegion",
+      "source": "./engines/google/googleClient",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "FreeBatchResult",
+      "exportedAs": "FreeBatchResult",
+      "source": "./engines/google/googleClient",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "GEMINI_DEFAULT_MODEL",
+      "exportedAs": "GEMINI_DEFAULT_MODEL",
+      "source": "@core/settings/geminiModelId",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "GEMINI_MODELS",
+      "exportedAs": "GEMINI_MODELS",
+      "source": "./engines/gemini/geminiModels",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "GEMINI_MODEL_IDS",
+      "exportedAs": "GEMINI_MODEL_IDS",
+      "source": "@core/settings/geminiModelId",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "GeminiApiError",
+      "exportedAs": "GeminiApiError",
+      "source": "./engines/gemini/geminiClient",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "GeminiBatchRegion",
+      "exportedAs": "GeminiBatchRegion",
+      "source": "./engines/gemini/geminiClient",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "GeminiBatchResponse",
+      "exportedAs": "GeminiBatchResponse",
+      "source": "./engines/gemini/geminiClient",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "GeminiBatchResult",
+      "exportedAs": "GeminiBatchResult",
+      "source": "./engines/gemini/geminiClient",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "GeminiModelId",
+      "exportedAs": "GeminiModelId",
+      "source": "@core/settings/geminiModelId",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "GeminiPagePayload",
+      "exportedAs": "GeminiPagePayload",
+      "source": "./engines/gemini/geminiClient",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "GeminiUsageInfo",
+      "exportedAs": "GeminiUsageInfo",
+      "source": "./engines/gemini/geminiClient",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "GeminiUsageRecordInput",
+      "exportedAs": "GeminiUsageRecordInput",
+      "source": "./engines/gemini/geminiUsage",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "GeminiUsageSnapshot",
+      "exportedAs": "GeminiUsageSnapshot",
+      "source": "./engines/gemini/geminiUsage",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "ModelFallbackOutcome",
+      "exportedAs": "ModelFallbackOutcome",
+      "source": "./engines/gemini/geminiFallback",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "PageTranslationState",
+      "exportedAs": "PageTranslationState",
+      "source": "./domain/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "Point",
+      "exportedAs": "Point",
+      "source": "./domain/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "default",
+      "exportedAs": "PretranslateDialog",
+      "source": "./components/PretranslateDialog",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "PretranslateDialogProps",
+      "exportedAs": "PretranslateDialogProps",
+      "source": "./components/PretranslateDialog",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "PretranslateJob",
+      "exportedAs": "PretranslateJob",
+      "source": "./jobs/pretranslateQueue",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "PretranslateQueueDependencies",
+      "exportedAs": "PretranslateQueueDependencies",
+      "source": "./jobs/pretranslateQueue",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "PretranslateSnapshot",
+      "exportedAs": "PretranslateSnapshot",
+      "source": "./jobs/pretranslateQueue",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "PretranslateStatus",
+      "exportedAs": "PretranslateStatus",
+      "source": "./jobs/pretranslateQueue",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "READER_TARGET_OPTIONS",
+      "exportedAs": "READER_TARGET_OPTIONS",
+      "source": "./domain/languages",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "ReaderTranslateMode",
+      "exportedAs": "ReaderTranslateMode",
+      "source": "./domain/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "TranslateTextFn",
+      "exportedAs": "TranslateTextFn",
+      "source": "./domain/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "TranslationLockOwner",
+      "exportedAs": "TranslationLockOwner",
+      "source": "./jobs/translationRuntimeLock",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "TranslationRegionState",
+      "exportedAs": "TranslationRegionState",
+      "source": "./domain/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "TranslationSlot",
+      "exportedAs": "TranslationSlot",
+      "source": "./domain/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "TranslationSlotKind",
+      "exportedAs": "TranslationSlotKind",
+      "source": "./domain/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "assembleSlotText",
+      "exportedAs": "assembleSlotText",
+      "source": "./pipeline/translationRegions",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "assignItemsToSlots",
+      "exportedAs": "assignItemsToSlots",
+      "source": "./pipeline/translationRegions",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "buildTranslationSlots",
+      "exportedAs": "buildTranslationSlots",
+      "source": "./pipeline/translationRegions",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "cancelTranslationQueue",
+      "exportedAs": "cancelTranslationQueue",
+      "source": "./jobs/pretranslateQueue",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "countTextRows",
+      "exportedAs": "countTextRows",
+      "source": "./pipeline/translationRegions",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "enqueuePretranslateJob",
+      "exportedAs": "enqueuePretranslateJob",
+      "source": "./jobs/pretranslateQueue",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "fallbackModelChain",
+      "exportedAs": "fallbackModelChain",
+      "source": "./engines/gemini/geminiFallback",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "fillSlotTexts",
+      "exportedAs": "fillSlotTexts",
+      "source": "./pipeline/translationRegions",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "geminiModelInfo",
+      "exportedAs": "geminiModelInfo",
+      "source": "./engines/gemini/geminiModels",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "getGeminiUsageSnapshot",
+      "exportedAs": "getGeminiUsageSnapshot",
+      "source": "./engines/gemini/geminiUsage",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "getPretranslateSnapshot",
+      "exportedAs": "getPretranslateSnapshot",
+      "source": "./jobs/pretranslateQueue",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "getTranslationLockOwner",
+      "exportedAs": "getTranslationLockOwner",
+      "source": "./jobs/translationRuntimeLock",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "initPretranslateQueue",
+      "exportedAs": "initPretranslateQueue",
+      "source": "./jobs/pretranslateQueue",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "isCjkLanguageCode",
+      "exportedAs": "isCjkLanguageCode",
+      "source": "./domain/languages",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "isGeminiModelId",
+      "exportedAs": "isGeminiModelId",
+      "source": "@core/settings/geminiModelId",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "isGeminiRateLimitError",
+      "exportedAs": "isGeminiRateLimitError",
+      "source": "./engines/gemini/geminiFallback",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "isSameEngineLanguage",
+      "exportedAs": "isSameEngineLanguage",
+      "source": "./domain/languages",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "localTranslate",
+      "exportedAs": "localTranslate",
+      "source": "./engines/google/googleClient",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "nextAutoSwitchFailureState",
+      "exportedAs": "nextAutoSwitchFailureState",
+      "source": "./engines/gemini/geminiFallback",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "pacificDayStartMs",
+      "exportedAs": "pacificDayStartMs",
+      "source": "./engines/gemini/geminiUsage",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "parseGeminiJson",
+      "exportedAs": "parseGeminiJson",
+      "source": "./engines/gemini/geminiClient",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "pauseTranslationQueue",
+      "exportedAs": "pauseTranslationQueue",
+      "source": "./jobs/pretranslateQueue",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "recordGeminiUsage",
+      "exportedAs": "recordGeminiUsage",
+      "source": "./engines/gemini/geminiUsage",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "releaseTranslationLock",
+      "exportedAs": "releaseTranslationLock",
+      "source": "./jobs/translationRuntimeLock",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "removePretranslateJob",
+      "exportedAs": "removePretranslateJob",
+      "source": "./jobs/pretranslateQueue",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "requestWithModelFallback",
+      "exportedAs": "requestWithModelFallback",
+      "source": "./engines/gemini/geminiFallback",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "resumeTranslationQueue",
+      "exportedAs": "resumeTranslationQueue",
+      "source": "./jobs/pretranslateQueue",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "subscribeGeminiUsage",
+      "exportedAs": "subscribeGeminiUsage",
+      "source": "./engines/gemini/geminiUsage",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "subscribePretranslate",
+      "exportedAs": "subscribePretranslate",
+      "source": "./jobs/pretranslateQueue",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "subscribeTranslationLock",
+      "exportedAs": "subscribeTranslationLock",
+      "source": "./jobs/translationRuntimeLock",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "toEngineLanguageCode",
+      "exportedAs": "toEngineLanguageCode",
+      "source": "./domain/languages",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "translateFreeBatch",
+      "exportedAs": "translateFreeBatch",
+      "source": "./engines/google/googleClient",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "translateGeminiBatch",
+      "exportedAs": "translateGeminiBatch",
+      "source": "./engines/gemini/geminiClient",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "tryAcquireTranslationLock",
+      "exportedAs": "tryAcquireTranslationLock",
+      "source": "./jobs/translationRuntimeLock",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "validateGeminiApiKey",
+      "exportedAs": "validateGeminiApiKey",
+      "source": "./engines/gemini/geminiClient",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "waitForRpmCapacity",
+      "exportedAs": "waitForRpmCapacity",
+      "source": "./engines/gemini/geminiUsage",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/updates/index.ts",
+      "name": "AvailableUpdate",
+      "exportedAs": "AvailableUpdate",
+      "source": "./data/github",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/updates/index.ts",
+      "name": "DownloadOutcome",
+      "exportedAs": "DownloadOutcome",
+      "source": "./services/updater",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/updates/index.ts",
+      "name": "DownloadProgress",
+      "exportedAs": "DownloadProgress",
+      "source": "./services/updater",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/updates/index.ts",
+      "name": "InstallPermissionState",
+      "exportedAs": "InstallPermissionState",
+      "source": "./services/updater",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/updates/index.ts",
+      "name": "UpdateCheck",
+      "exportedAs": "UpdateCheck",
+      "source": "./services/updater",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/updates/index.ts",
+      "name": "checkForUpdate",
+      "exportedAs": "checkForUpdate",
+      "source": "./services/updater",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/updates/index.ts",
+      "name": "compareVersions",
+      "exportedAs": "compareVersions",
+      "source": "./data/github",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/updates/index.ts",
+      "name": "currentVersion",
+      "exportedAs": "currentVersion",
+      "source": "./data/github",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/updates/index.ts",
+      "name": "downloadUpdate",
+      "exportedAs": "downloadUpdate",
+      "source": "./services/updater",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/updates/index.ts",
+      "name": "installPermissionState",
+      "exportedAs": "installPermissionState",
+      "source": "./services/updater",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/updates/index.ts",
+      "name": "installUpdate",
+      "exportedAs": "installUpdate",
+      "source": "./services/updater",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/updates/index.ts",
+      "name": "openDownloadPage",
+      "exportedAs": "openDownloadPage",
+      "source": "./services/updater",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/updates/index.ts",
+      "name": "openInstallSettings",
+      "exportedAs": "openInstallSettings",
+      "source": "./services/updater",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "ALL_MODEL_IDS",
+      "exportedAs": "ALL_MODEL_IDS",
+      "source": "./ocr/models/modelStore",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "DecodablePageOptions",
+      "exportedAs": "DecodablePageOptions",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "Detection",
+      "exportedAs": "Detection",
+      "source": "./detection/detectionTypes",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "DetectionResult",
+      "exportedAs": "DetectionResult",
+      "source": "./detection/detectionTypes",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "LOCAL_OCR_MODELS",
+      "exportedAs": "LOCAL_OCR_MODELS",
+      "source": "./ocr/models/ocrModels",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "LocalOcrEngine",
+      "exportedAs": "LocalOcrEngine",
+      "source": "./ocr/models/ocrModels",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "LocalOcrError",
+      "exportedAs": "LocalOcrError",
+      "source": "./ocr/localOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "LocalOcrModelDef",
+      "exportedAs": "LocalOcrModelDef",
+      "source": "./ocr/models/ocrModels",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "LocalOcrModelFile",
+      "exportedAs": "LocalOcrModelFile",
+      "source": "./ocr/models/ocrModels",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "LocalOcrModelId",
+      "exportedAs": "LocalOcrModelId",
+      "source": "./ocr/models/ocrModels",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "LocalOcrPageOptions",
+      "exportedAs": "LocalOcrPageOptions",
+      "source": "./ocr/localOcr",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "MIN_CROP_PX",
+      "exportedAs": "MIN_CROP_PX",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "MangaBubbleSegError",
+      "exportedAs": "MangaBubbleSegError",
+      "source": "./segmentation/mangaBubbleSeg",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "MangaBubbleSegmenter",
+      "exportedAs": "MangaBubbleSegmenter",
+      "source": "./segmentation/mangaBubbleSeg",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "ModelDownloadState",
+      "exportedAs": "ModelDownloadState",
+      "source": "./ocr/models/modelStore",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "ModelDownloadStatus",
+      "exportedAs": "ModelDownloadStatus",
+      "source": "./ocr/models/modelStore",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "OcrCrop",
+      "exportedAs": "OcrCrop",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "OcrError",
+      "exportedAs": "OcrError",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "OcrRecognitionLevel",
+      "exportedAs": "OcrRecognitionLevel",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "OcrRegion",
+      "exportedAs": "OcrRegion",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "OcrTextItem",
+      "exportedAs": "OcrTextItem",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "PageOcrOptions",
+      "exportedAs": "PageOcrOptions",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "PageOcrOutput",
+      "exportedAs": "PageOcrOutput",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "SEG_INPUT_SIZE",
+      "exportedAs": "SEG_INPUT_SIZE",
+      "source": "./segmentation/mangaBubbleSeg",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "YOLO_CLASSES",
+      "exportedAs": "YOLO_CLASSES",
+      "source": "./detection/yolo",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "YOLO_CLASS_COLORS",
+      "exportedAs": "YOLO_CLASS_COLORS",
+      "source": "./detection/detectionTypes",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "YOLO_CLASS_LABELS",
+      "exportedAs": "YOLO_CLASS_LABELS",
+      "source": "./detection/detectionTypes",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "YOLO_CLASS_NAMES",
+      "exportedAs": "YOLO_CLASS_NAMES",
+      "source": "./detection/detectionTypes",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "YoloClassName",
+      "exportedAs": "YoloClassName",
+      "source": "./detection/detectionTypes",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "YoloDetector",
+      "exportedAs": "YoloDetector",
+      "source": "./detection/yolo",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "YoloError",
+      "exportedAs": "YoloError",
+      "source": "./detection/yolo",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "YoloOptions",
+      "exportedAs": "YoloOptions",
+      "source": "./detection/detectionTypes",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "cancelModelDownload",
+      "exportedAs": "cancelModelDownload",
+      "source": "./ocr/models/modelStore",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "clampOcrBubbleWorkers",
+      "exportedAs": "clampOcrBubbleWorkers",
+      "source": "./ocr/models/ocrModels",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "clearAbandonedOcrPageSources",
+      "exportedAs": "clearAbandonedOcrPageSources",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "cropRegionToLocalFile",
+      "exportedAs": "cropRegionToLocalFile",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "deleteCropFile",
+      "exportedAs": "deleteCropFile",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "deleteModel",
+      "exportedAs": "deleteModel",
+      "source": "./ocr/models/modelStore",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "detectImage",
+      "exportedAs": "detectImage",
+      "source": "./detection/yolo",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "detectPageRegions",
+      "exportedAs": "detectPageRegions",
+      "source": "./detection/pageDetector",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "downloadModel",
+      "exportedAs": "downloadModel",
+      "source": "./ocr/models/modelStore",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "emptyPageOutput",
+      "exportedAs": "emptyPageOutput",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "ensureDecodablePageUri",
+      "exportedAs": "ensureDecodablePageUri",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "formatModelBytes",
+      "exportedAs": "formatModelBytes",
+      "source": "./ocr/models/ocrModels",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "getLocalOcrModel",
+      "exportedAs": "getLocalOcrModel",
+      "source": "./ocr/models/ocrModels",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "getModelDownloadState",
+      "exportedAs": "getModelDownloadState",
+      "source": "./ocr/models/modelStore",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "isMangaBubbleSegAvailable",
+      "exportedAs": "isMangaBubbleSegAvailable",
+      "source": "./segmentation/mangaBubbleSeg",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "isModelDownloaded",
+      "exportedAs": "isModelDownloaded",
+      "source": "./ocr/localOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "isYoloRuntimeAvailable",
+      "exportedAs": "isYoloRuntimeAvailable",
+      "source": "./detection/yolo",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "makePageItem",
+      "exportedAs": "makePageItem",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "mangaBubbleSegmenter",
+      "exportedAs": "mangaBubbleSegmenter",
+      "source": "./segmentation/mangaBubbleSeg",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "maxOcrBubbleWorkers",
+      "exportedAs": "maxOcrBubbleWorkers",
+      "source": "./ocr/models/ocrModels",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "modelForLanguageLabel",
+      "exportedAs": "modelForLanguageLabel",
+      "source": "./ocr/models/ocrModels",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "modelIdForLanguage",
+      "exportedAs": "modelIdForLanguage",
+      "source": "./ocr/models/ocrModels",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "ocrEngineConcurrency",
+      "exportedAs": "ocrEngineConcurrency",
+      "source": "./ocr/models/ocrModels",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "ocrRecognitionBatchSize",
+      "exportedAs": "ocrRecognitionBatchSize",
+      "source": "./ocr/models/ocrModels",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "preparePaddleRegions",
+      "exportedAs": "preparePaddleRegions",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "prepareTextRegions",
+      "exportedAs": "prepareTextRegions",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "recognizePageRegions",
+      "exportedAs": "recognizePageRegions",
+      "source": "./ocr/localOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "releaseDecodablePageUri",
+      "exportedAs": "releaseDecodablePageUri",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "releaseLocalOcrEngines",
+      "exportedAs": "releaseLocalOcrEngines",
+      "source": "./ocr/localOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "roundPx",
+      "exportedAs": "roundPx",
+      "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "subscribeModelDownloads",
+      "exportedAs": "subscribeModelDownloads",
+      "source": "./ocr/models/modelStore",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "yoloDetector",
+      "exportedAs": "yoloDetector",
+      "source": "./detection/yolo",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "InspectedExtensionApk",
+      "exportedAs": "InspectedExtensionApk",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "NativePageImage",
+      "exportedAs": "NativePageImage",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "fetchExtensionPageImage",
+      "exportedAs": "fetchExtensionPageImage",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "getExtensionChapterUrl",
+      "exportedAs": "getExtensionChapterUrl",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "getExtensionChapters",
+      "exportedAs": "getExtensionChapters",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "getExtensionFilters",
+      "exportedAs": "getExtensionFilters",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "getExtensionHeaders",
+      "exportedAs": "getExtensionHeaders",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "getExtensionLatest",
+      "exportedAs": "getExtensionLatest",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "getExtensionManga",
+      "exportedAs": "getExtensionManga",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "getExtensionMangaUrl",
+      "exportedAs": "getExtensionMangaUrl",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "getExtensionPages",
+      "exportedAs": "getExtensionPages",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "getExtensionPopular",
+      "exportedAs": "getExtensionPopular",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "hasNativeExtensions",
+      "exportedAs": "hasNativeExtensions",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "inspectExtensionApk",
+      "exportedAs": "inspectExtensionApk",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "listInstalledExtensions",
+      "exportedAs": "listInstalledExtensions",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "listNativeSources",
+      "exportedAs": "listNativeSources",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "requestExtensionUninstall",
+      "exportedAs": "requestExtensionUninstall",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/extensions/index.ts",
+      "name": "searchExtension",
+      "exportedAs": "searchExtension",
+      "source": null,
+      "kind": "declaration",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/native/index.ts",
+      "name": "canRequestPackageInstalls",
+      "exportedAs": "canRequestPackageInstalls",
+      "source": "./updater",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/native/index.ts",
+      "name": "hasNativeInstaller",
+      "exportedAs": "hasNativeInstaller",
+      "source": "./updater",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/native/index.ts",
+      "name": "installApk",
+      "exportedAs": "installApk",
+      "source": "./updater",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/native/index.ts",
+      "name": "openInstallPermissionSettings",
+      "exportedAs": "openInstallPermissionSettings",
+      "source": "./updater",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/platform/native/index.ts",
+      "name": "sha256OfFile",
+      "exportedAs": "sha256OfFile",
+      "source": "./updater",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "AppDownloadedMetadataService",
+      "exportedAs": "AppDownloadedMetadataService",
+      "source": "./appServices",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "AppExtensionRegistryService",
+      "exportedAs": "AppExtensionRegistryService",
+      "source": "./appServices",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "AppLibraryService",
+      "exportedAs": "AppLibraryService",
+      "source": "./appServices",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "AppNotificationService",
+      "exportedAs": "AppNotificationService",
+      "source": "./appServices",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "AppServices",
+      "exportedAs": "AppServices",
+      "source": "./appServices",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "BubbleMask",
+      "exportedAs": "BubbleMask",
+      "source": "./bubbleMask",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "ChapterMeta",
+      "exportedAs": "ChapterMeta",
+      "source": "./chapterSource",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "ChapterSortField",
+      "exportedAs": "ChapterSortField",
+      "source": "./chapterSource",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "ChapterSourceModule",
+      "exportedAs": "ChapterSourceModule",
+      "source": "./chapterSource",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "ChapterViewerData",
+      "exportedAs": "ChapterViewerData",
+      "source": "./chapterSource",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "ChapterWriteIdentity",
+      "exportedAs": "ChapterWriteIdentity",
+      "source": "./chapterSource",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "DownloadNotificationPort",
+      "exportedAs": "DownloadNotificationPort",
+      "source": "./downloadNotificationPort",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "DownloadPageSession",
+      "exportedAs": "DownloadPageSession",
+      "source": "./downloadSessionPort",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "DownloadSessionPort",
+      "exportedAs": "DownloadSessionPort",
+      "source": "./downloadSessionPort",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "LanguageOption",
+      "exportedAs": "LanguageOption",
+      "source": "./chapterSource",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "LibraryMangaInput",
+      "exportedAs": "LibraryMangaInput",
+      "source": "./chapterSource",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "OpenChapterContext",
+      "exportedAs": "OpenChapterContext",
+      "source": "./chapterSource",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "ProgressMap",
+      "exportedAs": "ProgressMap",
+      "source": "./chapterSource",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "SharedTag",
+      "exportedAs": "SharedTag",
+      "source": "./chapterSource",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "SortDirection",
+      "exportedAs": "SortDirection",
+      "source": "./chapterSource",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "SourceProgressQuery",
+      "exportedAs": "SourceProgressQuery",
+      "source": "./chapterSource",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "TrackedChapterProgress",
+      "exportedAs": "TrackedChapterProgress",
+      "source": "./chapterSource",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "TranslationEngine",
+      "exportedAs": "TranslationEngine",
+      "source": "./translationEngine",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "TranslationNotificationCommand",
+      "exportedAs": "TranslationNotificationCommand",
+      "source": "./translationNotificationPort",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "TranslationNotificationCommandPort",
+      "exportedAs": "TranslationNotificationCommandPort",
+      "source": "./translationNotificationPort",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "TranslationNotificationHandler",
+      "exportedAs": "TranslationNotificationHandler",
+      "source": "./translationNotificationPort",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "TranslationNotificationPort",
+      "exportedAs": "TranslationNotificationPort",
+      "source": "./translationNotificationPort",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "ViewerChapterRow",
+      "exportedAs": "ViewerChapterRow",
+      "source": "./chapterSource",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/geometry/index.ts",
+      "name": "Box",
+      "exportedAs": "Box",
+      "source": "./box",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/geometry/index.ts",
+      "name": "Point",
+      "exportedAs": "Point",
+      "source": "./box",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/index.ts",
+      "name": "*",
+      "exportedAs": "*",
+      "source": "./theme",
+      "kind": "star-re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/index.ts",
+      "name": "*",
+      "exportedAs": "*",
+      "source": "./ui",
+      "kind": "star-re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/motion/index.ts",
+      "name": "MotionProvider",
+      "exportedAs": "MotionProvider",
+      "source": "./MotionProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/motion/index.ts",
+      "name": "useAppMotion",
+      "exportedAs": "useAppMotion",
+      "source": "./MotionProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/runtime/index.ts",
+      "name": "AppServicesProvider",
+      "exportedAs": "AppServicesProvider",
+      "source": "./AppServicesProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/runtime/index.ts",
+      "name": "OverlayHostApi",
+      "exportedAs": "OverlayHostApi",
+      "source": "./OverlayHostProvider",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/runtime/index.ts",
+      "name": "OverlayHostProvider",
+      "exportedAs": "OverlayHostProvider",
+      "source": "./OverlayHostProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/runtime/index.ts",
+      "name": "useAppServices",
+      "exportedAs": "useAppServices",
+      "source": "./AppServicesProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/runtime/index.ts",
+      "name": "useOverlayHost",
+      "exportedAs": "useOverlayHost",
+      "source": "./OverlayHostProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/runtime/index.ts",
+      "name": "usePersistentOverlay",
+      "exportedAs": "usePersistentOverlay",
+      "source": "./OverlayHostProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/theme/index.ts",
+      "name": "*",
+      "exportedAs": "*",
+      "source": "./tokens",
+      "kind": "star-re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/feedback/index.ts",
+      "name": "default",
+      "exportedAs": "HistorySkeleton",
+      "source": "./SkeletonRows",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/feedback/index.ts",
+      "name": "SkeletonBlock",
+      "exportedAs": "SkeletonBlock",
+      "source": "./Skeleton",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/feedback/index.ts",
+      "name": "SkeletonPulse",
+      "exportedAs": "SkeletonPulse",
+      "source": "./Skeleton",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/index.ts",
+      "name": "*",
+      "exportedAs": "*",
+      "source": "./layout",
+      "kind": "star-re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/index.ts",
+      "name": "*",
+      "exportedAs": "*",
+      "source": "./overlays",
+      "kind": "star-re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/index.ts",
+      "name": "*",
+      "exportedAs": "*",
+      "source": "./feedback",
+      "kind": "star-re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/index.ts",
+      "name": "ChipTab",
+      "exportedAs": "ChipTab",
+      "source": "./navigation/ChipTabBar",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/ui/index.ts",
+      "name": "default",
+      "exportedAs": "ChipTabBar",
+      "source": "./navigation/ChipTabBar",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/index.ts",
+      "name": "default",
+      "exportedAs": "FilterChip",
+      "source": "./navigation/FilterChip",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/index.ts",
+      "name": "MediaCardEntry",
+      "exportedAs": "MediaCardEntry",
+      "source": "./navigation/MediaCards",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/ui/index.ts",
+      "name": "MediaGridCard",
+      "exportedAs": "MediaGridCard",
+      "source": "./navigation/MediaCards",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/index.ts",
+      "name": "MediaListRow",
+      "exportedAs": "MediaListRow",
+      "source": "./navigation/MediaCards",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/interaction/index.ts",
+      "name": "default",
+      "exportedAs": "ScalePressable",
+      "source": "./ScalePressable",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/interaction/index.ts",
+      "name": "ScalePressableProps",
+      "exportedAs": "ScalePressableProps",
+      "source": "./ScalePressable",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/ui/layout/index.ts",
+      "name": "default",
+      "exportedAs": "AppHeader",
+      "source": "./AppHeader",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/layout/index.ts",
+      "name": "AppHeaderProps",
+      "exportedAs": "AppHeaderProps",
+      "source": "./AppHeader",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/ui/layout/index.ts",
+      "name": "HeaderIconAction",
+      "exportedAs": "HeaderIconAction",
+      "source": "./AppHeader",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/ui/motion/index.ts",
+      "name": "default",
+      "exportedAs": "AnimatedBanner",
+      "source": "./AnimatedBanner",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/motion/index.ts",
+      "name": "AnimatedBannerProps",
+      "exportedAs": "AnimatedBannerProps",
+      "source": "./AnimatedBanner",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/ui/motion/index.ts",
+      "name": "default",
+      "exportedAs": "FadeInView",
+      "source": "./FadeInView",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/motion/index.ts",
+      "name": "FadeInViewProps",
+      "exportedAs": "FadeInViewProps",
+      "source": "./FadeInView",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/ui/motion/index.ts",
+      "name": "default",
+      "exportedAs": "MotionModal",
+      "source": "./MotionModal",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/motion/index.ts",
+      "name": "MotionModalProps",
+      "exportedAs": "MotionModalProps",
+      "source": "./MotionModal",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/ui/overlays/index.ts",
+      "name": "*",
+      "exportedAs": "*",
+      "source": "./ConfirmDialog",
+      "kind": "star-re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/overlays/index.ts",
+      "name": "*",
+      "exportedAs": "*",
+      "source": "./PromptDialog",
+      "kind": "star-re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/overlays/index.ts",
+      "name": "MenuOption",
+      "exportedAs": "MenuOption",
+      "source": "./MenuSheet",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/ui/overlays/index.ts",
+      "name": "default",
+      "exportedAs": "MenuSheet",
+      "source": "./MenuSheet",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/ui/overlays/index.ts",
+      "name": "MenuSheetProps",
+      "exportedAs": "MenuSheetProps",
+      "source": "./MenuSheet",
+      "kind": "re-export",
+      "typeOnly": true
+    }
+  ],
+  "counts": {
+    "entries": 499
+  }
+}
