@@ -1,6 +1,13 @@
 {
-  "latest": "0.0.6",
+  "latest": "0.0.7",
   "versions": [
+    {
+      "version": "0.0.7",
+      "date": "2026-10-28",
+      "title": "Simpler reader modes, better zoom, and smoother navigation",
+      "file": "v0.0.7.md",
+      "type": "stable"
+    },
     {
       "version": "0.0.6",
       "date": "2026-10-21",
@@ -30,5 +37,8 @@
       "type": "stable"
     }
   ],
-  "general": { "file": "general.md", "updated": "2026-10-20" }
+  "general": {
+    "file": "general.md",
+    "updated": "2026-10-20"
+  }
 }

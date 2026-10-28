@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedBy": "scripts/generate-architecture-docs.mjs",
-  "appVersion": "0.0.6",
+  "appVersion": "0.0.7",
   "entries": [
     {
       "entry": "app/downloads/index.tsx",
