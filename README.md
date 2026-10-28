@@ -40,12 +40,12 @@ Get the latest APK from [GitHub Releases](https://github.com/MR-LORD-REX/mangora
 ## Security scans
 
 <!-- latest-security-start -->
-The [v0.0.6](https://github.com/MR-LORD-REX/mangora/releases/tag/v0.0.6) APKs were analyzed by VirusTotal. Both reports show zero malicious detections.
+The [v0.0.7](https://github.com/MR-LORD-REX/mangora/releases/tag/v0.0.7) APKs were analyzed by VirusTotal. See each report for its detection results.
 
 | Build | VirusTotal analysis | SHA-256 |
 | --- | --- | --- |
-| arm64-v8a | [View report](https://www.virustotal.com/gui/file/8148de58279aac9cd46c07e8dafd5a68a03e7fe3119922f101ed65ae93254bab/detection) | `8148de58279aac9cd46c07e8dafd5a68a03e7fe3119922f101ed65ae93254bab` |
-| armeabi-v7a | [View report](https://www.virustotal.com/gui/file/ad28767c2d0117719bccab5621ea3dafa7f45b07e5c8131ee90be54db1ad5df5/detection) | `ad28767c2d0117719bccab5621ea3dafa7f45b07e5c8131ee90be54db1ad5df5` |
+| arm64-v8a | [View report](https://www.virustotal.com/gui/file/e0f104fe8260d7bc76f8db1e51e0dda6af996c46327cc6235ad9fd59f85632fe/detection) | `e0f104fe8260d7bc76f8db1e51e0dda6af996c46327cc6235ad9fd59f85632fe` |
+| armeabi-v7a | [View report](https://www.virustotal.com/gui/file/8a5d7d7f0818fb480ba6834f652579efef7d49efbdfc4a6bbda80815317d6e06/detection) | `8a5d7d7f0818fb480ba6834f652579efef7d49efbdfc4a6bbda80815317d6e06` |
 <!-- latest-security-end -->
 
 ## Privacy and third-party services
