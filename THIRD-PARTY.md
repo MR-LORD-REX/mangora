@@ -1,7 +1,7 @@
 # Third-party software, models, and services
 
 This document records the third-party components that are especially relevant
-to Mangora's Android runtime, OCR/translation features, and bundled models. It
+to Mangora's Android runtime, OCR/translation features, and downloadable models. It
 is not a complete inventory of every direct or transitive npm dependency.
 For the full dependency graph, see `package.json` and `package-lock.json`.
 Licenses and upstream terms can change; check the linked sources when
@@ -26,18 +26,18 @@ application license does not replace those licenses.
 
 ## Models
 
-These models are used on-device. The PP-OCR files are downloaded by the app
-when a user selects an OCR model; they are not bundled in the APK. The YOLO
-ONNX files are bundled in the app.
+These models are used on-device. Region detectors and PP-OCR files are
+downloaded by the app when a user selects them; they are not bundled in the APK.
+The URLs and SHA-256 metadata are recorded in the source catalog, but runtime
+download verification currently checks byte size only.
 
 | Model | Use | License / status | Source |
 | --- | --- | --- | --- |
-| Manga109 YOLO11 speech-bubble segmentation | Finds speech bubbles and their masks | Apache-2.0, as declared by the published model repository | [Model card and license](https://huggingface.co/huyvux3005/manga109-segmentation-bubble/tree/f9a4108c4955136a810e5e92207972f3fb3a65fd) |
+| Manga109 YOLO11 speech-bubble segmentation | Bubble-first region detector and mask provider. The ONNX file is distributed from the Mangora repository at a pinned commit. | Apache-2.0, as declared by the published model repository | [Model card and license](https://huggingface.co/huyvux3005/manga109-segmentation-bubble/tree/f9a4108c4955136a810e5e92207972f3fb3a65fd) |
+| RT-DETR Comic v4 | Default box region detector for bubbles, bubble text and free text | See the upstream model card; Mangora does not relicense these weights | [Model card](https://huggingface.co/ogkalu/comic-text-and-bubble-detector/tree/16e8a622f91fabc6b5b65c96d32d1183f8843546) |
 | PP-OCRv6 Medium recognition | Recognizes Japanese, Chinese, and English text | Apache-2.0, as declared by the model repository | [PaddlePaddle model](https://huggingface.co/PaddlePaddle/PP-OCRv6_medium_rec_onnx/tree/50c7eacafc52fa7bcf4194e8cd08e46f8558504b) |
 | PP-OCRv5 mobile text detector | Detects text lines for OCR | Apache-2.0, as declared by the model repository | [PaddlePaddle model](https://huggingface.co/PaddlePaddle/PP-OCRv5_mobile_det_onnx/tree/e6f4fa85f00e168c862bc462aebca69eef9b3d3d) |
 | PP-OCRv5 Korean mobile recognition | Recognizes Korean and Latin-script text | Apache-2.0, as declared by the model repository | [PaddlePaddle model](https://huggingface.co/PaddlePaddle/korean_PP-OCRv5_mobile_rec_onnx) |
-| Mangora YOLO text detector (`assets/models/yolo.onnx`) | Fallback text-region detection | Trained by the Mangora developer using the Ultralytics YOLO framework. | [Ultralytics licensing](https://www.ultralytics.com/license) |
-
 The Manga109 bubble model's publisher lists Manga109 and
 [MS92/MangaSegmentation](https://huggingface.co/datasets/MS92/MangaSegmentation)
 as training datasets. Dataset/image rights and attribution requirements are
@@ -48,9 +48,7 @@ redistribute Manga109 source images as part of Mangora.
 Ultralytics' framework has its own licensing terms. The fact that an ONNX
 model was trained or exported using Ultralytics does not, by itself, determine
 the license of that model's weights. Confirm the training-data terms for each
-model before distribution. The legacy detector was trained by the Mangora
-developer; its weight license and training-data provenance should be recorded
-before making a more specific licensing claim.
+model before distribution.
 
 ## External services
 
@@ -61,7 +59,8 @@ apply when a user chooses to use the corresponding feature.
 | Service | Use | Applicable terms |
 | --- | --- | --- |
 | Google Translate endpoint | Optional free translation of recognized text | [Google Terms of Service](https://policies.google.com/terms). Mangora currently calls Google's `translate.googleapis.com` `gtx` endpoint; this is not an open-source component, and its use is subject to Google's terms and endpoint availability. |
-| Google Gemini API | Optional AI translation; recognized text and configured prior-page context may be sent | [Google APIs Terms](https://developers.google.com/terms) and [Gemini API Additional Terms](https://ai.google.dev/gemini-api/terms) |
+| Google Gemini API | Optional default endpoint for OpenAI-compatible translation; recognized text and configured prior-page context may be sent | [Google APIs Terms](https://developers.google.com/terms) and [Gemini API Additional Terms](https://ai.google.dev/gemini-api/terms) |
+| User-configured OpenAI-compatible endpoint | Optional AI translation; recognized text and configured prior-page context are sent to the endpoint chosen in Settings. This may be a hosted API, a LAN server or localhost. | The selected provider's terms apply. Mangora does not provide or operate that service. |
 | Hugging Face Hub | Hosts downloadable OCR model files and the published speech-bubble checkpoint | Hosting does not supply a single license for hosted files. The license for each model is identified separately above. |
 | GitHub | Hosts release metadata and APK update assets | GitHub is a hosting service, not the license for the hosted app or assets. |
 | User-selected extension repositories and their providers | May supply catalogs, metadata, images, and chapter content | Each repository, extension, and provider has its own terms and content rights. Mangora does not grant rights to third-party content. |

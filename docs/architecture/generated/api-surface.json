@@ -2021,6 +2021,14 @@
     },
     {
       "entry": "src/features/settings/index.ts",
+      "name": "ModelsSettingsScreen",
+      "exportedAs": "ModelsSettingsScreen",
+      "source": "./screens/ModelsSettingsScreen",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/settings/index.ts",
       "name": "OcrModelsSettingsScreen",
       "exportedAs": "OcrModelsSettingsScreen",
       "source": "./screens/OcrModelsSettingsScreen",
@@ -2079,15 +2087,31 @@
       "entry": "src/features/translation/index.ts",
       "name": "AUTO_MODEL_SWITCH_FAILURE_LIMIT",
       "exportedAs": "AUTO_MODEL_SWITCH_FAILURE_LIMIT",
-      "source": "./engines/gemini/geminiFallback",
+      "source": "./engines/shared/modelFallback",
       "kind": "re-export",
       "typeOnly": false
     },
     {
       "entry": "src/features/translation/index.ts",
+      "name": "AiBatchContext",
+      "exportedAs": "AiBatchContext",
+      "source": "./pipeline/aiBatch",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "AiBatchOutcome",
+      "exportedAs": "AiBatchOutcome",
+      "source": "./pipeline/aiBatch",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
       "name": "AutoSwitchFailureState",
       "exportedAs": "AutoSwitchFailureState",
-      "source": "./engines/gemini/geminiFallback",
+      "source": "./engines/shared/modelFallback",
       "kind": "re-export",
       "typeOnly": true
     },
@@ -2104,6 +2128,46 @@
       "name": "BubbleMask",
       "exportedAs": "BubbleMask",
       "source": "./domain/types",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "ContextPage",
+      "exportedAs": "ContextPage",
+      "source": "./pipeline/contextPages",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "DEFAULT_REGION_DETECTOR_ID",
+      "exportedAs": "DEFAULT_REGION_DETECTOR_ID",
+      "source": "@shared/contracts/regionDetector",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "DEFAULT_TRANSLATION_BASE_URL",
+      "exportedAs": "DEFAULT_TRANSLATION_BASE_URL",
+      "source": "@shared/contracts/translationProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "DEFAULT_TRANSLATION_MODELS",
+      "exportedAs": "DEFAULT_TRANSLATION_MODELS",
+      "source": "@shared/contracts/translationProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "DetectionRole",
+      "exportedAs": "DetectionRole",
+      "source": "@shared/contracts/regionDetector",
       "kind": "re-export",
       "typeOnly": true
     },
@@ -2133,105 +2197,41 @@
     },
     {
       "entry": "src/features/translation/index.ts",
-      "name": "GEMINI_DEFAULT_MODEL",
-      "exportedAs": "GEMINI_DEFAULT_MODEL",
-      "source": "@core/settings/geminiModelId",
-      "kind": "re-export",
-      "typeOnly": false
-    },
-    {
-      "entry": "src/features/translation/index.ts",
-      "name": "GEMINI_MODELS",
-      "exportedAs": "GEMINI_MODELS",
-      "source": "./engines/gemini/geminiModels",
-      "kind": "re-export",
-      "typeOnly": false
-    },
-    {
-      "entry": "src/features/translation/index.ts",
-      "name": "GEMINI_MODEL_IDS",
-      "exportedAs": "GEMINI_MODEL_IDS",
-      "source": "@core/settings/geminiModelId",
-      "kind": "re-export",
-      "typeOnly": false
-    },
-    {
-      "entry": "src/features/translation/index.ts",
-      "name": "GeminiApiError",
-      "exportedAs": "GeminiApiError",
-      "source": "./engines/gemini/geminiClient",
-      "kind": "re-export",
-      "typeOnly": false
-    },
-    {
-      "entry": "src/features/translation/index.ts",
-      "name": "GeminiBatchRegion",
-      "exportedAs": "GeminiBatchRegion",
-      "source": "./engines/gemini/geminiClient",
-      "kind": "re-export",
-      "typeOnly": true
-    },
-    {
-      "entry": "src/features/translation/index.ts",
-      "name": "GeminiBatchResponse",
-      "exportedAs": "GeminiBatchResponse",
-      "source": "./engines/gemini/geminiClient",
-      "kind": "re-export",
-      "typeOnly": true
-    },
-    {
-      "entry": "src/features/translation/index.ts",
-      "name": "GeminiBatchResult",
-      "exportedAs": "GeminiBatchResult",
-      "source": "./engines/gemini/geminiClient",
-      "kind": "re-export",
-      "typeOnly": true
-    },
-    {
-      "entry": "src/features/translation/index.ts",
-      "name": "GeminiModelId",
-      "exportedAs": "GeminiModelId",
-      "source": "@core/settings/geminiModelId",
-      "kind": "re-export",
-      "typeOnly": true
-    },
-    {
-      "entry": "src/features/translation/index.ts",
-      "name": "GeminiPagePayload",
-      "exportedAs": "GeminiPagePayload",
-      "source": "./engines/gemini/geminiClient",
-      "kind": "re-export",
-      "typeOnly": true
-    },
-    {
-      "entry": "src/features/translation/index.ts",
-      "name": "GeminiUsageInfo",
-      "exportedAs": "GeminiUsageInfo",
-      "source": "./engines/gemini/geminiClient",
-      "kind": "re-export",
-      "typeOnly": true
-    },
-    {
-      "entry": "src/features/translation/index.ts",
-      "name": "GeminiUsageRecordInput",
-      "exportedAs": "GeminiUsageRecordInput",
-      "source": "./engines/gemini/geminiUsage",
-      "kind": "re-export",
-      "typeOnly": true
-    },
-    {
-      "entry": "src/features/translation/index.ts",
-      "name": "GeminiUsageSnapshot",
-      "exportedAs": "GeminiUsageSnapshot",
-      "source": "./engines/gemini/geminiUsage",
-      "kind": "re-export",
-      "typeOnly": true
-    },
-    {
-      "entry": "src/features/translation/index.ts",
       "name": "ModelFallbackOutcome",
       "exportedAs": "ModelFallbackOutcome",
-      "source": "./engines/gemini/geminiFallback",
+      "source": "./engines/shared/modelFallback",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "OpenAiBatchRequest",
+      "exportedAs": "OpenAiBatchRequest",
+      "source": "./engines/openai/openaiClient",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "OpenAiBatchResponse",
+      "exportedAs": "OpenAiBatchResponse",
+      "source": "./engines/openai/openaiClient",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "OpenAiCompatibleError",
+      "exportedAs": "OpenAiCompatibleError",
+      "source": "./engines/openai/openaiClient",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "OpenAiUsageInfo",
+      "exportedAs": "OpenAiUsageInfo",
+      "source": "./engines/openai/openaiClient",
       "kind": "re-export",
       "typeOnly": true
     },
@@ -2317,6 +2317,14 @@
     },
     {
       "entry": "src/features/translation/index.ts",
+      "name": "RegionDetectorId",
+      "exportedAs": "RegionDetectorId",
+      "source": "@shared/contracts/regionDetector",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
       "name": "TranslateTextFn",
       "exportedAs": "TranslateTextFn",
       "source": "./domain/types",
@@ -2325,9 +2333,49 @@
     },
     {
       "entry": "src/features/translation/index.ts",
+      "name": "TranslationBatchRegion",
+      "exportedAs": "TranslationBatchRegion",
+      "source": "./engines/shared/batchPrompt",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "TranslationBatchResult",
+      "exportedAs": "TranslationBatchResult",
+      "source": "./engines/shared/batchPrompt",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "TranslationCacheIdentity",
+      "exportedAs": "TranslationCacheIdentity",
+      "source": "./pipeline/cacheIdentity",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
       "name": "TranslationLockOwner",
       "exportedAs": "TranslationLockOwner",
       "source": "./jobs/translationRuntimeLock",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "TranslationPagePayload",
+      "exportedAs": "TranslationPagePayload",
+      "source": "./engines/shared/batchPrompt",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "TranslationProviderConfig",
+      "exportedAs": "TranslationProviderConfig",
+      "source": "@shared/contracts/translationProvider",
       "kind": "re-export",
       "typeOnly": true
     },
@@ -2357,6 +2405,22 @@
     },
     {
       "entry": "src/features/translation/index.ts",
+      "name": "TranslationUsageRecordInput",
+      "exportedAs": "TranslationUsageRecordInput",
+      "source": "./pipeline/translationUsage",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "TranslationUsageSnapshot",
+      "exportedAs": "TranslationUsageSnapshot",
+      "source": "./pipeline/translationUsage",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/translation/index.ts",
       "name": "assembleSlotText",
       "exportedAs": "assembleSlotText",
       "source": "./pipeline/translationRegions",
@@ -2376,6 +2440,22 @@
       "name": "buildTranslationSlots",
       "exportedAs": "buildTranslationSlots",
       "source": "./pipeline/translationRegions",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "buildTranslationSystemPrompt",
+      "exportedAs": "buildTranslationSystemPrompt",
+      "source": "./engines/shared/batchPrompt",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "buildTranslationUserPrompt",
+      "exportedAs": "buildTranslationUserPrompt",
+      "source": "./engines/shared/batchPrompt",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -2405,33 +2485,9 @@
     },
     {
       "entry": "src/features/translation/index.ts",
-      "name": "fallbackModelChain",
-      "exportedAs": "fallbackModelChain",
-      "source": "./engines/gemini/geminiFallback",
-      "kind": "re-export",
-      "typeOnly": false
-    },
-    {
-      "entry": "src/features/translation/index.ts",
       "name": "fillSlotTexts",
       "exportedAs": "fillSlotTexts",
       "source": "./pipeline/translationRegions",
-      "kind": "re-export",
-      "typeOnly": false
-    },
-    {
-      "entry": "src/features/translation/index.ts",
-      "name": "geminiModelInfo",
-      "exportedAs": "geminiModelInfo",
-      "source": "./engines/gemini/geminiModels",
-      "kind": "re-export",
-      "typeOnly": false
-    },
-    {
-      "entry": "src/features/translation/index.ts",
-      "name": "getGeminiUsageSnapshot",
-      "exportedAs": "getGeminiUsageSnapshot",
-      "source": "./engines/gemini/geminiUsage",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -2453,6 +2509,14 @@
     },
     {
       "entry": "src/features/translation/index.ts",
+      "name": "getTranslationsUsageSnapshot",
+      "exportedAs": "getTranslationsUsageSnapshot",
+      "source": "./pipeline/translationUsage",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
       "name": "initPretranslateQueue",
       "exportedAs": "initPretranslateQueue",
       "source": "./jobs/pretranslateQueue",
@@ -2469,17 +2533,25 @@
     },
     {
       "entry": "src/features/translation/index.ts",
-      "name": "isGeminiModelId",
-      "exportedAs": "isGeminiModelId",
-      "source": "@core/settings/geminiModelId",
+      "name": "isGeminiBaseUrl",
+      "exportedAs": "isGeminiBaseUrl",
+      "source": "@shared/contracts/translationProvider",
       "kind": "re-export",
       "typeOnly": false
     },
     {
       "entry": "src/features/translation/index.ts",
-      "name": "isGeminiRateLimitError",
-      "exportedAs": "isGeminiRateLimitError",
-      "source": "./engines/gemini/geminiFallback",
+      "name": "isOpenAiRateLimitError",
+      "exportedAs": "isOpenAiRateLimitError",
+      "source": "./engines/openai/openaiClient",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "isRegionDetectorId",
+      "exportedAs": "isRegionDetectorId",
+      "source": "@shared/contracts/regionDetector",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -2503,7 +2575,31 @@
       "entry": "src/features/translation/index.ts",
       "name": "nextAutoSwitchFailureState",
       "exportedAs": "nextAutoSwitchFailureState",
-      "source": "./engines/gemini/geminiFallback",
+      "source": "./engines/shared/modelFallback",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "normalizeBaseUrl",
+      "exportedAs": "normalizeBaseUrl",
+      "source": "@shared/contracts/translationProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "normalizeTranslationBaseUrl",
+      "exportedAs": "normalizeTranslationBaseUrl",
+      "source": "@shared/contracts/translationProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "ocrRegionsForSlots",
+      "exportedAs": "ocrRegionsForSlots",
+      "source": "./pipeline/translationRegions",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -2511,15 +2607,23 @@
       "entry": "src/features/translation/index.ts",
       "name": "pacificDayStartMs",
       "exportedAs": "pacificDayStartMs",
-      "source": "./engines/gemini/geminiUsage",
+      "source": "./pipeline/translationUsage",
       "kind": "re-export",
       "typeOnly": false
     },
     {
       "entry": "src/features/translation/index.ts",
-      "name": "parseGeminiJson",
-      "exportedAs": "parseGeminiJson",
-      "source": "./engines/gemini/geminiClient",
+      "name": "pageCacheIdentity",
+      "exportedAs": "pageCacheIdentity",
+      "source": "./pipeline/cacheIdentity",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "parseBatchJson",
+      "exportedAs": "parseBatchJson",
+      "source": "./engines/shared/batchPrompt",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -2533,9 +2637,9 @@
     },
     {
       "entry": "src/features/translation/index.ts",
-      "name": "recordGeminiUsage",
-      "exportedAs": "recordGeminiUsage",
-      "source": "./engines/gemini/geminiUsage",
+      "name": "recordTranslationUsage",
+      "exportedAs": "recordTranslationUsage",
+      "source": "./pipeline/translationUsage",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -2559,7 +2663,15 @@
       "entry": "src/features/translation/index.ts",
       "name": "requestWithModelFallback",
       "exportedAs": "requestWithModelFallback",
-      "source": "./engines/gemini/geminiFallback",
+      "source": "./engines/shared/modelFallback",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "resolveTranslationProvider",
+      "exportedAs": "resolveTranslationProvider",
+      "source": "./provider",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -2573,9 +2685,25 @@
     },
     {
       "entry": "src/features/translation/index.ts",
-      "name": "subscribeGeminiUsage",
-      "exportedAs": "subscribeGeminiUsage",
-      "source": "./engines/gemini/geminiUsage",
+      "name": "runAiTranslationBatch",
+      "exportedAs": "runAiTranslationBatch",
+      "source": "./pipeline/aiBatch",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "selectPreviousContextPages",
+      "exportedAs": "selectPreviousContextPages",
+      "source": "./pipeline/contextPages",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "selectPreviousContextPagesUnique",
+      "exportedAs": "selectPreviousContextPagesUnique",
+      "source": "./pipeline/contextPages",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -2597,6 +2725,14 @@
     },
     {
       "entry": "src/features/translation/index.ts",
+      "name": "subscribeTranslationUsage",
+      "exportedAs": "subscribeTranslationUsage",
+      "source": "./pipeline/translationUsage",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
       "name": "toEngineLanguageCode",
       "exportedAs": "toEngineLanguageCode",
       "source": "./domain/languages",
@@ -2613,9 +2749,41 @@
     },
     {
       "entry": "src/features/translation/index.ts",
-      "name": "translateGeminiBatch",
-      "exportedAs": "translateGeminiBatch",
-      "source": "./engines/gemini/geminiClient",
+      "name": "translateOpenAiCompatibleBatch",
+      "exportedAs": "translateOpenAiCompatibleBatch",
+      "source": "./engines/openai/openaiClient",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "translationCacheKey",
+      "exportedAs": "translationCacheKey",
+      "source": "./pipeline/cacheIdentity",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "translationEndpoint",
+      "exportedAs": "translationEndpoint",
+      "source": "./engines/openai/openaiClient",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "translationProviderLabel",
+      "exportedAs": "translationProviderLabel",
+      "source": "./provider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "translationProviderReadinessError",
+      "exportedAs": "translationProviderReadinessError",
+      "source": "./provider",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -2629,17 +2797,17 @@
     },
     {
       "entry": "src/features/translation/index.ts",
-      "name": "validateGeminiApiKey",
-      "exportedAs": "validateGeminiApiKey",
-      "source": "./engines/gemini/geminiClient",
+      "name": "validateBatchResults",
+      "exportedAs": "validateBatchResults",
+      "source": "./engines/shared/batchPrompt",
       "kind": "re-export",
       "typeOnly": false
     },
     {
       "entry": "src/features/translation/index.ts",
-      "name": "waitForRpmCapacity",
-      "exportedAs": "waitForRpmCapacity",
-      "source": "./engines/gemini/geminiUsage",
+      "name": "validateOpenAiCompatibleEndpoint",
+      "exportedAs": "validateOpenAiCompatibleEndpoint",
+      "source": "./engines/openai/openaiClient",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -2757,9 +2925,33 @@
     },
     {
       "entry": "src/features/vision/index.ts",
+      "name": "ALL_REGION_DETECTOR_IDS",
+      "exportedAs": "ALL_REGION_DETECTOR_IDS",
+      "source": "./models/regionModelStore",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "DEFAULT_REGION_DETECTOR_ID",
+      "exportedAs": "DEFAULT_REGION_DETECTOR_ID",
+      "source": "./models/regionModels",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
       "name": "DecodablePageOptions",
       "exportedAs": "DecodablePageOptions",
       "source": "./ocr/pageOcr",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "DetectPageOptions",
+      "exportedAs": "DetectPageOptions",
+      "source": "./detection/pageDetector",
       "kind": "re-export",
       "typeOnly": true
     },
@@ -2776,6 +2968,14 @@
       "name": "DetectionResult",
       "exportedAs": "DetectionResult",
       "source": "./detection/detectionTypes",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "DetectionRole",
+      "exportedAs": "DetectionRole",
+      "source": "./models/regionModels",
       "kind": "re-export",
       "typeOnly": true
     },
@@ -2933,65 +3133,81 @@
     },
     {
       "entry": "src/features/vision/index.ts",
-      "name": "SEG_INPUT_SIZE",
-      "exportedAs": "SEG_INPUT_SIZE",
-      "source": "./segmentation/mangaBubbleSeg",
+      "name": "REGION_DETECTORS",
+      "exportedAs": "REGION_DETECTORS",
+      "source": "./models/regionModels",
       "kind": "re-export",
       "typeOnly": false
     },
     {
       "entry": "src/features/vision/index.ts",
-      "name": "YOLO_CLASSES",
-      "exportedAs": "YOLO_CLASSES",
-      "source": "./detection/yolo",
-      "kind": "re-export",
-      "typeOnly": false
-    },
-    {
-      "entry": "src/features/vision/index.ts",
-      "name": "YOLO_CLASS_COLORS",
-      "exportedAs": "YOLO_CLASS_COLORS",
-      "source": "./detection/detectionTypes",
-      "kind": "re-export",
-      "typeOnly": false
-    },
-    {
-      "entry": "src/features/vision/index.ts",
-      "name": "YOLO_CLASS_LABELS",
-      "exportedAs": "YOLO_CLASS_LABELS",
-      "source": "./detection/detectionTypes",
-      "kind": "re-export",
-      "typeOnly": false
-    },
-    {
-      "entry": "src/features/vision/index.ts",
-      "name": "YOLO_CLASS_NAMES",
-      "exportedAs": "YOLO_CLASS_NAMES",
-      "source": "./detection/detectionTypes",
-      "kind": "re-export",
-      "typeOnly": false
-    },
-    {
-      "entry": "src/features/vision/index.ts",
-      "name": "YoloClassName",
-      "exportedAs": "YoloClassName",
-      "source": "./detection/detectionTypes",
+      "name": "RegionDetectorDef",
+      "exportedAs": "RegionDetectorDef",
+      "source": "./models/regionModels",
       "kind": "re-export",
       "typeOnly": true
     },
     {
       "entry": "src/features/vision/index.ts",
-      "name": "YoloDetector",
-      "exportedAs": "YoloDetector",
-      "source": "./detection/yolo",
+      "name": "RegionDetectorId",
+      "exportedAs": "RegionDetectorId",
+      "source": "./models/regionModels",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "RegionDetectorKind",
+      "exportedAs": "RegionDetectorKind",
+      "source": "./models/regionModels",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "RegionModelDownloadState",
+      "exportedAs": "RegionModelDownloadState",
+      "source": "./models/regionModelStore",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "RegionModelDownloadStatus",
+      "exportedAs": "RegionModelDownloadStatus",
+      "source": "./models/regionModelStore",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "RegionModelFile",
+      "exportedAs": "RegionModelFile",
+      "source": "./models/regionModels",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "RtDetrDetector",
+      "exportedAs": "RtDetrDetector",
+      "source": "./detection/rtdetr",
       "kind": "re-export",
       "typeOnly": false
     },
     {
       "entry": "src/features/vision/index.ts",
-      "name": "YoloError",
-      "exportedAs": "YoloError",
-      "source": "./detection/yolo",
+      "name": "RtDetrError",
+      "exportedAs": "RtDetrError",
+      "source": "./detection/rtdetr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "SEG_INPUT_SIZE",
+      "exportedAs": "SEG_INPUT_SIZE",
+      "source": "./segmentation/mangaBubbleSeg",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -3008,6 +3224,14 @@
       "name": "cancelModelDownload",
       "exportedAs": "cancelModelDownload",
       "source": "./ocr/models/modelStore",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "cancelRegionModelDownload",
+      "exportedAs": "cancelRegionModelDownload",
+      "source": "./models/regionModelStore",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -3053,9 +3277,9 @@
     },
     {
       "entry": "src/features/vision/index.ts",
-      "name": "detectImage",
-      "exportedAs": "detectImage",
-      "source": "./detection/yolo",
+      "name": "deleteRegionModel",
+      "exportedAs": "deleteRegionModel",
+      "source": "./models/regionModelStore",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -3072,6 +3296,14 @@
       "name": "downloadModel",
       "exportedAs": "downloadModel",
       "source": "./ocr/models/modelStore",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "downloadRegionModel",
+      "exportedAs": "downloadRegionModel",
+      "source": "./models/regionModelStore",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -3117,6 +3349,22 @@
     },
     {
       "entry": "src/features/vision/index.ts",
+      "name": "getRegionDetector",
+      "exportedAs": "getRegionDetector",
+      "source": "./models/regionModels",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "getRegionModelDownloadState",
+      "exportedAs": "getRegionModelDownloadState",
+      "source": "./models/regionModelStore",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
       "name": "isMangaBubbleSegAvailable",
       "exportedAs": "isMangaBubbleSegAvailable",
       "source": "./segmentation/mangaBubbleSeg",
@@ -3133,9 +3381,17 @@
     },
     {
       "entry": "src/features/vision/index.ts",
-      "name": "isYoloRuntimeAvailable",
-      "exportedAs": "isYoloRuntimeAvailable",
-      "source": "./detection/yolo",
+      "name": "isRegionDetectorId",
+      "exportedAs": "isRegionDetectorId",
+      "source": "./models/regionModels",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "isRegionModelDownloaded",
+      "exportedAs": "isRegionModelDownloaded",
+      "source": "./models/regionModelStore",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -3221,6 +3477,30 @@
     },
     {
       "entry": "src/features/vision/index.ts",
+      "name": "regionDetectorDirectoryUri",
+      "exportedAs": "regionDetectorDirectoryUri",
+      "source": "./models/regionModelStore",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "regionDetectorFileUri",
+      "exportedAs": "regionDetectorFileUri",
+      "source": "./models/regionModelStore",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
+      "name": "regionRoleForClass",
+      "exportedAs": "regionRoleForClass",
+      "source": "./models/regionModels",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
       "name": "releaseDecodablePageUri",
       "exportedAs": "releaseDecodablePageUri",
       "source": "./ocr/pageOcr",
@@ -3245,6 +3525,14 @@
     },
     {
       "entry": "src/features/vision/index.ts",
+      "name": "rtdetrDetector",
+      "exportedAs": "rtdetrDetector",
+      "source": "./detection/rtdetr",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/vision/index.ts",
       "name": "subscribeModelDownloads",
       "exportedAs": "subscribeModelDownloads",
       "source": "./ocr/models/modelStore",
@@ -3253,9 +3541,9 @@
     },
     {
       "entry": "src/features/vision/index.ts",
-      "name": "yoloDetector",
-      "exportedAs": "yoloDetector",
-      "source": "./detection/yolo",
+      "name": "subscribeRegionModelDownloads",
+      "exportedAs": "subscribeRegionModelDownloads",
+      "source": "./models/regionModelStore",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -3533,6 +3821,38 @@
     },
     {
       "entry": "src/shared/contracts/index.ts",
+      "name": "DEFAULT_REGION_DETECTOR_ID",
+      "exportedAs": "DEFAULT_REGION_DETECTOR_ID",
+      "source": "./regionDetector",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "DEFAULT_TRANSLATION_BASE_URL",
+      "exportedAs": "DEFAULT_TRANSLATION_BASE_URL",
+      "source": "./translationProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "DEFAULT_TRANSLATION_MODELS",
+      "exportedAs": "DEFAULT_TRANSLATION_MODELS",
+      "source": "./translationProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "DetectionRole",
+      "exportedAs": "DetectionRole",
+      "source": "./regionDetector",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
       "name": "DownloadNotificationPort",
       "exportedAs": "DownloadNotificationPort",
       "source": "./downloadNotificationPort",
@@ -3584,6 +3904,14 @@
       "name": "ProgressMap",
       "exportedAs": "ProgressMap",
       "source": "./chapterSource",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "RegionDetectorId",
+      "exportedAs": "RegionDetectorId",
+      "source": "./regionDetector",
       "kind": "re-export",
       "typeOnly": true
     },
@@ -3661,11 +3989,75 @@
     },
     {
       "entry": "src/shared/contracts/index.ts",
+      "name": "TranslationProviderConfig",
+      "exportedAs": "TranslationProviderConfig",
+      "source": "./translationProvider",
+      "kind": "re-export",
+      "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
       "name": "ViewerChapterRow",
       "exportedAs": "ViewerChapterRow",
       "source": "./chapterSource",
       "kind": "re-export",
       "typeOnly": true
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "allowsKeylessTranslation",
+      "exportedAs": "allowsKeylessTranslation",
+      "source": "./translationProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "isAiTranslationEngine",
+      "exportedAs": "isAiTranslationEngine",
+      "source": "./translationEngine",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "isGeminiBaseUrl",
+      "exportedAs": "isGeminiBaseUrl",
+      "source": "./translationProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "isLocalTranslationEndpoint",
+      "exportedAs": "isLocalTranslationEndpoint",
+      "source": "./translationProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "isRegionDetectorId",
+      "exportedAs": "isRegionDetectorId",
+      "source": "./regionDetector",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "normalizeBaseUrl",
+      "exportedAs": "normalizeBaseUrl",
+      "source": "./translationProvider",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/shared/contracts/index.ts",
+      "name": "normalizeTranslationBaseUrl",
+      "exportedAs": "normalizeTranslationBaseUrl",
+      "source": "./translationProvider",
+      "kind": "re-export",
+      "typeOnly": false
     },
     {
       "entry": "src/shared/geometry/index.ts",
@@ -4005,6 +4397,6 @@
     }
   ],
   "counts": {
-    "entries": 500
+    "entries": 549
   }
 }

@@ -1,25 +1,13 @@
 /** Public API for on-device page detection, segmentation and OCR. */
 
-export {
-  detectImage,
-  isYoloRuntimeAvailable,
-  yoloDetector,
-  YOLO_CLASSES,
-  YoloDetector,
-  YoloError,
-} from "./detection/yolo";
-export {
-  YOLO_CLASS_COLORS,
-  YOLO_CLASS_LABELS,
-  YOLO_CLASS_NAMES,
-} from "./detection/detectionTypes";
 export type {
   Detection,
   DetectionResult,
-  YoloClassName,
   YoloOptions,
 } from "./detection/detectionTypes";
 export { detectPageRegions } from "./detection/pageDetector";
+export type { DetectPageOptions } from "./detection/pageDetector";
+export { RtDetrDetector, RtDetrError, rtdetrDetector } from "./detection/rtdetr";
 
 export {
   isMangaBubbleSegAvailable,
@@ -89,3 +77,32 @@ export type {
   LocalOcrModelFile,
   LocalOcrModelId,
 } from "./ocr/models/ocrModels";
+export {
+  DEFAULT_REGION_DETECTOR_ID,
+  getRegionDetector,
+  isRegionDetectorId,
+  REGION_DETECTORS,
+  regionRoleForClass,
+} from "./models/regionModels";
+export type {
+  DetectionRole,
+  RegionDetectorDef,
+  RegionDetectorId,
+  RegionDetectorKind,
+  RegionModelFile,
+} from "./models/regionModels";
+export {
+  ALL_REGION_DETECTOR_IDS,
+  cancelRegionModelDownload,
+  deleteRegionModel,
+  downloadRegionModel,
+  getRegionModelDownloadState,
+  isRegionModelDownloaded,
+  regionDetectorDirectoryUri,
+  regionDetectorFileUri,
+  subscribeRegionModelDownloads,
+} from "./models/regionModelStore";
+export type {
+  RegionModelDownloadState,
+  RegionModelDownloadStatus,
+} from "./models/regionModelStore";

@@ -10,7 +10,7 @@
  *      each line height, so it follows curved and tapered bubbles instead of
  *      overflowing a rectangle.
  *
- * Legacy YOLO / cache regions without a mask keep the previous rectangle
+ * Box-detector / cache regions without a mask keep the previous rectangle
  * erase + rectangular fit behaviour. All geometry arrives in natural page
  * pixels and is mapped to display pixels with the page's sx/sy scale.
  * ---------------------------------------------------------------------------

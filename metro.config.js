@@ -4,7 +4,6 @@ const { withNativewind } = require("nativewind/metro");
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-// Bundle the onnxruntime model weights (assets/models/yolo.onnx) as an asset.
-config.resolver.assetExts.push("onnx");
- 
+// ONNX model weights are downloaded at runtime and are not Metro assets.
+
 module.exports = withNativewind(config);

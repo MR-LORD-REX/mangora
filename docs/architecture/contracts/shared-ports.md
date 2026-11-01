@@ -88,10 +88,10 @@ import the notification implementation.
 
 ## Translation engine port
 
-`TranslationEngine` is a small settings-facing discriminator (`free`/`ai` in the
-current UI). Provider request/response types stay in the translation feature; a
-new cloud backend should implement the same engine-neutral page-batch contract
-without leaking HTTP details into reader components.
+`TranslationEngine` is a small settings-facing discriminator (`free`/`openai`).
+Provider request/response types stay in the translation feature; a new cloud
+backend should implement the same engine-neutral page-batch contract without
+leaking HTTP details into reader components.
 
 ## Adding a port
 

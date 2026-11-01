@@ -10,7 +10,10 @@ import type {
   ReaderTranslationEngine,
   ReaderTranslationMode,
 } from "@core/settings";
-import type { GeminiModelId } from "@features/translation";
+import type {
+  RegionDetectorId,
+  TranslationProviderConfig,
+} from "@features/translation";
 import type { ReaderPipelineMetrics } from "../../translation/types";
 
 import type {
@@ -64,13 +67,18 @@ export interface ReaderChromeStackProps {
   translationEngine: ReaderTranslationEngine;
   handleSelectTranslationEngine: (engine: ReaderTranslationEngine) => void;
   handleSelectTranslationMode: (mode: ReaderTranslationMode) => void;
-  geminiModelId: GeminiModelId;
-  handleSelectGeminiModel: (model: GeminiModelId) => void;
+  translationModelId: string;
+  handleSelectTranslationModel: (model: string) => void;
+  onOpenTranslationSettings: () => void;
+  regionDetectorId: RegionDetectorId;
+  handleSelectRegionDetector: (id: RegionDetectorId) => void;
   autoModelSwitch: boolean;
   handleChangeAutoModelSwitch: (value: boolean) => void;
   ocrLookahead: number;
   handleChangeLookahead: (value: number) => void;
+  onOpenModelsSettings: () => void;
   metrics: ReaderPipelineMetrics;
+  aiProvider: TranslationProviderConfig | null;
   handleClearTrCache: () => Promise<number>;
   overlayFont: ReaderOverlayFont;
   handleSelectOverlayFont: (font: ReaderOverlayFont) => void;

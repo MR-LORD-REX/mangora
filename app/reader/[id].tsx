@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 
 import { openMangaInfo } from "@composition/navigation/manga";
+import type { Href } from "expo-router";
 import {
   ReaderScreen,
   ReaderSessionProvider,
@@ -44,6 +45,12 @@ export default function ReaderRoute() {
         chapterMemo={paramString(params.chapterMemo)}
         chapterTitle={chapterTitle}
         onOpenMangaInfo={openMangaInfo}
+        onOpenModelsSettings={() =>
+          router.push("/settings/models" as Href)
+        }
+        onOpenTranslationSettings={() =>
+          router.push("/settings/translation" as Href)
+        }
         onBack={() => router.back()}
         onReplaceReader={(nextParams) =>
           router.replace({ pathname: "/reader/[id]", params: nextParams })

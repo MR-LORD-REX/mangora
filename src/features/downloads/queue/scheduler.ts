@@ -88,6 +88,12 @@ const jobs = new Map<string, DownloadJob>();
 let waiting: string[] = [];
 const running = new Map<string, { cancel: boolean }>();
 const listeners = new Set<(snapshot: DownloadSnapshot) => void>();
+let cachedSnapshot: DownloadSnapshot = Object.freeze({
+  jobs: Object.freeze([]) as unknown as DownloadJob[],
+  runningCount: 0,
+  pendingCount: 0,
+  paused: false,
+});
 
 let settings = {
   sourceConcurrency: 1,
@@ -102,7 +108,7 @@ let completedSinceIdle = 0;
 let downloadNotifications: DownloadNotificationPort | null = null;
 const metadataSyncedThisSession = new Set<string>();
 
-function snapshot(): DownloadSnapshot {
+function buildSnapshot(): DownloadSnapshot {
   const all = Array.from(jobs.values()).sort(
     (a, b) => (b.startedAt ?? 0) - (a.startedAt ?? 0),
   );
@@ -117,8 +123,8 @@ function snapshot(): DownloadSnapshot {
 }
 
 function emit(): void {
-  const next = snapshot();
-  listeners.forEach((listener) => listener(next));
+  cachedSnapshot = buildSnapshot();
+  listeners.forEach((listener) => listener(cachedSnapshot));
 }
 
 /** Subscribes to queue changes; fires immediately with the current snapshot. */
@@ -126,14 +132,14 @@ export function subscribeDownloads(
   listener: (snapshot: DownloadSnapshot) => void,
 ): () => void {
   listeners.add(listener);
-  listener(snapshot());
+  listener(cachedSnapshot);
   return () => {
     listeners.delete(listener);
   };
 }
 
 export function getDownloadSnapshot(): DownloadSnapshot {
-  return snapshot();
+  return cachedSnapshot;
 }
 
 export function getDownloadJob(id: string): DownloadJob | null {

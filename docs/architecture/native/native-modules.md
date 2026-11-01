@@ -84,8 +84,8 @@ inference.
 
 **JS surface:** `@features/vision` runtime/engines and model store.
 
-**Failure behavior:** `isYoloRuntimeAvailable()`/model checks surface a clear
-capability state. The app should remain usable without OCR/translation.
+**Failure behavior:** availability/model checks surface a clear capability
+state. The app should remain usable without OCR/translation.
 
 ## Notification integration
 

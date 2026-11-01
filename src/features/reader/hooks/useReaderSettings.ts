@@ -10,8 +10,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppSettings } from "@core/settings";
 import { updateSettings } from "@core/settings";
 import {
-  GEMINI_DEFAULT_MODEL,
-  type GeminiModelId,
+  DEFAULT_REGION_DETECTOR_ID,
+  type RegionDetectorId,
 } from "@features/translation";
 import {
   clampOcrBubbleWorkers,
@@ -39,9 +39,9 @@ export function useReaderSettings(): ReaderSettingsState {
   const [overlayFontWeight, setOverlayFontWeightState] = useState(600);
   const [overlayFontScale, setOverlayFontScaleState] = useState(1);
   const [overlayTextColor, setOverlayTextColorState] = useState("#000000");
-  const [geminiApiKey, setGeminiApiKeyState] = useState("");
-  const [geminiModelId, setGeminiModelIdState] =
-    useState<GeminiModelId>(GEMINI_DEFAULT_MODEL);
+  const [translationModelId, setTranslationModelIdState] = useState("");
+  const [regionDetectorId, setRegionDetectorIdState] =
+    useState<RegionDetectorId>(DEFAULT_REGION_DETECTOR_ID);
   const [autoModelSwitch, setAutoModelSwitchState] = useState(false);
   const [ocrBubbleWorkers, setOcrBubbleWorkersState] = useState(8);
   const [ocrLookahead, setOcrLookaheadState] = useState(2);
@@ -120,10 +120,15 @@ export function useReaderSettings(): ReaderSettingsState {
     void updateSettings({ readerHideTranslated: value }).catch(console.error);
     console.log("[reader][settings] hide translated", value);
   }, []);
-  const setGeminiModelId = useCallback((model: GeminiModelId) => {
-    setGeminiModelIdState(model);
-    void updateSettings({ geminiModelId: model }).catch(console.error);
-    console.log("[reader][settings] Gemini model", model);
+  const setTranslationModelId = useCallback((model: string) => {
+    setTranslationModelIdState(model);
+    void updateSettings({ translationModelId: model }).catch(console.error);
+    console.log("[reader][settings] translation model", model);
+  }, []);
+  const setRegionDetectorId = useCallback((id: RegionDetectorId) => {
+    setRegionDetectorIdState(id);
+    void updateSettings({ regionDetectorId: id }).catch(console.error);
+    console.log("[reader][settings] region detector", id);
   }, []);
   const setAutoModelSwitch = useCallback((value: boolean) => {
     setAutoModelSwitchState(value);
@@ -186,8 +191,8 @@ export function useReaderSettings(): ReaderSettingsState {
       setTranslationModeState(settings.readerTranslationMode);
       setShowPageStatusState(settings.readerShowPageStatus);
       setHideTranslatedState(settings.readerHideTranslated);
-      setGeminiApiKeyState(settings.geminiApiKey || "");
-      setGeminiModelIdState(settings.geminiModelId || GEMINI_DEFAULT_MODEL);
+      setTranslationModelIdState(settings.translationModelId || "");
+      setRegionDetectorIdState(settings.regionDetectorId);
       setAutoModelSwitchState(settings.readerAutoModelSwitch);
       const effectiveLanguage = settings.readerLanguage || autoLanguage;
       setOcrBubbleWorkersState(
@@ -220,8 +225,8 @@ export function useReaderSettings(): ReaderSettingsState {
     overlayFontWeight,
     overlayFontScale,
     overlayTextColor,
-    geminiApiKey,
-    geminiModelId,
+    translationModelId,
+    regionDetectorId,
     autoModelSwitch,
     ocrBubbleWorkers,
     ocrLookahead,
@@ -243,7 +248,8 @@ export function useReaderSettings(): ReaderSettingsState {
     setTranslationMode,
     setShowPageStatus,
     setHideTranslated,
-    setGeminiModelId,
+    setTranslationModelId,
+    setRegionDetectorId,
     setOcrLookahead,
     queueSettingsPatch,
     flushSettingsPatch,

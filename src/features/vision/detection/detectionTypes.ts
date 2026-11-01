@@ -1,26 +1,15 @@
 /**
- * yolo.types.ts
+ * detectionTypes.ts
  * ---------------------------------------------------------------------------
- * Types + per-class constants for manga text-region detection with
- * assets/models/yolo.onnx (Ultralytics YOLO, NMS export).
- *
- * Model contract:
- *   input  "images"  float32 [1, 3, 640, 640]  (RGB, 0..1, letterboxed)
- *   output "output0" float32 [1, 300, 6]        (x1, y1, x2, y2, conf, class)
+ * Detector-independent types shared by the downloadable region models.
  * ---------------------------------------------------------------------------
  */
 
 import type { BubbleMask } from "@shared/contracts/bubbleMask";
-
-/** Class id order matches the model's names metadata. */
-export const YOLO_CLASS_NAMES = ["clean_text", "messy_text", "text_bubble"] as const;
-export type YoloClassName = (typeof YOLO_CLASS_NAMES)[number];
-
-/** Display labels for the class ids above. */
-export const YOLO_CLASS_LABELS = ["Clean text", "Messy text", "Text bubble"] as const;
-
-/** One distinct border color per class, aligned by index. */
-export const YOLO_CLASS_COLORS = ["#fbbf24", "#34d399", "#60a5fa"] as const;
+import type {
+  DetectionRole,
+  RegionDetectorId,
+} from "../models/regionModels";
 
 /** A single detected text region, in original image pixels. */
 export interface Detection {
@@ -30,11 +19,16 @@ export interface Detection {
   y2: number;
   /** 0..1 model confidence. */
   confidence: number;
-  /** Index into YOLO_CLASS_NAMES. */
+  /** Raw model class id, retained for diagnostics only. */
   classId: number;
   /**
+   * Detector-independent semantic role. Consumers must use this instead of
+   * interpreting classId, which differs between RT-DETR and Manga109.
+   */
+  role: DetectionRole;
+  /**
    * Optional instance mask. The Manga109 segmenter fills this for every
-   * speech bubble; the YOLO text detector leaves it undefined.
+   * speech bubble; box detectors leave it undefined.
    */
   mask?: BubbleMask;
 }
@@ -47,8 +41,8 @@ export interface DetectionResult {
   imageHeight: number;
   /** Detections sorted by confidence, highest first. */
   boxes: Detection[];
-  /** Which detector produced the boxes (diagnostics / overlay fallback). */
-  detector?: "manga109" | "yolo";
+  /** Which detector produced the boxes (diagnostics and cache identity). */
+  detector?: RegionDetectorId;
 }
 
 /** Per-call knobs for the detector. */

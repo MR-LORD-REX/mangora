@@ -85,9 +85,10 @@ export async function updateSettings(
 export function subscribeSettings(
   listener: (settings: AppSettings) => void,
 ): () => void {
-  listeners.add(listener);
+  const cachedListener = (settings: AppSettings) => listener(settings);
+  listeners.add(cachedListener);
   return () => {
-    listeners.delete(listener);
+    listeners.delete(cachedListener);
   };
 }
 

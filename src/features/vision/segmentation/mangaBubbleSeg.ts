@@ -3,7 +3,7 @@
  * ---------------------------------------------------------------------------
  * Manga109 YOLO11 speech-bubble instance segmentation.
  *
- * Model: ML/models/manga109-bubble-segmentation/best.pt, exported to ONNX at
+ * Model: Manga109 YOLO11 bubble segmentation, exported to ONNX at
  * 1024x1024 (one class: balloon). Outputs:
  *   output0 float32 [1, 37, N]   box(cx,cy,w,h) + class score + 32 mask coeffs
  *   output1 float32 [1, 32, P, P] mask prototypes (P = input / 4)
@@ -19,8 +19,6 @@
  * ---------------------------------------------------------------------------
  */
 
-import { Asset } from "expo-asset";
-
 import type { BubbleMask } from "@shared/contracts/bubbleMask";
 import type { Point } from "@shared/geometry";
 import type {
@@ -28,7 +26,7 @@ import type {
   DetectionResult,
   YoloOptions,
 } from "../detection/detectionTypes";
-import { mergeDetections } from "../detection/yoloUtils";
+import { mergeDetections } from "../detection/geometry";
 import {
   decodeSkiaImage,
   loadOcrRuntime,
@@ -36,9 +34,8 @@ import {
   type OrtSession,
 } from "../ocr/runtime/onnxRuntime";
 import { ensureDecodablePageUri } from "../ocr/pageOcr";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const MODEL_FILE = require("../../../../assets/models/manga109-bubble-seg.onnx");
+import { regionDetectorFileUri } from "../models/regionModelStore";
+import { getRegionDetector } from "../models/regionModels";
 
 /** Must match the exported ONNX input. */
 export const SEG_INPUT_SIZE = 1024;
@@ -73,7 +70,8 @@ interface Letterbox {
   imageHeight: number;
 }
 
-interface Candidate extends Detection {
+interface Candidate
+  extends Omit<Detection, "role" | "mask"> {
   coeffs: Float32Array;
 }
 
@@ -121,7 +119,15 @@ function nms(candidates: Candidate[], limit: number): Candidate[] {
   const sorted = [...candidates].sort((a, b) => b.confidence - a.confidence);
   const kept: Candidate[] = [];
   for (const candidate of sorted) {
-    if (kept.some((other) => intersectionOverUnion(other, candidate) >= NMS_IOU)) {
+    if (
+      kept.some(
+        (other) =>
+          intersectionOverUnion(
+            { ...other, role: "bubble" },
+            { ...candidate, role: "bubble" },
+          ) >= NMS_IOU,
+      )
+    ) {
       continue;
     }
     kept.push(candidate);
@@ -135,6 +141,7 @@ function decodeCandidates(
   dims: readonly number[],
   inputSize: number,
   minConfidence: number,
+  classRoles: Record<number, Detection["role"]>,
 ): Candidate[] {
   const a = dims[1] ?? 0;
   const b = dims[2] ?? 0;
@@ -158,10 +165,15 @@ function decodeCandidates(
   const candidates: Candidate[] = [];
   for (let anchor = 0; anchor < anchors; anchor += 1) {
     let confidence = 0;
+    let classId = -1;
     for (let cls = 0; cls < classCount; cls += 1) {
-      confidence = Math.max(confidence, at(4 + cls, anchor));
+      const score = at(4 + cls, anchor);
+      if (score > confidence) {
+        confidence = score;
+        classId = cls;
+      }
     }
-    if (confidence < minConfidence) continue;
+    if (confidence < minConfidence || !classRoles[classId]) continue;
 
     const cx = at(0, anchor);
     const cy = at(1, anchor);
@@ -178,7 +190,7 @@ function decodeCandidates(
     for (let c = 0; c < MASK_PROTO_CHANNELS; c += 1) {
       coeffs[c] = at(4 + classCount + c, anchor);
     }
-    candidates.push({ x1, y1, x2, y2, confidence, classId: 2, coeffs });
+    candidates.push({ x1, y1, x2, y2, confidence, classId, coeffs });
   }
   return candidates;
 }
@@ -380,9 +392,10 @@ export class MangaBubbleSegmenter {
     if (this.session) return this.session;
     if (!this.sessionPromise) {
       this.sessionPromise = (async () => {
-        const asset = Asset.fromModule(MODEL_FILE);
-        if (!asset.localUri) await asset.downloadAsync();
-        const modelUri = asset.localUri ?? asset.uri;
+        const modelUri = regionDetectorFileUri(
+          "manga109-bubble-seg",
+          "model.onnx",
+        );
         const session = await runtime.ort.InferenceSession.create(modelUri, {
           graphOptimizationLevel: "all",
           intraOpNumThreads: 4,
@@ -427,6 +440,7 @@ export class MangaBubbleSegmenter {
         "The segmentation model must export boxes and mask prototypes.",
       );
     }
+    const detector = getRegionDetector("manga109-bubble-seg");
     const minConfidence = options.minConfidence ?? 0.25;
     const maxBoxes = options.maxBoxes ?? MAX_DETECTIONS;
     const all: Detection[] = [];
@@ -461,6 +475,7 @@ export class MangaBubbleSegmenter {
           boxTensor.dims,
           SEG_INPUT_SIZE,
           minConfidence,
+          detector.classRoles,
         ),
         maxBoxes,
       );
@@ -483,7 +498,8 @@ export class MangaBubbleSegmenter {
           x2: mask.bounds.x2,
           y2: mask.bounds.y2,
           confidence: candidate.confidence,
-          classId: 2,
+          classId: candidate.classId,
+          role: "bubble",
           mask,
         });
       }
@@ -496,7 +512,12 @@ export class MangaBubbleSegmenter {
       tiles: tiles.length,
       boxes: boxes.length,
     });
-    return { imageWidth, imageHeight, boxes, detector: "manga109" };
+    return {
+      imageWidth,
+      imageHeight,
+      boxes,
+      detector: detector.id,
+    };
   }
 }
 

@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Dimensions, FlatList, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -22,7 +22,13 @@ import { autoLanguageForReader } from "../components/panels/readerLanguages";
 import ReaderChromeRenderer from "../blocks/ReaderChromeRenderer";
 import ReaderPageRenderer from "../blocks/ReaderPageRenderer";
 import { clearTranslationCacheForManga } from "@core/db/repositories/translationRepository";
-import { updateSettings } from "@core/settings";
+import {
+  getSettings,
+  subscribeSettings,
+  updateSettings,
+  type AppSettings,
+} from "@core/settings";
+import { resolveTranslationProvider } from "@features/translation";
 import { readerBackgroundColor } from "../domain/readerBackground";
 import { chromeToSettingsPatch } from "../domain/readerChromeSettings";
 import type { ReaderDisplayItem } from "../domain/layout/readerItems";
@@ -58,6 +64,8 @@ export interface ReaderScreenProps {
   chapterMemo: string;
   chapterTitle?: string;
   onOpenMangaInfo: (target: { provider: string; id: string }) => void;
+  onOpenModelsSettings: () => void;
+  onOpenTranslationSettings: () => void;
   onBack: () => void;
   onReplaceReader: (params: {
     id: string;
@@ -76,6 +84,8 @@ export default function ReaderScreen({
   chapterMemo,
   chapterTitle,
   onOpenMangaInfo,
+  onOpenModelsSettings,
+  onOpenTranslationSettings,
   onBack,
   onReplaceReader,
 }: ReaderScreenProps) {
@@ -262,8 +272,8 @@ export default function ReaderScreen({
     overlayFontWeight,
     overlayFontScale,
     overlayTextColor,
-    geminiApiKey,
-    geminiModelId,
+    translationModelId,
+    regionDetectorId,
     autoModelSwitch,
     ocrBubbleWorkers,
     ocrLookahead,
@@ -282,12 +292,37 @@ export default function ReaderScreen({
     setTranslationMode,
     setShowPageStatus,
     setHideTranslated,
-    setGeminiModelId,
+    setTranslationModelId,
+    setRegionDetectorId,
     setOcrLookahead,
     queueSettingsPatch,
     flushSettingsPatch,
   } = useReaderSettings();
   const ocrLanguage = readerLanguage || autoLanguage;
+  const [pipelineSettings, setPipelineSettings] = useState<AppSettings | null>(
+    null,
+  );
+
+  useEffect(() => {
+    let active = true;
+    const apply = (next: AppSettings) => {
+      if (active) setPipelineSettings(next);
+    };
+    void getSettings().then(apply);
+    const unsubscribe = subscribeSettings(apply);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
+  const aiProvider = useMemo(
+    () =>
+      pipelineSettings &&
+      translationEngine === "openai"
+        ? resolveTranslationProvider(pipelineSettings, translationEngine)
+        : null,
+    [pipelineSettings, translationEngine],
+  );
 
   const {
     translationPages,
@@ -314,12 +349,14 @@ export default function ReaderScreen({
     translationEngine,
     translationMode,
     targetLanguage,
-    geminiApiKey,
-    geminiModelId,
+    translationModelId,
+    regionDetectorId,
     ocrBubbleWorkers,
     ocrLookahead,
     aiMaxContextPages,
     autoModelSwitch,
+    // The hook waits for the persisted snapshot before starting a run.
+    settings: pipelineSettings,
     onAutoModelSwitchDisabled: () => {
       setAutoModelSwitch(false);
       updateSettings({ readerAutoModelSwitch: false }).catch(console.error);
@@ -365,7 +402,8 @@ export default function ReaderScreen({
     handleSelectTranslationMode,
     handleChangeShowPageStatus,
     handleChangeHideTranslated,
-    handleSelectGeminiModel,
+    handleSelectTranslationModel,
+    handleSelectRegionDetector,
     handleChangeAutoModelSwitch,
     handleChangeLookahead,
     handleSelectOverlayFont,
@@ -379,7 +417,9 @@ export default function ReaderScreen({
       applySettings: applyReaderSettings,
       translationEngine,
       translationMode,
-      geminiModelId,
+      translationModelId,
+      regionDetectorId,
+      setRegionDetectorId,
       setAutoModelSwitch,
       setDefaultZoomScale,
       setOverlayFont,
@@ -392,7 +432,7 @@ export default function ReaderScreen({
       setTranslationMode,
       setShowPageStatus,
       setHideTranslated,
-      setGeminiModelId,
+      setTranslationModelId,
       setOcrLookahead,
       flushSettingsPatch,
     },
@@ -553,13 +593,18 @@ export default function ReaderScreen({
           translationEngine={translationEngine}
           handleSelectTranslationEngine={handleSelectTranslationEngine}
           handleSelectTranslationMode={handleSelectTranslationMode}
-          geminiModelId={geminiModelId}
-          handleSelectGeminiModel={handleSelectGeminiModel}
+          translationModelId={translationModelId}
+          handleSelectTranslationModel={handleSelectTranslationModel}
+          regionDetectorId={regionDetectorId}
+          handleSelectRegionDetector={handleSelectRegionDetector}
           autoModelSwitch={autoModelSwitch}
           handleChangeAutoModelSwitch={handleChangeAutoModelSwitch}
           ocrLookahead={ocrLookahead}
           handleChangeLookahead={handleChangeLookahead}
+          onOpenModelsSettings={onOpenModelsSettings}
+          onOpenTranslationSettings={onOpenTranslationSettings}
           metrics={metrics}
+          aiProvider={aiProvider}
           handleClearTranslationCache={handleClearTranslationCache}
           overlayFont={overlayFont}
           handleSelectOverlayFont={handleSelectOverlayFont}

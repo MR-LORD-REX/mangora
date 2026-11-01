@@ -8,9 +8,9 @@
   ],
   "zones": {
     "app": {
-      "files": 21,
-      "lines": 732,
-      "dependencies": 37
+      "files": 22,
+      "lines": 743,
+      "dependencies": 38
     },
     "composition": {
       "files": 4,
@@ -18,14 +18,14 @@
       "dependencies": 15
     },
     "core": {
-      "files": 35,
-      "lines": 4562,
+      "files": 34,
+      "lines": 4706,
       "dependencies": 68
     },
     "features": {
-      "files": 260,
-      "lines": 43351,
-      "dependencies": 939
+      "files": 279,
+      "lines": 46307,
+      "dependencies": 1006
     },
     "platform": {
       "files": 4,
@@ -33,15 +33,15 @@
       "dependencies": 2
     },
     "shared": {
-      "files": 44,
-      "lines": 2465,
-      "dependencies": 73
+      "files": 46,
+      "lines": 2613,
+      "dependencies": 79
     }
   },
   "features": {
     "downloads": {
       "files": 34,
-      "lines": 5909,
+      "lines": 5915,
       "publicEntry": "src/features/downloads/index.ts"
     },
     "extensions": {
@@ -66,17 +66,17 @@
     },
     "reader": {
       "files": 104,
-      "lines": 16312,
+      "lines": 16774,
       "publicEntry": "src/features/reader/index.ts"
     },
     "settings": {
-      "files": 23,
-      "lines": 3321,
+      "files": 26,
+      "lines": 4133,
       "publicEntry": "src/features/settings/index.ts"
     },
     "translation": {
-      "files": 12,
-      "lines": 2924,
+      "files": 23,
+      "lines": 4185,
       "publicEntry": "src/features/translation/index.ts"
     },
     "updates": {
@@ -85,8 +85,8 @@
       "publicEntry": "src/features/updates/index.ts"
     },
     "vision": {
-      "files": 13,
-      "lines": 3405,
+      "files": 18,
+      "lines": 3820,
       "publicEntry": "src/features/vision/index.ts"
     }
   },
@@ -261,7 +261,7 @@
       "zone": "app",
       "feature": null,
       "kind": "component",
-      "lines": 55,
+      "lines": 62,
       "exports": [
         {
           "name": "default",
@@ -318,6 +318,21 @@
     },
     {
       "id": "app/settings/downloads.tsx",
+      "zone": "app",
+      "feature": null,
+      "kind": "component",
+      "lines": 4,
+      "exports": [
+        {
+          "name": "default",
+          "alias": "default",
+          "kind": "default",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "app/settings/models.tsx",
       "zone": "app",
       "feature": null,
       "kind": "component",
@@ -795,7 +810,7 @@
       "zone": "core",
       "feature": null,
       "kind": "module",
-      "lines": 283,
+      "lines": 292,
       "exports": [
         {
           "name": "default",
@@ -1236,7 +1251,7 @@
       "zone": "core",
       "feature": null,
       "kind": "module",
-      "lines": 461,
+      "lines": 475,
       "exports": [
         {
           "name": "CachedTranslationPage",
@@ -1347,7 +1362,7 @@
       "zone": "core",
       "feature": null,
       "kind": "module",
-      "lines": 338,
+      "lines": 345,
       "exports": [
         {
           "name": "AppSettingsRow",
@@ -1709,39 +1724,6 @@
       ]
     },
     {
-      "id": "src/core/settings/geminiModelId.ts",
-      "zone": "core",
-      "feature": null,
-      "kind": "module",
-      "lines": 22,
-      "exports": [
-        {
-          "name": "GEMINI_DEFAULT_MODEL",
-          "alias": "GEMINI_DEFAULT_MODEL",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "GEMINI_MODEL_IDS",
-          "alias": "GEMINI_MODEL_IDS",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
-          "kind": "declaration",
-          "typeOnly": true
-        },
-        {
-          "name": "isGeminiModelId",
-          "alias": "isGeminiModelId",
-          "kind": "declaration",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
       "id": "src/core/settings/index.ts",
       "zone": "core",
       "feature": null,
@@ -1812,7 +1794,7 @@
       "zone": "core",
       "feature": null,
       "kind": "module",
-      "lines": 465,
+      "lines": 600,
       "exports": [
         {
           "name": "AppSettings",
@@ -1917,7 +1899,7 @@
       "zone": "core",
       "feature": null,
       "kind": "module",
-      "lines": 117,
+      "lines": 118,
       "exports": [
         {
           "name": "getSettings",
@@ -3683,7 +3665,7 @@
       "zone": "features",
       "feature": "downloads",
       "kind": "module",
-      "lines": 877,
+      "lines": 883,
       "exports": [
         {
           "name": "EnqueueChapterInput",
@@ -6339,7 +6321,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "component",
-      "lines": 285,
+      "lines": 300,
       "exports": [
         {
           "name": "ReaderChromeRendererProps",
@@ -6402,7 +6384,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "component",
-      "lines": 329,
+      "lines": 339,
       "exports": [
         {
           "name": "default",
@@ -6417,7 +6399,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "module",
-      "lines": 123,
+      "lines": 131,
       "exports": [
         {
           "name": "ReaderChromeStackProps",
@@ -7338,7 +7320,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "component",
-      "lines": 193,
+      "lines": 318,
       "exports": [
         {
           "name": "default",
@@ -7368,7 +7350,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "component",
-      "lines": 282,
+      "lines": 312,
       "exports": [
         {
           "name": "default",
@@ -7413,7 +7395,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "module",
-      "lines": 432,
+      "lines": 442,
       "exports": [
         {
           "name": "styles",
@@ -7428,7 +7410,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "module",
-      "lines": 117,
+      "lines": 126,
       "exports": [
         {
           "name": "ENGINE_OPTIONS",
@@ -8285,7 +8267,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "module",
-      "lines": 252,
+      "lines": 258,
       "exports": [
         {
           "name": "useReaderSettings",
@@ -8300,7 +8282,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "module",
-      "lines": 70,
+      "lines": 72,
       "exports": [
         {
           "name": "ReaderSettingsState",
@@ -8321,7 +8303,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "module",
-      "lines": 229,
+      "lines": 243,
       "exports": [
         {
           "name": "ReaderSettingsBridgeOptions",
@@ -8669,7 +8651,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "component",
-      "lines": 657,
+      "lines": 702,
       "exports": [
         {
           "name": "ReaderScreenProps",
@@ -8785,7 +8767,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "module",
-      "lines": 163,
+      "lines": 170,
       "exports": [
         {
           "name": "bubblesFromCachedRegions",
@@ -8881,7 +8863,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "module",
-      "lines": 794,
+      "lines": 952,
       "exports": [
         {
           "name": "ReaderTranslationPipeline",
@@ -8902,7 +8884,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "module",
-      "lines": 318,
+      "lines": 337,
       "exports": [
         {
           "name": "recognizeBubbleBatch",
@@ -8923,7 +8905,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "module",
-      "lines": 266,
+      "lines": 259,
       "exports": [
         {
           "name": "translateAiPage",
@@ -8944,7 +8926,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "module",
-      "lines": 234,
+      "lines": 243,
       "exports": [
         {
           "name": "EMPTY_READER_PIPELINE_METRICS",
@@ -9037,7 +9019,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "module",
-      "lines": 185,
+      "lines": 187,
       "exports": [
         {
           "name": "PageTranslationState",
@@ -9449,6 +9431,21 @@
       ]
     },
     {
+      "id": "src/features/settings/components/sections/models/RegionModelsSection.tsx",
+      "zone": "features",
+      "feature": "settings",
+      "kind": "component",
+      "lines": 386,
+      "exports": [
+        {
+          "name": "default",
+          "alias": "default",
+          "kind": "default",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
       "id": "src/features/settings/components/sections/ocr/OcrModelsSection.tsx",
       "zone": "features",
       "feature": "settings",
@@ -9494,6 +9491,21 @@
       ]
     },
     {
+      "id": "src/features/settings/components/sections/translation/CustomProviderSection.tsx",
+      "zone": "features",
+      "feature": "settings",
+      "kind": "component",
+      "lines": 410,
+      "exports": [
+        {
+          "name": "default",
+          "alias": "default",
+          "kind": "default",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
       "id": "src/features/settings/components/sections/translation/TranslationQueueSection.tsx",
       "zone": "features",
       "feature": "settings",
@@ -9513,7 +9525,7 @@
       "zone": "features",
       "feature": "settings",
       "kind": "component",
-      "lines": 245,
+      "lines": 165,
       "exports": [
         {
           "name": "default",
@@ -9528,7 +9540,7 @@
       "zone": "features",
       "feature": "settings",
       "kind": "module",
-      "lines": 31,
+      "lines": 34,
       "exports": [
         {
           "name": "useAppSettings",
@@ -9543,7 +9555,7 @@
       "zone": "features",
       "feature": "settings",
       "kind": "barrel",
-      "lines": 12,
+      "lines": 13,
       "exports": [
         {
           "name": "AboutSettingsScreen",
@@ -9560,6 +9572,12 @@
         {
           "name": "DownloadsSettingsScreen",
           "alias": "DownloadsSettingsScreen",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "ModelsSettingsScreen",
+          "alias": "ModelsSettingsScreen",
           "kind": "named",
           "typeOnly": false
         },
@@ -9653,6 +9671,21 @@
       ]
     },
     {
+      "id": "src/features/settings/screens/ModelsSettingsScreen.tsx",
+      "zone": "features",
+      "feature": "settings",
+      "kind": "component",
+      "lines": 18,
+      "exports": [
+        {
+          "name": "ModelsSettingsScreen",
+          "alias": "ModelsSettingsScreen",
+          "kind": "declaration",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
       "id": "src/features/settings/screens/OcrModelsSettingsScreen.tsx",
       "zone": "features",
       "feature": "settings",
@@ -9732,7 +9765,7 @@
       "zone": "features",
       "feature": "settings",
       "kind": "component",
-      "lines": 16,
+      "lines": 19,
       "exports": [
         {
           "name": "TranslationSettingsScreen",
@@ -9747,7 +9780,7 @@
       "zone": "features",
       "feature": "settings",
       "kind": "test",
-      "lines": 48,
+      "lines": 119,
       "exports": []
     },
     {
@@ -9755,7 +9788,7 @@
       "zone": "features",
       "feature": "translation",
       "kind": "component",
-      "lines": 456,
+      "lines": 565,
       "exports": [
         {
           "name": "LanguageOption",
@@ -9815,7 +9848,7 @@
       "zone": "features",
       "feature": "translation",
       "kind": "module",
-      "lines": 75,
+      "lines": 81,
       "exports": [
         {
           "name": "Box",
@@ -9874,228 +9907,6 @@
       ]
     },
     {
-      "id": "src/features/translation/engines/gemini/geminiClient.ts",
-      "zone": "features",
-      "feature": "translation",
-      "kind": "module",
-      "lines": 355,
-      "exports": [
-        {
-          "name": "GEMINI_API_BASE",
-          "alias": "GEMINI_API_BASE",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "GeminiApiError",
-          "alias": "GeminiApiError",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "GeminiBatchRegion",
-          "alias": "GeminiBatchRegion",
-          "kind": "declaration",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiBatchResponse",
-          "alias": "GeminiBatchResponse",
-          "kind": "declaration",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiBatchResult",
-          "alias": "GeminiBatchResult",
-          "kind": "declaration",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiPagePayload",
-          "alias": "GeminiPagePayload",
-          "kind": "declaration",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiUsageInfo",
-          "alias": "GeminiUsageInfo",
-          "kind": "declaration",
-          "typeOnly": true
-        },
-        {
-          "name": "parseGeminiJson",
-          "alias": "parseGeminiJson",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "translateGeminiBatch",
-          "alias": "translateGeminiBatch",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "validateGeminiApiKey",
-          "alias": "validateGeminiApiKey",
-          "kind": "declaration",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
-      "id": "src/features/translation/engines/gemini/geminiFallback.ts",
-      "zone": "features",
-      "feature": "translation",
-      "kind": "module",
-      "lines": 117,
-      "exports": [
-        {
-          "name": "AUTO_MODEL_SWITCH_FAILURE_LIMIT",
-          "alias": "AUTO_MODEL_SWITCH_FAILURE_LIMIT",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "AutoSwitchFailureState",
-          "alias": "AutoSwitchFailureState",
-          "kind": "declaration",
-          "typeOnly": true
-        },
-        {
-          "name": "ModelFallbackOutcome",
-          "alias": "ModelFallbackOutcome",
-          "kind": "declaration",
-          "typeOnly": true
-        },
-        {
-          "name": "fallbackModelChain",
-          "alias": "fallbackModelChain",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "isGeminiRateLimitError",
-          "alias": "isGeminiRateLimitError",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "nextAutoSwitchFailureState",
-          "alias": "nextAutoSwitchFailureState",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "requestWithModelFallback",
-          "alias": "requestWithModelFallback",
-          "kind": "declaration",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
-      "id": "src/features/translation/engines/gemini/geminiModels.ts",
-      "zone": "features",
-      "feature": "translation",
-      "kind": "module",
-      "lines": 55,
-      "exports": [
-        {
-          "name": "GEMINI_DEFAULT_MODEL",
-          "alias": "GEMINI_DEFAULT_MODEL",
-          "kind": "local",
-          "typeOnly": false
-        },
-        {
-          "name": "GEMINI_MODELS",
-          "alias": "GEMINI_MODELS",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "GEMINI_MODEL_IDS",
-          "alias": "GEMINI_MODEL_IDS",
-          "kind": "local",
-          "typeOnly": false
-        },
-        {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
-          "kind": "local",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiModelInfo",
-          "alias": "GeminiModelInfo",
-          "kind": "declaration",
-          "typeOnly": true
-        },
-        {
-          "name": "geminiModelInfo",
-          "alias": "geminiModelInfo",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "isGeminiModelId",
-          "alias": "isGeminiModelId",
-          "kind": "local",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
-      "id": "src/features/translation/engines/gemini/geminiUsage.ts",
-      "zone": "features",
-      "feature": "translation",
-      "kind": "module",
-      "lines": 167,
-      "exports": [
-        {
-          "name": "GeminiUsageRecordInput",
-          "alias": "GeminiUsageRecordInput",
-          "kind": "declaration",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiUsageSnapshot",
-          "alias": "GeminiUsageSnapshot",
-          "kind": "declaration",
-          "typeOnly": true
-        },
-        {
-          "name": "getGeminiUsageSnapshot",
-          "alias": "getGeminiUsageSnapshot",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "pacificDayStartMs",
-          "alias": "pacificDayStartMs",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "recordGeminiUsage",
-          "alias": "recordGeminiUsage",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "subscribeGeminiUsage",
-          "alias": "subscribeGeminiUsage",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "waitForRpmCapacity",
-          "alias": "waitForRpmCapacity",
-          "kind": "declaration",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
       "id": "src/features/translation/engines/google/googleClient.ts",
       "zone": "features",
       "feature": "translation",
@@ -10135,17 +9946,200 @@
       ]
     },
     {
+      "id": "src/features/translation/engines/openai/localEndpoint.test.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "test",
+      "lines": 33,
+      "exports": []
+    },
+    {
+      "id": "src/features/translation/engines/openai/openaiClient.test.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "test",
+      "lines": 168,
+      "exports": []
+    },
+    {
+      "id": "src/features/translation/engines/openai/openaiClient.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "module",
+      "lines": 282,
+      "exports": [
+        {
+          "name": "OpenAiBatchRequest",
+          "alias": "OpenAiBatchRequest",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "OpenAiBatchResponse",
+          "alias": "OpenAiBatchResponse",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "OpenAiCompatibleError",
+          "alias": "OpenAiCompatibleError",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "OpenAiUsageInfo",
+          "alias": "OpenAiUsageInfo",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "isOpenAiRateLimitError",
+          "alias": "isOpenAiRateLimitError",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "translateOpenAiCompatibleBatch",
+          "alias": "translateOpenAiCompatibleBatch",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "translationEndpoint",
+          "alias": "translationEndpoint",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "validateOpenAiCompatibleEndpoint",
+          "alias": "validateOpenAiCompatibleEndpoint",
+          "kind": "declaration",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "src/features/translation/engines/shared/batchPrompt.test.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "test",
+      "lines": 54,
+      "exports": []
+    },
+    {
+      "id": "src/features/translation/engines/shared/batchPrompt.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "module",
+      "lines": 166,
+      "exports": [
+        {
+          "name": "TranslationBatchRegion",
+          "alias": "TranslationBatchRegion",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "TranslationBatchResult",
+          "alias": "TranslationBatchResult",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "TranslationPagePayload",
+          "alias": "TranslationPagePayload",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "buildTranslationSystemPrompt",
+          "alias": "buildTranslationSystemPrompt",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "buildTranslationUserPrompt",
+          "alias": "buildTranslationUserPrompt",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "parseBatchJson",
+          "alias": "parseBatchJson",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "validateBatchResults",
+          "alias": "validateBatchResults",
+          "kind": "declaration",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "src/features/translation/engines/shared/modelFallback.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "module",
+      "lines": 80,
+      "exports": [
+        {
+          "name": "AUTO_MODEL_SWITCH_FAILURE_LIMIT",
+          "alias": "AUTO_MODEL_SWITCH_FAILURE_LIMIT",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "AutoSwitchFailureState",
+          "alias": "AutoSwitchFailureState",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "ModelFallbackOutcome",
+          "alias": "ModelFallbackOutcome",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "nextAutoSwitchFailureState",
+          "alias": "nextAutoSwitchFailureState",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "requestWithModelFallback",
+          "alias": "requestWithModelFallback",
+          "kind": "declaration",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
       "id": "src/features/translation/index.ts",
       "zone": "features",
       "feature": "translation",
       "kind": "barrel",
-      "lines": 115,
+      "lines": 152,
       "exports": [
         {
           "name": "AUTO_MODEL_SWITCH_FAILURE_LIMIT",
           "alias": "AUTO_MODEL_SWITCH_FAILURE_LIMIT",
           "kind": "named",
           "typeOnly": false
+        },
+        {
+          "name": "AiBatchContext",
+          "alias": "AiBatchContext",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "AiBatchOutcome",
+          "alias": "AiBatchOutcome",
+          "kind": "named",
+          "typeOnly": true
         },
         {
           "name": "AutoSwitchFailureState",
@@ -10162,6 +10156,36 @@
         {
           "name": "BubbleMask",
           "alias": "BubbleMask",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "ContextPage",
+          "alias": "ContextPage",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "DEFAULT_REGION_DETECTOR_ID",
+          "alias": "DEFAULT_REGION_DETECTOR_ID",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "DEFAULT_TRANSLATION_BASE_URL",
+          "alias": "DEFAULT_TRANSLATION_BASE_URL",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "DEFAULT_TRANSLATION_MODELS",
+          "alias": "DEFAULT_TRANSLATION_MODELS",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "DetectionRole",
+          "alias": "DetectionRole",
           "kind": "named",
           "typeOnly": true
         },
@@ -10184,80 +10208,32 @@
           "typeOnly": true
         },
         {
-          "name": "GEMINI_DEFAULT_MODEL",
-          "alias": "GEMINI_DEFAULT_MODEL",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "GEMINI_MODELS",
-          "alias": "GEMINI_MODELS",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "GEMINI_MODEL_IDS",
-          "alias": "GEMINI_MODEL_IDS",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "GeminiApiError",
-          "alias": "GeminiApiError",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "GeminiBatchRegion",
-          "alias": "GeminiBatchRegion",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiBatchResponse",
-          "alias": "GeminiBatchResponse",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiBatchResult",
-          "alias": "GeminiBatchResult",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiPagePayload",
-          "alias": "GeminiPagePayload",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiUsageInfo",
-          "alias": "GeminiUsageInfo",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiUsageRecordInput",
-          "alias": "GeminiUsageRecordInput",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiUsageSnapshot",
-          "alias": "GeminiUsageSnapshot",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
           "name": "ModelFallbackOutcome",
           "alias": "ModelFallbackOutcome",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "OpenAiBatchRequest",
+          "alias": "OpenAiBatchRequest",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "OpenAiBatchResponse",
+          "alias": "OpenAiBatchResponse",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "OpenAiCompatibleError",
+          "alias": "OpenAiCompatibleError",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "OpenAiUsageInfo",
+          "alias": "OpenAiUsageInfo",
           "kind": "named",
           "typeOnly": true
         },
@@ -10322,14 +10298,50 @@
           "typeOnly": true
         },
         {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
           "name": "TranslateTextFn",
           "alias": "TranslateTextFn",
           "kind": "named",
           "typeOnly": true
         },
         {
+          "name": "TranslationBatchRegion",
+          "alias": "TranslationBatchRegion",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "TranslationBatchResult",
+          "alias": "TranslationBatchResult",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "TranslationCacheIdentity",
+          "alias": "TranslationCacheIdentity",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
           "name": "TranslationLockOwner",
           "alias": "TranslationLockOwner",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "TranslationPagePayload",
+          "alias": "TranslationPagePayload",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "TranslationProviderConfig",
+          "alias": "TranslationProviderConfig",
           "kind": "named",
           "typeOnly": true
         },
@@ -10352,6 +10364,18 @@
           "typeOnly": true
         },
         {
+          "name": "TranslationUsageRecordInput",
+          "alias": "TranslationUsageRecordInput",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "TranslationUsageSnapshot",
+          "alias": "TranslationUsageSnapshot",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
           "name": "assembleSlotText",
           "alias": "assembleSlotText",
           "kind": "named",
@@ -10366,6 +10390,18 @@
         {
           "name": "buildTranslationSlots",
           "alias": "buildTranslationSlots",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "buildTranslationSystemPrompt",
+          "alias": "buildTranslationSystemPrompt",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "buildTranslationUserPrompt",
+          "alias": "buildTranslationUserPrompt",
           "kind": "named",
           "typeOnly": false
         },
@@ -10388,26 +10424,8 @@
           "typeOnly": false
         },
         {
-          "name": "fallbackModelChain",
-          "alias": "fallbackModelChain",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
           "name": "fillSlotTexts",
           "alias": "fillSlotTexts",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "geminiModelInfo",
-          "alias": "geminiModelInfo",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "getGeminiUsageSnapshot",
-          "alias": "getGeminiUsageSnapshot",
           "kind": "named",
           "typeOnly": false
         },
@@ -10424,6 +10442,12 @@
           "typeOnly": false
         },
         {
+          "name": "getTranslationsUsageSnapshot",
+          "alias": "getTranslationsUsageSnapshot",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
           "name": "initPretranslateQueue",
           "alias": "initPretranslateQueue",
           "kind": "named",
@@ -10436,14 +10460,20 @@
           "typeOnly": false
         },
         {
-          "name": "isGeminiModelId",
-          "alias": "isGeminiModelId",
+          "name": "isGeminiBaseUrl",
+          "alias": "isGeminiBaseUrl",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "isGeminiRateLimitError",
-          "alias": "isGeminiRateLimitError",
+          "name": "isOpenAiRateLimitError",
+          "alias": "isOpenAiRateLimitError",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionDetectorId",
+          "alias": "isRegionDetectorId",
           "kind": "named",
           "typeOnly": false
         },
@@ -10466,14 +10496,38 @@
           "typeOnly": false
         },
         {
+          "name": "normalizeBaseUrl",
+          "alias": "normalizeBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "normalizeTranslationBaseUrl",
+          "alias": "normalizeTranslationBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "ocrRegionsForSlots",
+          "alias": "ocrRegionsForSlots",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
           "name": "pacificDayStartMs",
           "alias": "pacificDayStartMs",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "parseGeminiJson",
-          "alias": "parseGeminiJson",
+          "name": "pageCacheIdentity",
+          "alias": "pageCacheIdentity",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "parseBatchJson",
+          "alias": "parseBatchJson",
           "kind": "named",
           "typeOnly": false
         },
@@ -10484,8 +10538,8 @@
           "typeOnly": false
         },
         {
-          "name": "recordGeminiUsage",
-          "alias": "recordGeminiUsage",
+          "name": "recordTranslationUsage",
+          "alias": "recordTranslationUsage",
           "kind": "named",
           "typeOnly": false
         },
@@ -10508,14 +10562,32 @@
           "typeOnly": false
         },
         {
+          "name": "resolveTranslationProvider",
+          "alias": "resolveTranslationProvider",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
           "name": "resumeTranslationQueue",
           "alias": "resumeTranslationQueue",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "subscribeGeminiUsage",
-          "alias": "subscribeGeminiUsage",
+          "name": "runAiTranslationBatch",
+          "alias": "runAiTranslationBatch",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "selectPreviousContextPages",
+          "alias": "selectPreviousContextPages",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "selectPreviousContextPagesUnique",
+          "alias": "selectPreviousContextPagesUnique",
           "kind": "named",
           "typeOnly": false
         },
@@ -10532,6 +10604,12 @@
           "typeOnly": false
         },
         {
+          "name": "subscribeTranslationUsage",
+          "alias": "subscribeTranslationUsage",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
           "name": "toEngineLanguageCode",
           "alias": "toEngineLanguageCode",
           "kind": "named",
@@ -10544,8 +10622,32 @@
           "typeOnly": false
         },
         {
-          "name": "translateGeminiBatch",
-          "alias": "translateGeminiBatch",
+          "name": "translateOpenAiCompatibleBatch",
+          "alias": "translateOpenAiCompatibleBatch",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationCacheKey",
+          "alias": "translationCacheKey",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationEndpoint",
+          "alias": "translationEndpoint",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationProviderLabel",
+          "alias": "translationProviderLabel",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationProviderReadinessError",
+          "alias": "translationProviderReadinessError",
           "kind": "named",
           "typeOnly": false
         },
@@ -10556,14 +10658,14 @@
           "typeOnly": false
         },
         {
-          "name": "validateGeminiApiKey",
-          "alias": "validateGeminiApiKey",
+          "name": "validateBatchResults",
+          "alias": "validateBatchResults",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "waitForRpmCapacity",
-          "alias": "waitForRpmCapacity",
+          "name": "validateOpenAiCompatibleEndpoint",
+          "alias": "validateOpenAiCompatibleEndpoint",
           "kind": "named",
           "typeOnly": false
         }
@@ -10574,7 +10676,7 @@
       "zone": "features",
       "feature": "translation",
       "kind": "module",
-      "lines": 856,
+      "lines": 882,
       "exports": [
         {
           "name": "PretranslateJob",
@@ -10690,11 +10792,128 @@
       ]
     },
     {
+      "id": "src/features/translation/pipeline/aiBatch.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "module",
+      "lines": 124,
+      "exports": [
+        {
+          "name": "AiBatchContext",
+          "alias": "AiBatchContext",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "AiBatchOutcome",
+          "alias": "AiBatchOutcome",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "runAiTranslationBatch",
+          "alias": "runAiTranslationBatch",
+          "kind": "declaration",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "src/features/translation/pipeline/cacheIdentity.test.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "test",
+      "lines": 65,
+      "exports": []
+    },
+    {
+      "id": "src/features/translation/pipeline/cacheIdentity.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "module",
+      "lines": 84,
+      "exports": [
+        {
+          "name": "TRANSLATION_CACHE_PROMPT_VERSION",
+          "alias": "TRANSLATION_CACHE_PROMPT_VERSION",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "TranslationCacheIdentity",
+          "alias": "TranslationCacheIdentity",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "cacheIdentityForPage",
+          "alias": "cacheIdentityForPage",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "pageCacheIdentity",
+          "alias": "pageCacheIdentity",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "translationCacheKey",
+          "alias": "translationCacheKey",
+          "kind": "declaration",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "src/features/translation/pipeline/contextPages.test.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "test",
+      "lines": 41,
+      "exports": []
+    },
+    {
+      "id": "src/features/translation/pipeline/contextPages.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "module",
+      "lines": 73,
+      "exports": [
+        {
+          "name": "ContextPage",
+          "alias": "ContextPage",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "selectPreviousContextPages",
+          "alias": "selectPreviousContextPages",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "selectPreviousContextPagesUnique",
+          "alias": "selectPreviousContextPagesUnique",
+          "kind": "declaration",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "src/features/translation/pipeline/translationRegions.test.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "test",
+      "lines": 170,
+      "exports": []
+    },
+    {
       "id": "src/features/translation/pipeline/translationRegions.ts",
       "zone": "features",
       "feature": "translation",
       "kind": "module",
-      "lines": 381,
+      "lines": 468,
       "exports": [
         {
           "name": "assembleSlotText",
@@ -10723,6 +10942,98 @@
         {
           "name": "fillSlotTexts",
           "alias": "fillSlotTexts",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "midpointBox",
+          "alias": "midpointBox",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "ocrRegionsForSlots",
+          "alias": "ocrRegionsForSlots",
+          "kind": "declaration",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "src/features/translation/pipeline/translationUsage.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "module",
+      "lines": 153,
+      "exports": [
+        {
+          "name": "TranslationUsageRecordInput",
+          "alias": "TranslationUsageRecordInput",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "TranslationUsageSnapshot",
+          "alias": "TranslationUsageSnapshot",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "getTranslationsUsageSnapshot",
+          "alias": "getTranslationsUsageSnapshot",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "pacificDayStartMs",
+          "alias": "pacificDayStartMs",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "recordTranslationUsage",
+          "alias": "recordTranslationUsage",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "subscribeTranslationUsage",
+          "alias": "subscribeTranslationUsage",
+          "kind": "declaration",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "src/features/translation/provider.test.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "test",
+      "lines": 121,
+      "exports": []
+    },
+    {
+      "id": "src/features/translation/provider.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "module",
+      "lines": 76,
+      "exports": [
+        {
+          "name": "resolveTranslationProvider",
+          "alias": "resolveTranslationProvider",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "translationProviderLabel",
+          "alias": "translationProviderLabel",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "translationProviderReadinessError",
+          "alias": "translationProviderReadinessError",
           "kind": "declaration",
           "typeOnly": false
         }
@@ -10952,7 +11263,7 @@
       "zone": "features",
       "feature": "vision",
       "kind": "module",
-      "lines": 65,
+      "lines": 59,
       "exports": [
         {
           "name": "Detection",
@@ -10963,30 +11274,6 @@
         {
           "name": "DetectionResult",
           "alias": "DetectionResult",
-          "kind": "declaration",
-          "typeOnly": true
-        },
-        {
-          "name": "YOLO_CLASS_COLORS",
-          "alias": "YOLO_CLASS_COLORS",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "YOLO_CLASS_LABELS",
-          "alias": "YOLO_CLASS_LABELS",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "YOLO_CLASS_NAMES",
-          "alias": "YOLO_CLASS_NAMES",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "YoloClassName",
-          "alias": "YoloClassName",
           "kind": "declaration",
           "typeOnly": true
         },
@@ -10999,96 +11286,12 @@
       ]
     },
     {
-      "id": "src/features/vision/detection/pageDetector.ts",
+      "id": "src/features/vision/detection/geometry.ts",
       "zone": "features",
       "feature": "vision",
       "kind": "module",
-      "lines": 59,
+      "lines": 48,
       "exports": [
-        {
-          "name": "detectPageRegions",
-          "alias": "detectPageRegions",
-          "kind": "declaration",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
-      "id": "src/features/vision/detection/yolo.ts",
-      "zone": "features",
-      "feature": "vision",
-      "kind": "module",
-      "lines": 384,
-      "exports": [
-        {
-          "name": "Detection",
-          "alias": "Detection",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
-          "name": "DetectionResult",
-          "alias": "DetectionResult",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
-          "name": "YOLO_CLASSES",
-          "alias": "YOLO_CLASSES",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "YoloDetector",
-          "alias": "YoloDetector",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "YoloError",
-          "alias": "YoloError",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "detectImage",
-          "alias": "detectImage",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "isYoloRuntimeAvailable",
-          "alias": "isYoloRuntimeAvailable",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "yoloDetector",
-          "alias": "yoloDetector",
-          "kind": "declaration",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
-      "id": "src/features/vision/detection/yoloUtils.ts",
-      "zone": "features",
-      "feature": "vision",
-      "kind": "module",
-      "lines": 114,
-      "exports": [
-        {
-          "name": "Letterbox",
-          "alias": "Letterbox",
-          "kind": "declaration",
-          "typeOnly": true
-        },
-        {
-          "name": "decodeOutput",
-          "alias": "decodeOutput",
-          "kind": "declaration",
-          "typeOnly": false
-        },
         {
           "name": "intersectionOverUnion",
           "alias": "intersectionOverUnion",
@@ -11104,11 +11307,94 @@
       ]
     },
     {
+      "id": "src/features/vision/detection/pageDetector.ts",
+      "zone": "features",
+      "feature": "vision",
+      "kind": "module",
+      "lines": 36,
+      "exports": [
+        {
+          "name": "DetectPageOptions",
+          "alias": "DetectPageOptions",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "detectPageRegions",
+          "alias": "detectPageRegions",
+          "kind": "declaration",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "src/features/vision/detection/rtdetr.ts",
+      "zone": "features",
+      "feature": "vision",
+      "kind": "module",
+      "lines": 357,
+      "exports": [
+        {
+          "name": "RtDetrDetector",
+          "alias": "RtDetrDetector",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "RtDetrError",
+          "alias": "RtDetrError",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "rtdetrDetector",
+          "alias": "rtdetrDetector",
+          "kind": "declaration",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "src/features/vision/detection/rtdetrTensor.test.ts",
+      "zone": "features",
+      "feature": "vision",
+      "kind": "test",
+      "lines": 27,
+      "exports": []
+    },
+    {
+      "id": "src/features/vision/detection/rtdetrTensor.ts",
+      "zone": "features",
+      "feature": "vision",
+      "kind": "module",
+      "lines": 42,
+      "exports": [
+        {
+          "name": "RtDetrError",
+          "alias": "RtDetrError",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "RtDetrTensorValue",
+          "alias": "RtDetrTensorValue",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "rtDetrTensorData",
+          "alias": "rtDetrTensorData",
+          "kind": "declaration",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
       "id": "src/features/vision/index.ts",
       "zone": "features",
       "feature": "vision",
       "kind": "barrel",
-      "lines": 92,
+      "lines": 109,
       "exports": [
         {
           "name": "ALL_MODEL_IDS",
@@ -11117,8 +11403,26 @@
           "typeOnly": false
         },
         {
+          "name": "ALL_REGION_DETECTOR_IDS",
+          "alias": "ALL_REGION_DETECTOR_IDS",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "DEFAULT_REGION_DETECTOR_ID",
+          "alias": "DEFAULT_REGION_DETECTOR_ID",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
           "name": "DecodablePageOptions",
           "alias": "DecodablePageOptions",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "DetectPageOptions",
+          "alias": "DetectPageOptions",
           "kind": "named",
           "typeOnly": true
         },
@@ -11131,6 +11435,12 @@
         {
           "name": "DetectionResult",
           "alias": "DetectionResult",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "DetectionRole",
+          "alias": "DetectionRole",
           "kind": "named",
           "typeOnly": true
         },
@@ -11249,50 +11559,62 @@
           "typeOnly": true
         },
         {
-          "name": "SEG_INPUT_SIZE",
-          "alias": "SEG_INPUT_SIZE",
+          "name": "REGION_DETECTORS",
+          "alias": "REGION_DETECTORS",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "YOLO_CLASSES",
-          "alias": "YOLO_CLASSES",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "YOLO_CLASS_COLORS",
-          "alias": "YOLO_CLASS_COLORS",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "YOLO_CLASS_LABELS",
-          "alias": "YOLO_CLASS_LABELS",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "YOLO_CLASS_NAMES",
-          "alias": "YOLO_CLASS_NAMES",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "YoloClassName",
-          "alias": "YoloClassName",
+          "name": "RegionDetectorDef",
+          "alias": "RegionDetectorDef",
           "kind": "named",
           "typeOnly": true
         },
         {
-          "name": "YoloDetector",
-          "alias": "YoloDetector",
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionDetectorKind",
+          "alias": "RegionDetectorKind",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionModelDownloadState",
+          "alias": "RegionModelDownloadState",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionModelDownloadStatus",
+          "alias": "RegionModelDownloadStatus",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionModelFile",
+          "alias": "RegionModelFile",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RtDetrDetector",
+          "alias": "RtDetrDetector",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "YoloError",
-          "alias": "YoloError",
+          "name": "RtDetrError",
+          "alias": "RtDetrError",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "SEG_INPUT_SIZE",
+          "alias": "SEG_INPUT_SIZE",
           "kind": "named",
           "typeOnly": false
         },
@@ -11305,6 +11627,12 @@
         {
           "name": "cancelModelDownload",
           "alias": "cancelModelDownload",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "cancelRegionModelDownload",
+          "alias": "cancelRegionModelDownload",
           "kind": "named",
           "typeOnly": false
         },
@@ -11339,8 +11667,8 @@
           "typeOnly": false
         },
         {
-          "name": "detectImage",
-          "alias": "detectImage",
+          "name": "deleteRegionModel",
+          "alias": "deleteRegionModel",
           "kind": "named",
           "typeOnly": false
         },
@@ -11353,6 +11681,12 @@
         {
           "name": "downloadModel",
           "alias": "downloadModel",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "downloadRegionModel",
+          "alias": "downloadRegionModel",
           "kind": "named",
           "typeOnly": false
         },
@@ -11387,6 +11721,18 @@
           "typeOnly": false
         },
         {
+          "name": "getRegionDetector",
+          "alias": "getRegionDetector",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "getRegionModelDownloadState",
+          "alias": "getRegionModelDownloadState",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
           "name": "isMangaBubbleSegAvailable",
           "alias": "isMangaBubbleSegAvailable",
           "kind": "named",
@@ -11399,8 +11745,14 @@
           "typeOnly": false
         },
         {
-          "name": "isYoloRuntimeAvailable",
-          "alias": "isYoloRuntimeAvailable",
+          "name": "isRegionDetectorId",
+          "alias": "isRegionDetectorId",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionModelDownloaded",
+          "alias": "isRegionModelDownloaded",
           "kind": "named",
           "typeOnly": false
         },
@@ -11465,6 +11817,24 @@
           "typeOnly": false
         },
         {
+          "name": "regionDetectorDirectoryUri",
+          "alias": "regionDetectorDirectoryUri",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "regionDetectorFileUri",
+          "alias": "regionDetectorFileUri",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "regionRoleForClass",
+          "alias": "regionRoleForClass",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
           "name": "releaseDecodablePageUri",
           "alias": "releaseDecodablePageUri",
           "kind": "named",
@@ -11483,15 +11853,173 @@
           "typeOnly": false
         },
         {
+          "name": "rtdetrDetector",
+          "alias": "rtdetrDetector",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
           "name": "subscribeModelDownloads",
           "alias": "subscribeModelDownloads",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "yoloDetector",
-          "alias": "yoloDetector",
+          "name": "subscribeRegionModelDownloads",
+          "alias": "subscribeRegionModelDownloads",
           "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "src/features/vision/models/regionModelStore.ts",
+      "zone": "features",
+      "feature": "vision",
+      "kind": "module",
+      "lines": 249,
+      "exports": [
+        {
+          "name": "ALL_REGION_DETECTOR_IDS",
+          "alias": "ALL_REGION_DETECTOR_IDS",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "RegionModelDownloadState",
+          "alias": "RegionModelDownloadState",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionModelDownloadStatus",
+          "alias": "RegionModelDownloadStatus",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "cancelRegionModelDownload",
+          "alias": "cancelRegionModelDownload",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "deleteRegionModel",
+          "alias": "deleteRegionModel",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "downloadRegionModel",
+          "alias": "downloadRegionModel",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "getRegionModelDownloadState",
+          "alias": "getRegionModelDownloadState",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionModelDownloaded",
+          "alias": "isRegionModelDownloaded",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "regionDetectorDirectoryUri",
+          "alias": "regionDetectorDirectoryUri",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "regionDetectorFileUri",
+          "alias": "regionDetectorFileUri",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "subscribeRegionModelDownloads",
+          "alias": "subscribeRegionModelDownloads",
+          "kind": "declaration",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "src/features/vision/models/regionModels.test.ts",
+      "zone": "features",
+      "feature": "vision",
+      "kind": "test",
+      "lines": 37,
+      "exports": []
+    },
+    {
+      "id": "src/features/vision/models/regionModels.ts",
+      "zone": "features",
+      "feature": "vision",
+      "kind": "module",
+      "lines": 124,
+      "exports": [
+        {
+          "name": "DEFAULT_REGION_DETECTOR_ID",
+          "alias": "DEFAULT_REGION_DETECTOR_ID",
+          "kind": "local",
+          "typeOnly": false
+        },
+        {
+          "name": "DetectionRole",
+          "alias": "DetectionRole",
+          "kind": "local",
+          "typeOnly": true
+        },
+        {
+          "name": "REGION_DETECTORS",
+          "alias": "REGION_DETECTORS",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "RegionDetectorDef",
+          "alias": "RegionDetectorDef",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "local",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionDetectorKind",
+          "alias": "RegionDetectorKind",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionModelFile",
+          "alias": "RegionModelFile",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "getRegionDetector",
+          "alias": "getRegionDetector",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionDetectorId",
+          "alias": "isRegionDetectorId",
+          "kind": "local",
+          "typeOnly": false
+        },
+        {
+          "name": "regionRoleForClass",
+          "alias": "regionRoleForClass",
+          "kind": "declaration",
           "typeOnly": false
         }
       ]
@@ -11528,7 +12056,7 @@
       "zone": "features",
       "feature": "vision",
       "kind": "module",
-      "lines": 433,
+      "lines": 435,
       "exports": [
         {
           "name": "LocalOcrError",
@@ -11729,7 +12257,7 @@
       "zone": "features",
       "feature": "vision",
       "kind": "module",
-      "lines": 417,
+      "lines": 435,
       "exports": [
         {
           "name": "CropOptions",
@@ -11984,7 +12512,7 @@
       "zone": "features",
       "feature": "vision",
       "kind": "module",
-      "lines": 513,
+      "lines": 534,
       "exports": [
         {
           "name": "MangaBubbleSegError",
@@ -12521,7 +13049,7 @@
       "zone": "shared",
       "feature": null,
       "kind": "barrel",
-      "lines": 37,
+      "lines": 56,
       "exports": [
         {
           "name": "AppDownloadedMetadataService",
@@ -12590,6 +13118,30 @@
           "typeOnly": true
         },
         {
+          "name": "DEFAULT_REGION_DETECTOR_ID",
+          "alias": "DEFAULT_REGION_DETECTOR_ID",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "DEFAULT_TRANSLATION_BASE_URL",
+          "alias": "DEFAULT_TRANSLATION_BASE_URL",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "DEFAULT_TRANSLATION_MODELS",
+          "alias": "DEFAULT_TRANSLATION_MODELS",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "DetectionRole",
+          "alias": "DetectionRole",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
           "name": "DownloadNotificationPort",
           "alias": "DownloadNotificationPort",
           "kind": "named",
@@ -12628,6 +13180,12 @@
         {
           "name": "ProgressMap",
           "alias": "ProgressMap",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
           "kind": "named",
           "typeOnly": true
         },
@@ -12686,10 +13244,91 @@
           "typeOnly": true
         },
         {
+          "name": "TranslationProviderConfig",
+          "alias": "TranslationProviderConfig",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
           "name": "ViewerChapterRow",
           "alias": "ViewerChapterRow",
           "kind": "named",
           "typeOnly": true
+        },
+        {
+          "name": "allowsKeylessTranslation",
+          "alias": "allowsKeylessTranslation",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isAiTranslationEngine",
+          "alias": "isAiTranslationEngine",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isGeminiBaseUrl",
+          "alias": "isGeminiBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isLocalTranslationEndpoint",
+          "alias": "isLocalTranslationEndpoint",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionDetectorId",
+          "alias": "isRegionDetectorId",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "normalizeBaseUrl",
+          "alias": "normalizeBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "normalizeTranslationBaseUrl",
+          "alias": "normalizeTranslationBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "src/shared/contracts/regionDetector.ts",
+      "zone": "shared",
+      "feature": null,
+      "kind": "module",
+      "lines": 24,
+      "exports": [
+        {
+          "name": "DEFAULT_REGION_DETECTOR_ID",
+          "alias": "DEFAULT_REGION_DETECTOR_ID",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "DetectionRole",
+          "alias": "DetectionRole",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "isRegionDetectorId",
+          "alias": "isRegionDetectorId",
+          "kind": "declaration",
+          "typeOnly": false
         }
       ]
     },
@@ -12698,13 +13337,19 @@
       "zone": "shared",
       "feature": null,
       "kind": "module",
-      "lines": 3,
+      "lines": 8,
       "exports": [
         {
           "name": "TranslationEngine",
           "alias": "TranslationEngine",
           "kind": "declaration",
           "typeOnly": true
+        },
+        {
+          "name": "isAiTranslationEngine",
+          "alias": "isAiTranslationEngine",
+          "kind": "declaration",
+          "typeOnly": false
         }
       ]
     },
@@ -12738,6 +13383,63 @@
           "alias": "TranslationNotificationPort",
           "kind": "declaration",
           "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "src/shared/contracts/translationProvider.ts",
+      "zone": "shared",
+      "feature": null,
+      "kind": "module",
+      "lines": 100,
+      "exports": [
+        {
+          "name": "DEFAULT_TRANSLATION_BASE_URL",
+          "alias": "DEFAULT_TRANSLATION_BASE_URL",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "DEFAULT_TRANSLATION_MODELS",
+          "alias": "DEFAULT_TRANSLATION_MODELS",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "TranslationProviderConfig",
+          "alias": "TranslationProviderConfig",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "allowsKeylessTranslation",
+          "alias": "allowsKeylessTranslation",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "isGeminiBaseUrl",
+          "alias": "isGeminiBaseUrl",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "isLocalTranslationEndpoint",
+          "alias": "isLocalTranslationEndpoint",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "normalizeBaseUrl",
+          "alias": "normalizeBaseUrl",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "normalizeTranslationBaseUrl",
+          "alias": "normalizeTranslationBaseUrl",
+          "kind": "declaration",
+          "typeOnly": false
         }
       ]
     },
@@ -14237,6 +14939,22 @@
       ]
     },
     {
+      "id": "edge:app%2Fsettings%2Fmodels.tsx:src%2Ffeatures%2Fsettings%2Findex.ts:import:%40features%2Fsettings:1",
+      "from": "app/settings/models.tsx",
+      "to": "src/features/settings/index.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@features/settings",
+      "bindings": [
+        {
+          "name": "ModelsSettingsScreen",
+          "alias": "ModelsSettingsScreen",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
       "id": "edge:app%2Fsettings%2Focr-models.tsx:src%2Ffeatures%2Fsettings%2Findex.ts:import:%40features%2Fsettings:1",
       "from": "app/settings/ocr-models.tsx",
       "to": "src/features/settings/index.ts",
@@ -14245,8 +14963,8 @@
       "specifier": "@features/settings",
       "bindings": [
         {
-          "name": "OcrModelsSettingsScreen",
-          "alias": "OcrModelsSettingsScreen",
+          "name": "ModelsSettingsScreen",
+          "alias": "ModelsSettingsScreen",
           "kind": "named",
           "typeOnly": false
         }
@@ -15413,22 +16131,6 @@
       ]
     },
     {
-      "id": "edge:src%2Fcore%2Fdb%2Frepositories%2FtranslationRepository.ts:src%2Fcore%2Fsettings%2FgeminiModelId.ts:import:%40core%2Fsettings%2FgeminiModelId:1",
-      "from": "src/core/db/repositories/translationRepository.ts",
-      "to": "src/core/settings/geminiModelId.ts",
-      "kind": "import",
-      "typeOnly": true,
-      "specifier": "@core/settings/geminiModelId",
-      "bindings": [
-        {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
-          "kind": "named",
-          "typeOnly": true
-        }
-      ]
-    },
-    {
       "id": "edge:src%2Fcore%2Fimages%2Fdecode.ts:src%2Fcore%2Fimages%2Favif.ts:import:.%2Favif:1",
       "from": "src/core/images/decode.ts",
       "to": "src/core/images/avif.ts",
@@ -15727,34 +16429,6 @@
       ]
     },
     {
-      "id": "edge:src%2Fcore%2Fsettings%2FsettingsSchema.ts:src%2Fcore%2Fsettings%2FgeminiModelId.ts:import:.%2FgeminiModelId:1",
-      "from": "src/core/settings/settingsSchema.ts",
-      "to": "src/core/settings/geminiModelId.ts",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "./geminiModelId",
-      "bindings": [
-        {
-          "name": "GEMINI_DEFAULT_MODEL",
-          "alias": "GEMINI_DEFAULT_MODEL",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "isGeminiModelId",
-          "alias": "isGeminiModelId",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
-          "kind": "named",
-          "typeOnly": true
-        }
-      ]
-    },
-    {
       "id": "edge:src%2Fcore%2Fsettings%2FsettingsSchema.ts:src%2Fshared%2Fcontracts%2FtranslationEngine.ts:import:%40shared%2Fcontracts%2FtranslationEngine:1",
       "from": "src/core/settings/settingsSchema.ts",
       "to": "src/shared/contracts/translationEngine.ts",
@@ -15765,6 +16439,62 @@
         {
           "name": "TranslationEngine",
           "alias": "TranslationEngine",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Fcore%2Fsettings%2FsettingsSchema.ts:src%2Fshared%2Fcontracts%2FtranslationProvider.ts:import:%40shared%2Fcontracts%2FtranslationProvider:1",
+      "from": "src/core/settings/settingsSchema.ts",
+      "to": "src/shared/contracts/translationProvider.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/contracts/translationProvider",
+      "bindings": [
+        {
+          "name": "DEFAULT_TRANSLATION_BASE_URL",
+          "alias": "DEFAULT_TRANSLATION_BASE_URL",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "DEFAULT_TRANSLATION_MODELS",
+          "alias": "DEFAULT_TRANSLATION_MODELS",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "normalizeTranslationBaseUrl",
+          "alias": "normalizeTranslationBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Fcore%2Fsettings%2FsettingsSchema.ts:src%2Fshared%2Fcontracts%2FregionDetector.ts:import:%40shared%2Fcontracts%2FregionDetector:1",
+      "from": "src/core/settings/settingsSchema.ts",
+      "to": "src/shared/contracts/regionDetector.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/contracts/regionDetector",
+      "bindings": [
+        {
+          "name": "DEFAULT_REGION_DETECTOR_ID",
+          "alias": "DEFAULT_REGION_DETECTOR_ID",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionDetectorId",
+          "alias": "isRegionDetectorId",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
           "kind": "named",
           "typeOnly": true
         }
@@ -25525,8 +26255,14 @@
       "specifier": "@features/translation",
       "bindings": [
         {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "TranslationProviderConfig",
+          "alias": "TranslationProviderConfig",
           "kind": "named",
           "typeOnly": true
         }
@@ -27175,12 +27911,40 @@
       "from": "src/features/reader/components/panels/translation/AdvanceTab.tsx",
       "to": "src/features/translation/index.ts",
       "kind": "import",
-      "typeOnly": false,
+      "typeOnly": true,
       "specifier": "@features/translation",
       "bindings": [
         {
-          "name": "GEMINI_MODELS",
-          "alias": "GEMINI_MODELS",
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Freader%2Fcomponents%2Fpanels%2Ftranslation%2FAdvanceTab.tsx:src%2Ffeatures%2Fvision%2Findex.ts:import:%40features%2Fvision:1",
+      "from": "src/features/reader/components/panels/translation/AdvanceTab.tsx",
+      "to": "src/features/vision/index.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@features/vision",
+      "bindings": [
+        {
+          "name": "getRegionDetector",
+          "alias": "getRegionDetector",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionModelDownloaded",
+          "alias": "isRegionModelDownloaded",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "REGION_DETECTORS",
+          "alias": "REGION_DETECTORS",
           "kind": "named",
           "typeOnly": false
         }
@@ -27367,32 +28131,32 @@
       "specifier": "@features/translation",
       "bindings": [
         {
-          "name": "GEMINI_MODELS",
-          "alias": "GEMINI_MODELS",
+          "name": "getTranslationsUsageSnapshot",
+          "alias": "getTranslationsUsageSnapshot",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "getGeminiUsageSnapshot",
-          "alias": "getGeminiUsageSnapshot",
+          "name": "isGeminiBaseUrl",
+          "alias": "isGeminiBaseUrl",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "subscribeGeminiUsage",
-          "alias": "subscribeGeminiUsage",
+          "name": "subscribeTranslationUsage",
+          "alias": "subscribeTranslationUsage",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
+          "name": "TranslationProviderConfig",
+          "alias": "TranslationProviderConfig",
           "kind": "named",
           "typeOnly": true
         },
         {
-          "name": "GeminiUsageSnapshot",
-          "alias": "GeminiUsageSnapshot",
+          "name": "TranslationUsageSnapshot",
+          "alias": "TranslationUsageSnapshot",
           "kind": "named",
           "typeOnly": true
         }
@@ -27411,22 +28175,6 @@
           "alias": "ReaderTranslationEngine",
           "kind": "named",
           "typeOnly": true
-        }
-      ]
-    },
-    {
-      "id": "edge:src%2Ffeatures%2Freader%2Fcomponents%2Fpanels%2Ftranslation%2FMetricsTab.tsx:src%2Ffeatures%2Freader%2Fcomponents%2Fpanels%2FReaderPanelPrimitives.tsx:import:..%2FReaderPanelPrimitives:1",
-      "from": "src/features/reader/components/panels/translation/MetricsTab.tsx",
-      "to": "src/features/reader/components/panels/ReaderPanelPrimitives.tsx",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "../ReaderPanelPrimitives",
-      "bindings": [
-        {
-          "name": "HelperText",
-          "alias": "HelperText",
-          "kind": "named",
-          "typeOnly": false
         }
       ]
     },
@@ -27689,8 +28437,14 @@
       "specifier": "@features/translation",
       "bindings": [
         {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "TranslationProviderConfig",
+          "alias": "TranslationProviderConfig",
           "kind": "named",
           "typeOnly": true
         }
@@ -28863,14 +29617,14 @@
       "specifier": "@features/translation",
       "bindings": [
         {
-          "name": "GEMINI_DEFAULT_MODEL",
-          "alias": "GEMINI_DEFAULT_MODEL",
+          "name": "DEFAULT_REGION_DETECTOR_ID",
+          "alias": "DEFAULT_REGION_DETECTOR_ID",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
           "kind": "named",
           "typeOnly": true
         }
@@ -28977,8 +29731,8 @@
       "specifier": "@features/translation",
       "bindings": [
         {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
           "kind": "named",
           "typeOnly": true
         }
@@ -29053,8 +29807,8 @@
       "specifier": "@features/translation",
       "bindings": [
         {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
           "kind": "named",
           "typeOnly": true
         }
@@ -30087,8 +30841,42 @@
       "specifier": "@core/settings",
       "bindings": [
         {
+          "name": "getSettings",
+          "alias": "getSettings",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "subscribeSettings",
+          "alias": "subscribeSettings",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
           "name": "updateSettings",
           "alias": "updateSettings",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "AppSettings",
+          "alias": "AppSettings",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Freader%2Fscreens%2FReaderScreen.tsx:src%2Ffeatures%2Ftranslation%2Findex.ts:import:%40features%2Ftranslation:1",
+      "from": "src/features/reader/screens/ReaderScreen.tsx",
+      "to": "src/features/translation/index.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@features/translation",
+      "bindings": [
+        {
+          "name": "resolveTranslationProvider",
+          "alias": "resolveTranslationProvider",
           "kind": "named",
           "typeOnly": false
         }
@@ -30855,6 +31643,40 @@
       ]
     },
     {
+      "id": "edge:src%2Ffeatures%2Freader%2Ftranslation%2FreaderTranslationPipeline.ts:src%2Ffeatures%2Ftranslation%2Findex.ts:import:%40features%2Ftranslation:2",
+      "from": "src/features/reader/translation/readerTranslationPipeline.ts",
+      "to": "src/features/translation/index.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@features/translation",
+      "bindings": [
+        {
+          "name": "pageCacheIdentity",
+          "alias": "pageCacheIdentity",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "resolveTranslationProvider",
+          "alias": "resolveTranslationProvider",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationCacheKey",
+          "alias": "translationCacheKey",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationProviderReadinessError",
+          "alias": "translationProviderReadinessError",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
       "id": "edge:src%2Ffeatures%2Freader%2Ftranslation%2FreaderTranslationPipeline.ts:src%2Fcore%2Fcatalog%2FreaderIdentity.ts:import:%40core%2Fcatalog%2FreaderIdentity:1",
       "from": "src/features/reader/translation/readerTranslationPipeline.ts",
       "to": "src/core/catalog/readerIdentity.ts",
@@ -31061,6 +31883,18 @@
           "typeOnly": false
         },
         {
+          "name": "getRegionDetector",
+          "alias": "getRegionDetector",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionModelDownloaded",
+          "alias": "isRegionModelDownloaded",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
           "name": "getLocalOcrModel",
           "alias": "getLocalOcrModel",
           "kind": "named",
@@ -31121,6 +31955,12 @@
         {
           "name": "buildTranslationSlots",
           "alias": "buildTranslationSlots",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "ocrRegionsForSlots",
+          "alias": "ocrRegionsForSlots",
           "kind": "named",
           "typeOnly": false
         }
@@ -31207,38 +32047,14 @@
       "specifier": "@features/translation",
       "bindings": [
         {
-          "name": "GEMINI_DEFAULT_MODEL",
-          "alias": "GEMINI_DEFAULT_MODEL",
+          "name": "runAiTranslationBatch",
+          "alias": "runAiTranslationBatch",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "GeminiApiError",
-          "alias": "GeminiApiError",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "fallbackModelChain",
-          "alias": "fallbackModelChain",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "nextAutoSwitchFailureState",
-          "alias": "nextAutoSwitchFailureState",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "recordGeminiUsage",
-          "alias": "recordGeminiUsage",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "requestWithModelFallback",
-          "alias": "requestWithModelFallback",
+          "name": "selectPreviousContextPagesUnique",
+          "alias": "selectPreviousContextPagesUnique",
           "kind": "named",
           "typeOnly": false
         },
@@ -31247,22 +32063,20 @@
           "alias": "translateFreeBatch",
           "kind": "named",
           "typeOnly": false
-        },
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Freader%2Ftranslation%2FtranslateWorkers.ts:src%2Fcore%2Fsettings%2Findex.ts:import:%40core%2Fsettings:1",
+      "from": "src/features/reader/translation/translateWorkers.ts",
+      "to": "src/core/settings/index.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "@core/settings",
+      "bindings": [
         {
-          "name": "translateGeminiBatch",
-          "alias": "translateGeminiBatch",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "waitForRpmCapacity",
-          "alias": "waitForRpmCapacity",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
+          "name": "AppSettings",
+          "alias": "AppSettings",
           "kind": "named",
           "typeOnly": true
         }
@@ -31310,6 +32124,12 @@
       "typeOnly": true,
       "specifier": "@core/settings",
       "bindings": [
+        {
+          "name": "AppSettings",
+          "alias": "AppSettings",
+          "kind": "named",
+          "typeOnly": true
+        },
         {
           "name": "ReaderTranslationEngine",
           "alias": "ReaderTranslationEngine",
@@ -31367,12 +32187,6 @@
           "typeOnly": true
         },
         {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
           "name": "PageTranslationState",
           "alias": "PageTranslationState",
           "kind": "named",
@@ -31415,6 +32229,12 @@
         {
           "name": "OcrTextItem",
           "alias": "OcrTextItem",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
           "kind": "named",
           "typeOnly": true
         }
@@ -32343,6 +33163,170 @@
       ]
     },
     {
+      "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Fmodels%2FRegionModelsSection.tsx:src%2Fshared%2Fui%2Foverlays%2Findex.ts:import:%40shared%2Fui%2Foverlays:1",
+      "from": "src/features/settings/components/sections/models/RegionModelsSection.tsx",
+      "to": "src/shared/ui/overlays/index.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/ui/overlays",
+      "bindings": [
+        {
+          "name": "ConfirmDialog",
+          "alias": "ConfirmDialog",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Fmodels%2FRegionModelsSection.tsx:src%2Fshared%2Ftheme%2Findex.ts:import:%40shared%2Ftheme:1",
+      "from": "src/features/settings/components/sections/models/RegionModelsSection.tsx",
+      "to": "src/shared/theme/index.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/theme",
+      "bindings": [
+        {
+          "name": "colors",
+          "alias": "colors",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "radius",
+          "alias": "radius",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Fmodels%2FRegionModelsSection.tsx:src%2Ffeatures%2Fsettings%2Fhooks%2FuseAppSettings.ts:import:..%2F..%2F..%2Fhooks%2FuseAppSettings:1",
+      "from": "src/features/settings/components/sections/models/RegionModelsSection.tsx",
+      "to": "src/features/settings/hooks/useAppSettings.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../../../hooks/useAppSettings",
+      "bindings": [
+        {
+          "name": "useAppSettings",
+          "alias": "useAppSettings",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Fmodels%2FRegionModelsSection.tsx:src%2Ffeatures%2Fvision%2Findex.ts:import:%40features%2Fvision:1",
+      "from": "src/features/settings/components/sections/models/RegionModelsSection.tsx",
+      "to": "src/features/vision/index.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@features/vision",
+      "bindings": [
+        {
+          "name": "ALL_REGION_DETECTOR_IDS",
+          "alias": "ALL_REGION_DETECTOR_IDS",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "cancelRegionModelDownload",
+          "alias": "cancelRegionModelDownload",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "deleteRegionModel",
+          "alias": "deleteRegionModel",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "downloadRegionModel",
+          "alias": "downloadRegionModel",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "formatModelBytes",
+          "alias": "formatModelBytes",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "getRegionDetector",
+          "alias": "getRegionDetector",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "getRegionModelDownloadState",
+          "alias": "getRegionModelDownloadState",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionModelDownloaded",
+          "alias": "isRegionModelDownloaded",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "REGION_DETECTORS",
+          "alias": "REGION_DETECTORS",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "subscribeRegionModelDownloads",
+          "alias": "subscribeRegionModelDownloads",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "RegionDetectorDef",
+          "alias": "RegionDetectorDef",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionModelDownloadState",
+          "alias": "RegionModelDownloadState",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Fmodels%2FRegionModelsSection.tsx:src%2Ffeatures%2Fsettings%2Fcomponents%2Fprimitives%2FSettingsPrimitives.tsx:import:..%2F..%2Fprimitives%2FSettingsPrimitives:1",
+      "from": "src/features/settings/components/sections/models/RegionModelsSection.tsx",
+      "to": "src/features/settings/components/primitives/SettingsPrimitives.tsx",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../../primitives/SettingsPrimitives",
+      "bindings": [
+        {
+          "name": "ActionPill",
+          "alias": "ActionPill",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "SettingsSection",
+          "alias": "SettingsSection",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
       "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Focr%2FOcrModelsSection.tsx:src%2Fshared%2Fui%2Foverlays%2Findex.ts:import:%40shared%2Fui%2Foverlays:1",
       "from": "src/features/settings/components/sections/ocr/OcrModelsSection.tsx",
       "to": "src/shared/ui/overlays/index.ts",
@@ -32739,6 +33723,128 @@
       ]
     },
     {
+      "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Ftranslation%2FCustomProviderSection.tsx:src%2Fshared%2Fui%2Foverlays%2Findex.ts:import:%40shared%2Fui%2Foverlays:1",
+      "from": "src/features/settings/components/sections/translation/CustomProviderSection.tsx",
+      "to": "src/shared/ui/overlays/index.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/ui/overlays",
+      "bindings": [
+        {
+          "name": "ConfirmDialog",
+          "alias": "ConfirmDialog",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "MenuSheet",
+          "alias": "MenuSheet",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "PromptDialog",
+          "alias": "PromptDialog",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Ftranslation%2FCustomProviderSection.tsx:src%2Fshared%2Ftheme%2Findex.ts:import:%40shared%2Ftheme:1",
+      "from": "src/features/settings/components/sections/translation/CustomProviderSection.tsx",
+      "to": "src/shared/theme/index.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/theme",
+      "bindings": [
+        {
+          "name": "colors",
+          "alias": "colors",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Ftranslation%2FCustomProviderSection.tsx:src%2Fcore%2Fsettings%2Findex.ts:import:%40core%2Fsettings:1",
+      "from": "src/features/settings/components/sections/translation/CustomProviderSection.tsx",
+      "to": "src/core/settings/index.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "@core/settings",
+      "bindings": [
+        {
+          "name": "AppSettings",
+          "alias": "AppSettings",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Ftranslation%2FCustomProviderSection.tsx:src%2Ffeatures%2Ftranslation%2Findex.ts:import:%40features%2Ftranslation:1",
+      "from": "src/features/settings/components/sections/translation/CustomProviderSection.tsx",
+      "to": "src/features/translation/index.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@features/translation",
+      "bindings": [
+        {
+          "name": "DEFAULT_TRANSLATION_BASE_URL",
+          "alias": "DEFAULT_TRANSLATION_BASE_URL",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "DEFAULT_TRANSLATION_MODELS",
+          "alias": "DEFAULT_TRANSLATION_MODELS",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "normalizeTranslationBaseUrl",
+          "alias": "normalizeTranslationBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "validateOpenAiCompatibleEndpoint",
+          "alias": "validateOpenAiCompatibleEndpoint",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Ftranslation%2FCustomProviderSection.tsx:src%2Ffeatures%2Fsettings%2Fcomponents%2Fprimitives%2FSettingsPrimitives.tsx:import:..%2F..%2Fprimitives%2FSettingsPrimitives:1",
+      "from": "src/features/settings/components/sections/translation/CustomProviderSection.tsx",
+      "to": "src/features/settings/components/primitives/SettingsPrimitives.tsx",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../../primitives/SettingsPrimitives",
+      "bindings": [
+        {
+          "name": "ActionPill",
+          "alias": "ActionPill",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "SettingsRow",
+          "alias": "SettingsRow",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "SettingsValue",
+          "alias": "SettingsValue",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
       "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Ftranslation%2FTranslationQueueSection.tsx:src%2Fshared%2Fui%2Foverlays%2Findex.ts:import:%40shared%2Fui%2Foverlays:1",
       "from": "src/features/settings/components/sections/translation/TranslationQueueSection.tsx",
       "to": "src/shared/ui/overlays/index.ts",
@@ -32857,22 +33963,6 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Ftranslation%2FTranslationSection.tsx:src%2Fshared%2Fui%2Foverlays%2FMenuSheet.tsx:import:%40shared%2Fui%2Foverlays%2FMenuSheet:1",
-      "from": "src/features/settings/components/sections/translation/TranslationSection.tsx",
-      "to": "src/shared/ui/overlays/MenuSheet.tsx",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "@shared/ui/overlays/MenuSheet",
-      "bindings": [
-        {
-          "name": "default",
-          "alias": "MenuSheet",
-          "kind": "default",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
       "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Ftranslation%2FTranslationSection.tsx:src%2Fshared%2Fui%2Foverlays%2Findex.ts:import:%40shared%2Fui%2Foverlays:1",
       "from": "src/features/settings/components/sections/translation/TranslationSection.tsx",
       "to": "src/shared/ui/overlays/index.ts",
@@ -32883,12 +33973,6 @@
         {
           "name": "ConfirmDialog",
           "alias": "ConfirmDialog",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "PromptDialog",
-          "alias": "PromptDialog",
           "kind": "named",
           "typeOnly": false
         }
@@ -32971,44 +34055,6 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Ftranslation%2FTranslationSection.tsx:src%2Ffeatures%2Ftranslation%2Findex.ts:import:%40features%2Ftranslation:1",
-      "from": "src/features/settings/components/sections/translation/TranslationSection.tsx",
-      "to": "src/features/translation/index.ts",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "@features/translation",
-      "bindings": [
-        {
-          "name": "GEMINI_MODELS",
-          "alias": "GEMINI_MODELS",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
-          "kind": "named",
-          "typeOnly": true
-        }
-      ]
-    },
-    {
-      "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Ftranslation%2FTranslationSection.tsx:src%2Ffeatures%2Ftranslation%2Findex.ts:import:%40features%2Ftranslation:2",
-      "from": "src/features/settings/components/sections/translation/TranslationSection.tsx",
-      "to": "src/features/translation/index.ts",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "@features/translation",
-      "bindings": [
-        {
-          "name": "validateGeminiApiKey",
-          "alias": "validateGeminiApiKey",
-          "kind": "named",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
       "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Ftranslation%2FTranslationSection.tsx:src%2Ffeatures%2Fsettings%2Fcomponents%2Fprimitives%2FSettingsPrimitives.tsx:import:..%2F..%2Fprimitives%2FSettingsPrimitives:1",
       "from": "src/features/settings/components/sections/translation/TranslationSection.tsx",
       "to": "src/features/settings/components/primitives/SettingsPrimitives.tsx",
@@ -33044,6 +34090,22 @@
           "name": "ToggleRow",
           "alias": "ToggleRow",
           "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Ftranslation%2FTranslationSection.tsx:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Ftranslation%2FCustomProviderSection.tsx:import:.%2FCustomProviderSection:1",
+      "from": "src/features/settings/components/sections/translation/TranslationSection.tsx",
+      "to": "src/features/settings/components/sections/translation/CustomProviderSection.tsx",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./CustomProviderSection",
+      "bindings": [
+        {
+          "name": "default",
+          "alias": "CustomProviderSection",
+          "kind": "default",
           "typeOnly": false
         }
       ]
@@ -33147,6 +34209,22 @@
         {
           "name": "DisplaySettingsScreen",
           "alias": "DisplaySettingsScreen",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fsettings%2Findex.ts:src%2Ffeatures%2Fsettings%2Fscreens%2FModelsSettingsScreen.tsx:re-export:.%2Fscreens%2FModelsSettingsScreen:1",
+      "from": "src/features/settings/index.ts",
+      "to": "src/features/settings/screens/ModelsSettingsScreen.tsx",
+      "kind": "re-export",
+      "typeOnly": false,
+      "specifier": "./screens/ModelsSettingsScreen",
+      "bindings": [
+        {
+          "name": "ModelsSettingsScreen",
+          "alias": "ModelsSettingsScreen",
           "kind": "named",
           "typeOnly": false
         }
@@ -33410,6 +34488,54 @@
           "name": "useAppSettings",
           "alias": "useAppSettings",
           "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fsettings%2Fscreens%2FModelsSettingsScreen.tsx:src%2Ffeatures%2Fsettings%2Fcomponents%2Flayout%2FSettingsPage.tsx:import:..%2Fcomponents%2Flayout%2FSettingsPage:1",
+      "from": "src/features/settings/screens/ModelsSettingsScreen.tsx",
+      "to": "src/features/settings/components/layout/SettingsPage.tsx",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../components/layout/SettingsPage",
+      "bindings": [
+        {
+          "name": "default",
+          "alias": "SettingsPage",
+          "kind": "default",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fsettings%2Fscreens%2FModelsSettingsScreen.tsx:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Focr%2FOcrModelsSection.tsx:import:..%2Fcomponents%2Fsections%2Focr%2FOcrModelsSection:1",
+      "from": "src/features/settings/screens/ModelsSettingsScreen.tsx",
+      "to": "src/features/settings/components/sections/ocr/OcrModelsSection.tsx",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../components/sections/ocr/OcrModelsSection",
+      "bindings": [
+        {
+          "name": "default",
+          "alias": "OcrModelsSection",
+          "kind": "default",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fsettings%2Fscreens%2FModelsSettingsScreen.tsx:src%2Ffeatures%2Fsettings%2Fcomponents%2Fsections%2Fmodels%2FRegionModelsSection.tsx:import:..%2Fcomponents%2Fsections%2Fmodels%2FRegionModelsSection:1",
+      "from": "src/features/settings/screens/ModelsSettingsScreen.tsx",
+      "to": "src/features/settings/components/sections/models/RegionModelsSection.tsx",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../components/sections/models/RegionModelsSection",
+      "bindings": [
+        {
+          "name": "default",
+          "alias": "RegionModelsSection",
+          "kind": "default",
           "typeOnly": false
         }
       ]
@@ -33695,6 +34821,28 @@
       ]
     },
     {
+      "id": "edge:src%2Ffeatures%2Fsettings%2FsettingsContract.test.ts:src%2Fshared%2Fcontracts%2FtranslationProvider.ts:import:%40shared%2Fcontracts%2FtranslationProvider:1",
+      "from": "src/features/settings/settingsContract.test.ts",
+      "to": "src/shared/contracts/translationProvider.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/contracts/translationProvider",
+      "bindings": [
+        {
+          "name": "DEFAULT_TRANSLATION_BASE_URL",
+          "alias": "DEFAULT_TRANSLATION_BASE_URL",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "DEFAULT_TRANSLATION_MODELS",
+          "alias": "DEFAULT_TRANSLATION_MODELS",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
       "id": "edge:src%2Ffeatures%2Ftranslation%2Fcomponents%2FPretranslateDialog.tsx:src%2Fshared%2Ftheme%2Findex.ts:import:%40shared%2Ftheme:1",
       "from": "src/features/translation/components/PretranslateDialog.tsx",
       "to": "src/shared/theme/index.ts",
@@ -33769,6 +34917,68 @@
           "alias": "ReaderTranslationEngine",
           "kind": "named",
           "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fcomponents%2FPretranslateDialog.tsx:src%2Ffeatures%2Fvision%2Findex.ts:import:%40features%2Fvision:1",
+      "from": "src/features/translation/components/PretranslateDialog.tsx",
+      "to": "src/features/vision/index.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@features/vision",
+      "bindings": [
+        {
+          "name": "DEFAULT_REGION_DETECTOR_ID",
+          "alias": "DEFAULT_REGION_DETECTOR_ID",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "REGION_DETECTORS",
+          "alias": "REGION_DETECTORS",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "getRegionDetector",
+          "alias": "getRegionDetector",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionModelDownloaded",
+          "alias": "isRegionModelDownloaded",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fcomponents%2FPretranslateDialog.tsx:src%2Ffeatures%2Ftranslation%2Fprovider.ts:import:..%2Fprovider:1",
+      "from": "src/features/translation/components/PretranslateDialog.tsx",
+      "to": "src/features/translation/provider.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../provider",
+      "bindings": [
+        {
+          "name": "resolveTranslationProvider",
+          "alias": "resolveTranslationProvider",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationProviderReadinessError",
+          "alias": "translationProviderReadinessError",
+          "kind": "named",
+          "typeOnly": false
         }
       ]
     },
@@ -33897,166 +35107,6 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiClient.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiModels.ts:import:.%2FgeminiModels:1",
-      "from": "src/features/translation/engines/gemini/geminiClient.ts",
-      "to": "src/features/translation/engines/gemini/geminiModels.ts",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "./geminiModels",
-      "bindings": [
-        {
-          "name": "GEMINI_DEFAULT_MODEL",
-          "alias": "GEMINI_DEFAULT_MODEL",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "geminiModelInfo",
-          "alias": "geminiModelInfo",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
-          "kind": "named",
-          "typeOnly": true
-        }
-      ]
-    },
-    {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiFallback.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiClient.ts:import:.%2FgeminiClient:1",
-      "from": "src/features/translation/engines/gemini/geminiFallback.ts",
-      "to": "src/features/translation/engines/gemini/geminiClient.ts",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "./geminiClient",
-      "bindings": [
-        {
-          "name": "GeminiApiError",
-          "alias": "GeminiApiError",
-          "kind": "named",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiFallback.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiModels.ts:import:.%2FgeminiModels:1",
-      "from": "src/features/translation/engines/gemini/geminiFallback.ts",
-      "to": "src/features/translation/engines/gemini/geminiModels.ts",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "./geminiModels",
-      "bindings": [
-        {
-          "name": "GEMINI_MODELS",
-          "alias": "GEMINI_MODELS",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
-          "kind": "named",
-          "typeOnly": true
-        }
-      ]
-    },
-    {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiModels.ts:src%2Fcore%2Fsettings%2FgeminiModelId.ts:import:%40core%2Fsettings%2FgeminiModelId:1",
-      "from": "src/features/translation/engines/gemini/geminiModels.ts",
-      "to": "src/core/settings/geminiModelId.ts",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "@core/settings/geminiModelId",
-      "bindings": [
-        {
-          "name": "GEMINI_DEFAULT_MODEL",
-          "alias": "GEMINI_DEFAULT_MODEL",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "GEMINI_MODEL_IDS",
-          "alias": "GEMINI_MODEL_IDS",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "isGeminiModelId",
-          "alias": "isGeminiModelId",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
-          "kind": "named",
-          "typeOnly": true
-        }
-      ]
-    },
-    {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiUsage.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiModels.ts:import:.%2FgeminiModels:1",
-      "from": "src/features/translation/engines/gemini/geminiUsage.ts",
-      "to": "src/features/translation/engines/gemini/geminiModels.ts",
-      "kind": "import",
-      "typeOnly": true,
-      "specifier": "./geminiModels",
-      "bindings": [
-        {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
-          "kind": "named",
-          "typeOnly": true
-        }
-      ]
-    },
-    {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiUsage.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiModels.ts:import:.%2FgeminiModels:2",
-      "from": "src/features/translation/engines/gemini/geminiUsage.ts",
-      "to": "src/features/translation/engines/gemini/geminiModels.ts",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "./geminiModels",
-      "bindings": [
-        {
-          "name": "geminiModelInfo",
-          "alias": "geminiModelInfo",
-          "kind": "named",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiUsage.ts:src%2Fcore%2Fdb%2Frepositories%2FtranslationRepository.ts:import:%40core%2Fdb%2Frepositories%2FtranslationRepository:1",
-      "from": "src/features/translation/engines/gemini/geminiUsage.ts",
-      "to": "src/core/db/repositories/translationRepository.ts",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "@core/db/repositories/translationRepository",
-      "bindings": [
-        {
-          "name": "countTranslationUsageSince",
-          "alias": "countTranslationUsageSince",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "insertTranslationUsage",
-          "alias": "insertTranslationUsage",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "sumTranslationInputTokensSince",
-          "alias": "sumTranslationInputTokensSince",
-          "kind": "named",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
       "id": "edge:src%2Ffeatures%2Ftranslation%2Fengines%2Fgoogle%2FgoogleClient.ts:src%2Ffeatures%2Ftranslation%2Fdomain%2Ftypes.ts:import:..%2F..%2Fdomain%2Ftypes:1",
       "from": "src/features/translation/engines/google/googleClient.ts",
       "to": "src/features/translation/domain/types.ts",
@@ -34083,6 +35133,174 @@
         {
           "name": "toEngineLanguageCode",
           "alias": "toEngineLanguageCode",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fengines%2Fopenai%2FlocalEndpoint.test.ts:src%2Fshared%2Fcontracts%2FtranslationProvider.ts:import:%40shared%2Fcontracts%2FtranslationProvider:1",
+      "from": "src/features/translation/engines/openai/localEndpoint.test.ts",
+      "to": "src/shared/contracts/translationProvider.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/contracts/translationProvider",
+      "bindings": [
+        {
+          "name": "allowsKeylessTranslation",
+          "alias": "allowsKeylessTranslation",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isLocalTranslationEndpoint",
+          "alias": "isLocalTranslationEndpoint",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fengines%2Fopenai%2FopenaiClient.test.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fopenai%2FopenaiClient.ts:import:.%2FopenaiClient:1",
+      "from": "src/features/translation/engines/openai/openaiClient.test.ts",
+      "to": "src/features/translation/engines/openai/openaiClient.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./openaiClient",
+      "bindings": [
+        {
+          "name": "translationEndpoint",
+          "alias": "translationEndpoint",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translateOpenAiCompatibleBatch",
+          "alias": "translateOpenAiCompatibleBatch",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "validateOpenAiCompatibleEndpoint",
+          "alias": "validateOpenAiCompatibleEndpoint",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fengines%2Fopenai%2FopenaiClient.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fshared%2FbatchPrompt.ts:import:..%2Fshared%2FbatchPrompt:1",
+      "from": "src/features/translation/engines/openai/openaiClient.ts",
+      "to": "src/features/translation/engines/shared/batchPrompt.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../shared/batchPrompt",
+      "bindings": [
+        {
+          "name": "buildTranslationSystemPrompt",
+          "alias": "buildTranslationSystemPrompt",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "buildTranslationUserPrompt",
+          "alias": "buildTranslationUserPrompt",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "parseBatchJson",
+          "alias": "parseBatchJson",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "validateBatchResults",
+          "alias": "validateBatchResults",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "TranslationBatchResult",
+          "alias": "TranslationBatchResult",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "TranslationPagePayload",
+          "alias": "TranslationPagePayload",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fengines%2Fopenai%2FopenaiClient.ts:src%2Fshared%2Fcontracts%2Findex.ts:import:%40shared%2Fcontracts:1",
+      "from": "src/features/translation/engines/openai/openaiClient.ts",
+      "to": "src/shared/contracts/index.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/contracts",
+      "bindings": [
+        {
+          "name": "allowsKeylessTranslation",
+          "alias": "allowsKeylessTranslation",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "DEFAULT_TRANSLATION_MODELS",
+          "alias": "DEFAULT_TRANSLATION_MODELS",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "normalizeTranslationBaseUrl",
+          "alias": "normalizeTranslationBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fengines%2Fshared%2FbatchPrompt.test.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fshared%2FbatchPrompt.ts:import:.%2FbatchPrompt:1",
+      "from": "src/features/translation/engines/shared/batchPrompt.test.ts",
+      "to": "src/features/translation/engines/shared/batchPrompt.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./batchPrompt",
+      "bindings": [
+        {
+          "name": "parseBatchJson",
+          "alias": "parseBatchJson",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "validateBatchResults",
+          "alias": "validateBatchResults",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "TranslationPagePayload",
+          "alias": "TranslationPagePayload",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fengines%2Fshared%2FmodelFallback.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fopenai%2FopenaiClient.ts:import:..%2Fopenai%2FopenaiClient:1",
+      "from": "src/features/translation/engines/shared/modelFallback.ts",
+      "to": "src/features/translation/engines/openai/openaiClient.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../openai/openaiClient",
+      "bindings": [
+        {
+          "name": "isOpenAiRateLimitError",
+          "alias": "isOpenAiRateLimitError",
           "kind": "named",
           "typeOnly": false
         }
@@ -34187,168 +35405,274 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiModels.ts:re-export:.%2Fengines%2Fgemini%2FgeminiModels:1",
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Fshared%2Fcontracts%2FregionDetector.ts:re-export:%40shared%2Fcontracts%2FregionDetector:1",
       "from": "src/features/translation/index.ts",
-      "to": "src/features/translation/engines/gemini/geminiModels.ts",
+      "to": "src/shared/contracts/regionDetector.ts",
       "kind": "re-export",
       "typeOnly": false,
-      "specifier": "./engines/gemini/geminiModels",
+      "specifier": "@shared/contracts/regionDetector",
       "bindings": [
         {
-          "name": "GEMINI_MODELS",
-          "alias": "GEMINI_MODELS",
+          "name": "DEFAULT_REGION_DETECTOR_ID",
+          "alias": "DEFAULT_REGION_DETECTOR_ID",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "geminiModelInfo",
-          "alias": "geminiModelInfo",
+          "name": "isRegionDetectorId",
+          "alias": "isRegionDetectorId",
           "kind": "named",
           "typeOnly": false
         }
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Fcore%2Fsettings%2FgeminiModelId.ts:re-export:%40core%2Fsettings%2FgeminiModelId:1",
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Fshared%2Fcontracts%2FregionDetector.ts:re-export:%40shared%2Fcontracts%2FregionDetector:2",
       "from": "src/features/translation/index.ts",
-      "to": "src/core/settings/geminiModelId.ts",
-      "kind": "re-export",
-      "typeOnly": false,
-      "specifier": "@core/settings/geminiModelId",
-      "bindings": [
-        {
-          "name": "GEMINI_DEFAULT_MODEL",
-          "alias": "GEMINI_DEFAULT_MODEL",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "GEMINI_MODEL_IDS",
-          "alias": "GEMINI_MODEL_IDS",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "isGeminiModelId",
-          "alias": "isGeminiModelId",
-          "kind": "named",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Fcore%2Fsettings%2FgeminiModelId.ts:re-export:%40core%2Fsettings%2FgeminiModelId:2",
-      "from": "src/features/translation/index.ts",
-      "to": "src/core/settings/geminiModelId.ts",
+      "to": "src/shared/contracts/regionDetector.ts",
       "kind": "re-export",
       "typeOnly": true,
-      "specifier": "@core/settings/geminiModelId",
+      "specifier": "@shared/contracts/regionDetector",
       "bindings": [
         {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
+          "name": "DetectionRole",
+          "alias": "DetectionRole",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
           "kind": "named",
           "typeOnly": true
         }
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiClient.ts:re-export:.%2Fengines%2Fgemini%2FgeminiClient:1",
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Fshared%2Fcontracts%2FtranslationProvider.ts:re-export:%40shared%2Fcontracts%2FtranslationProvider:1",
       "from": "src/features/translation/index.ts",
-      "to": "src/features/translation/engines/gemini/geminiClient.ts",
+      "to": "src/shared/contracts/translationProvider.ts",
       "kind": "re-export",
       "typeOnly": false,
-      "specifier": "./engines/gemini/geminiClient",
+      "specifier": "@shared/contracts/translationProvider",
       "bindings": [
         {
-          "name": "GeminiApiError",
-          "alias": "GeminiApiError",
+          "name": "DEFAULT_TRANSLATION_BASE_URL",
+          "alias": "DEFAULT_TRANSLATION_BASE_URL",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "parseGeminiJson",
-          "alias": "parseGeminiJson",
+          "name": "DEFAULT_TRANSLATION_MODELS",
+          "alias": "DEFAULT_TRANSLATION_MODELS",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "translateGeminiBatch",
-          "alias": "translateGeminiBatch",
+          "name": "isGeminiBaseUrl",
+          "alias": "isGeminiBaseUrl",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "validateGeminiApiKey",
-          "alias": "validateGeminiApiKey",
+          "name": "normalizeBaseUrl",
+          "alias": "normalizeBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "normalizeTranslationBaseUrl",
+          "alias": "normalizeTranslationBaseUrl",
           "kind": "named",
           "typeOnly": false
         }
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiClient.ts:re-export:.%2Fengines%2Fgemini%2FgeminiClient:2",
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Fshared%2Fcontracts%2FtranslationProvider.ts:re-export:%40shared%2Fcontracts%2FtranslationProvider:2",
       "from": "src/features/translation/index.ts",
-      "to": "src/features/translation/engines/gemini/geminiClient.ts",
+      "to": "src/shared/contracts/translationProvider.ts",
       "kind": "re-export",
       "typeOnly": true,
-      "specifier": "./engines/gemini/geminiClient",
+      "specifier": "@shared/contracts/translationProvider",
       "bindings": [
         {
-          "name": "GeminiBatchRegion",
-          "alias": "GeminiBatchRegion",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiBatchResponse",
-          "alias": "GeminiBatchResponse",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiBatchResult",
-          "alias": "GeminiBatchResult",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiPagePayload",
-          "alias": "GeminiPagePayload",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
-          "name": "GeminiUsageInfo",
-          "alias": "GeminiUsageInfo",
+          "name": "TranslationProviderConfig",
+          "alias": "TranslationProviderConfig",
           "kind": "named",
           "typeOnly": true
         }
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiFallback.ts:re-export:.%2Fengines%2Fgemini%2FgeminiFallback:1",
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fprovider.ts:re-export:.%2Fprovider:1",
       "from": "src/features/translation/index.ts",
-      "to": "src/features/translation/engines/gemini/geminiFallback.ts",
+      "to": "src/features/translation/provider.ts",
       "kind": "re-export",
       "typeOnly": false,
-      "specifier": "./engines/gemini/geminiFallback",
+      "specifier": "./provider",
+      "bindings": [
+        {
+          "name": "resolveTranslationProvider",
+          "alias": "resolveTranslationProvider",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationProviderReadinessError",
+          "alias": "translationProviderReadinessError",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationProviderLabel",
+          "alias": "translationProviderLabel",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fopenai%2FopenaiClient.ts:re-export:.%2Fengines%2Fopenai%2FopenaiClient:1",
+      "from": "src/features/translation/index.ts",
+      "to": "src/features/translation/engines/openai/openaiClient.ts",
+      "kind": "re-export",
+      "typeOnly": false,
+      "specifier": "./engines/openai/openaiClient",
+      "bindings": [
+        {
+          "name": "isOpenAiRateLimitError",
+          "alias": "isOpenAiRateLimitError",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "OpenAiCompatibleError",
+          "alias": "OpenAiCompatibleError",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translateOpenAiCompatibleBatch",
+          "alias": "translateOpenAiCompatibleBatch",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationEndpoint",
+          "alias": "translationEndpoint",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "validateOpenAiCompatibleEndpoint",
+          "alias": "validateOpenAiCompatibleEndpoint",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fopenai%2FopenaiClient.ts:re-export:.%2Fengines%2Fopenai%2FopenaiClient:2",
+      "from": "src/features/translation/index.ts",
+      "to": "src/features/translation/engines/openai/openaiClient.ts",
+      "kind": "re-export",
+      "typeOnly": true,
+      "specifier": "./engines/openai/openaiClient",
+      "bindings": [
+        {
+          "name": "OpenAiBatchRequest",
+          "alias": "OpenAiBatchRequest",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "OpenAiBatchResponse",
+          "alias": "OpenAiBatchResponse",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "OpenAiUsageInfo",
+          "alias": "OpenAiUsageInfo",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fshared%2FbatchPrompt.ts:re-export:.%2Fengines%2Fshared%2FbatchPrompt:1",
+      "from": "src/features/translation/index.ts",
+      "to": "src/features/translation/engines/shared/batchPrompt.ts",
+      "kind": "re-export",
+      "typeOnly": false,
+      "specifier": "./engines/shared/batchPrompt",
+      "bindings": [
+        {
+          "name": "buildTranslationSystemPrompt",
+          "alias": "buildTranslationSystemPrompt",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "buildTranslationUserPrompt",
+          "alias": "buildTranslationUserPrompt",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "parseBatchJson",
+          "alias": "parseBatchJson",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "validateBatchResults",
+          "alias": "validateBatchResults",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fshared%2FbatchPrompt.ts:re-export:.%2Fengines%2Fshared%2FbatchPrompt:2",
+      "from": "src/features/translation/index.ts",
+      "to": "src/features/translation/engines/shared/batchPrompt.ts",
+      "kind": "re-export",
+      "typeOnly": true,
+      "specifier": "./engines/shared/batchPrompt",
+      "bindings": [
+        {
+          "name": "TranslationBatchRegion",
+          "alias": "TranslationBatchRegion",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "TranslationBatchResult",
+          "alias": "TranslationBatchResult",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "TranslationPagePayload",
+          "alias": "TranslationPagePayload",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fshared%2FmodelFallback.ts:re-export:.%2Fengines%2Fshared%2FmodelFallback:1",
+      "from": "src/features/translation/index.ts",
+      "to": "src/features/translation/engines/shared/modelFallback.ts",
+      "kind": "re-export",
+      "typeOnly": false,
+      "specifier": "./engines/shared/modelFallback",
       "bindings": [
         {
           "name": "AUTO_MODEL_SWITCH_FAILURE_LIMIT",
           "alias": "AUTO_MODEL_SWITCH_FAILURE_LIMIT",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "fallbackModelChain",
-          "alias": "fallbackModelChain",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "isGeminiRateLimitError",
-          "alias": "isGeminiRateLimitError",
           "kind": "named",
           "typeOnly": false
         },
@@ -34367,12 +35691,12 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiFallback.ts:re-export:.%2Fengines%2Fgemini%2FgeminiFallback:2",
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fshared%2FmodelFallback.ts:re-export:.%2Fengines%2Fshared%2FmodelFallback:2",
       "from": "src/features/translation/index.ts",
-      "to": "src/features/translation/engines/gemini/geminiFallback.ts",
+      "to": "src/features/translation/engines/shared/modelFallback.ts",
       "kind": "re-export",
       "typeOnly": true,
-      "specifier": "./engines/gemini/geminiFallback",
+      "specifier": "./engines/shared/modelFallback",
       "bindings": [
         {
           "name": "AutoSwitchFailureState",
@@ -34389,16 +35713,16 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiUsage.ts:re-export:.%2Fengines%2Fgemini%2FgeminiUsage:1",
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FtranslationUsage.ts:re-export:.%2Fpipeline%2FtranslationUsage:1",
       "from": "src/features/translation/index.ts",
-      "to": "src/features/translation/engines/gemini/geminiUsage.ts",
+      "to": "src/features/translation/pipeline/translationUsage.ts",
       "kind": "re-export",
       "typeOnly": false,
-      "specifier": "./engines/gemini/geminiUsage",
+      "specifier": "./pipeline/translationUsage",
       "bindings": [
         {
-          "name": "getGeminiUsageSnapshot",
-          "alias": "getGeminiUsageSnapshot",
+          "name": "getTranslationsUsageSnapshot",
+          "alias": "getTranslationsUsageSnapshot",
           "kind": "named",
           "typeOnly": false
         },
@@ -34409,42 +35733,36 @@
           "typeOnly": false
         },
         {
-          "name": "recordGeminiUsage",
-          "alias": "recordGeminiUsage",
+          "name": "recordTranslationUsage",
+          "alias": "recordTranslationUsage",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "subscribeGeminiUsage",
-          "alias": "subscribeGeminiUsage",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "waitForRpmCapacity",
-          "alias": "waitForRpmCapacity",
+          "name": "subscribeTranslationUsage",
+          "alias": "subscribeTranslationUsage",
           "kind": "named",
           "typeOnly": false
         }
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiUsage.ts:re-export:.%2Fengines%2Fgemini%2FgeminiUsage:2",
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FtranslationUsage.ts:re-export:.%2Fpipeline%2FtranslationUsage:2",
       "from": "src/features/translation/index.ts",
-      "to": "src/features/translation/engines/gemini/geminiUsage.ts",
+      "to": "src/features/translation/pipeline/translationUsage.ts",
       "kind": "re-export",
       "typeOnly": true,
-      "specifier": "./engines/gemini/geminiUsage",
+      "specifier": "./pipeline/translationUsage",
       "bindings": [
         {
-          "name": "GeminiUsageRecordInput",
-          "alias": "GeminiUsageRecordInput",
+          "name": "TranslationUsageRecordInput",
+          "alias": "TranslationUsageRecordInput",
           "kind": "named",
           "typeOnly": true
         },
         {
-          "name": "GeminiUsageSnapshot",
-          "alias": "GeminiUsageSnapshot",
+          "name": "TranslationUsageSnapshot",
+          "alias": "TranslationUsageSnapshot",
           "kind": "named",
           "typeOnly": true
         }
@@ -34537,6 +35855,126 @@
           "alias": "fillSlotTexts",
           "kind": "named",
           "typeOnly": false
+        },
+        {
+          "name": "ocrRegionsForSlots",
+          "alias": "ocrRegionsForSlots",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FcontextPages.ts:re-export:.%2Fpipeline%2FcontextPages:1",
+      "from": "src/features/translation/index.ts",
+      "to": "src/features/translation/pipeline/contextPages.ts",
+      "kind": "re-export",
+      "typeOnly": false,
+      "specifier": "./pipeline/contextPages",
+      "bindings": [
+        {
+          "name": "selectPreviousContextPages",
+          "alias": "selectPreviousContextPages",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "selectPreviousContextPagesUnique",
+          "alias": "selectPreviousContextPagesUnique",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FcacheIdentity.ts:re-export:.%2Fpipeline%2FcacheIdentity:1",
+      "from": "src/features/translation/index.ts",
+      "to": "src/features/translation/pipeline/cacheIdentity.ts",
+      "kind": "re-export",
+      "typeOnly": false,
+      "specifier": "./pipeline/cacheIdentity",
+      "bindings": [
+        {
+          "name": "pageCacheIdentity",
+          "alias": "pageCacheIdentity",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationCacheKey",
+          "alias": "translationCacheKey",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FcacheIdentity.ts:re-export:.%2Fpipeline%2FcacheIdentity:2",
+      "from": "src/features/translation/index.ts",
+      "to": "src/features/translation/pipeline/cacheIdentity.ts",
+      "kind": "re-export",
+      "typeOnly": true,
+      "specifier": "./pipeline/cacheIdentity",
+      "bindings": [
+        {
+          "name": "TranslationCacheIdentity",
+          "alias": "TranslationCacheIdentity",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FaiBatch.ts:re-export:.%2Fpipeline%2FaiBatch:1",
+      "from": "src/features/translation/index.ts",
+      "to": "src/features/translation/pipeline/aiBatch.ts",
+      "kind": "re-export",
+      "typeOnly": false,
+      "specifier": "./pipeline/aiBatch",
+      "bindings": [
+        {
+          "name": "runAiTranslationBatch",
+          "alias": "runAiTranslationBatch",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FaiBatch.ts:re-export:.%2Fpipeline%2FaiBatch:2",
+      "from": "src/features/translation/index.ts",
+      "to": "src/features/translation/pipeline/aiBatch.ts",
+      "kind": "re-export",
+      "typeOnly": true,
+      "specifier": "./pipeline/aiBatch",
+      "bindings": [
+        {
+          "name": "AiBatchContext",
+          "alias": "AiBatchContext",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "AiBatchOutcome",
+          "alias": "AiBatchOutcome",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FcontextPages.ts:re-export:.%2Fpipeline%2FcontextPages:2",
+      "from": "src/features/translation/index.ts",
+      "to": "src/features/translation/pipeline/contextPages.ts",
+      "kind": "re-export",
+      "typeOnly": true,
+      "specifier": "./pipeline/contextPages",
+      "bindings": [
+        {
+          "name": "ContextPage",
+          "alias": "ContextPage",
+          "kind": "named",
+          "typeOnly": true
         }
       ]
     },
@@ -34765,6 +36203,50 @@
       ]
     },
     {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Fshared%2Fcontracts%2FtranslationEngine.ts:import:%40shared%2Fcontracts%2FtranslationEngine:2",
+      "from": "src/features/translation/jobs/pretranslateQueue.ts",
+      "to": "src/shared/contracts/translationEngine.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/contracts/translationEngine",
+      "bindings": [
+        {
+          "name": "isAiTranslationEngine",
+          "alias": "isAiTranslationEngine",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Fshared%2Fcontracts%2FregionDetector.ts:import:%40shared%2Fcontracts%2FregionDetector:1",
+      "from": "src/features/translation/jobs/pretranslateQueue.ts",
+      "to": "src/shared/contracts/regionDetector.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/contracts/regionDetector",
+      "bindings": [
+        {
+          "name": "DEFAULT_REGION_DETECTOR_ID",
+          "alias": "DEFAULT_REGION_DETECTOR_ID",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionDetectorId",
+          "alias": "isRegionDetectorId",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
       "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Fcore%2Fsettings%2Findex.ts:import:%40core%2Fsettings:1",
       "from": "src/features/translation/jobs/pretranslateQueue.ts",
       "to": "src/core/settings/index.ts",
@@ -34809,94 +36291,16 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiClient.ts:import:..%2Fengines%2Fgemini%2FgeminiClient:1",
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Ffeatures%2Ftranslation%2Fprovider.ts:import:..%2Fprovider:1",
       "from": "src/features/translation/jobs/pretranslateQueue.ts",
-      "to": "src/features/translation/engines/gemini/geminiClient.ts",
+      "to": "src/features/translation/provider.ts",
       "kind": "import",
       "typeOnly": false,
-      "specifier": "../engines/gemini/geminiClient",
+      "specifier": "../provider",
       "bindings": [
         {
-          "name": "GeminiApiError",
-          "alias": "GeminiApiError",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "translateGeminiBatch",
-          "alias": "translateGeminiBatch",
-          "kind": "named",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiModels.ts:import:..%2Fengines%2Fgemini%2FgeminiModels:1",
-      "from": "src/features/translation/jobs/pretranslateQueue.ts",
-      "to": "src/features/translation/engines/gemini/geminiModels.ts",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "../engines/gemini/geminiModels",
-      "bindings": [
-        {
-          "name": "GEMINI_DEFAULT_MODEL",
-          "alias": "GEMINI_DEFAULT_MODEL",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "GeminiModelId",
-          "alias": "GeminiModelId",
-          "kind": "named",
-          "typeOnly": true
-        }
-      ]
-    },
-    {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiFallback.ts:import:..%2Fengines%2Fgemini%2FgeminiFallback:1",
-      "from": "src/features/translation/jobs/pretranslateQueue.ts",
-      "to": "src/features/translation/engines/gemini/geminiFallback.ts",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "../engines/gemini/geminiFallback",
-      "bindings": [
-        {
-          "name": "fallbackModelChain",
-          "alias": "fallbackModelChain",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "nextAutoSwitchFailureState",
-          "alias": "nextAutoSwitchFailureState",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "requestWithModelFallback",
-          "alias": "requestWithModelFallback",
-          "kind": "named",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fgemini%2FgeminiUsage.ts:import:..%2Fengines%2Fgemini%2FgeminiUsage:1",
-      "from": "src/features/translation/jobs/pretranslateQueue.ts",
-      "to": "src/features/translation/engines/gemini/geminiUsage.ts",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "../engines/gemini/geminiUsage",
-      "bindings": [
-        {
-          "name": "recordGeminiUsage",
-          "alias": "recordGeminiUsage",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "waitForRpmCapacity",
-          "alias": "waitForRpmCapacity",
+          "name": "resolveTranslationProvider",
+          "alias": "resolveTranslationProvider",
           "kind": "named",
           "typeOnly": false
         }
@@ -34925,6 +36329,12 @@
         {
           "name": "fillSlotTexts",
           "alias": "fillSlotTexts",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "ocrRegionsForSlots",
+          "alias": "ocrRegionsForSlots",
           "kind": "named",
           "typeOnly": false
         }
@@ -34981,6 +36391,18 @@
         {
           "name": "getLocalOcrModel",
           "alias": "getLocalOcrModel",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "getRegionDetector",
+          "alias": "getRegionDetector",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionModelDownloaded",
+          "alias": "isRegionModelDownloaded",
           "kind": "named",
           "typeOnly": false
         },
@@ -35061,6 +36483,344 @@
       ]
     },
     {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FcontextPages.ts:import:..%2Fpipeline%2FcontextPages:1",
+      "from": "src/features/translation/jobs/pretranslateQueue.ts",
+      "to": "src/features/translation/pipeline/contextPages.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../pipeline/contextPages",
+      "bindings": [
+        {
+          "name": "selectPreviousContextPages",
+          "alias": "selectPreviousContextPages",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FaiBatch.ts:import:..%2Fpipeline%2FaiBatch:1",
+      "from": "src/features/translation/jobs/pretranslateQueue.ts",
+      "to": "src/features/translation/pipeline/aiBatch.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../pipeline/aiBatch",
+      "bindings": [
+        {
+          "name": "runAiTranslationBatch",
+          "alias": "runAiTranslationBatch",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FcacheIdentity.ts:import:..%2Fpipeline%2FcacheIdentity:1",
+      "from": "src/features/translation/jobs/pretranslateQueue.ts",
+      "to": "src/features/translation/pipeline/cacheIdentity.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../pipeline/cacheIdentity",
+      "bindings": [
+        {
+          "name": "pageCacheIdentity",
+          "alias": "pageCacheIdentity",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationCacheKey",
+          "alias": "translationCacheKey",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FaiBatch.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fshared%2FmodelFallback.ts:import:..%2Fengines%2Fshared%2FmodelFallback:1",
+      "from": "src/features/translation/pipeline/aiBatch.ts",
+      "to": "src/features/translation/engines/shared/modelFallback.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../engines/shared/modelFallback",
+      "bindings": [
+        {
+          "name": "nextAutoSwitchFailureState",
+          "alias": "nextAutoSwitchFailureState",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "requestWithModelFallback",
+          "alias": "requestWithModelFallback",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FaiBatch.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fopenai%2FopenaiClient.ts:import:..%2Fengines%2Fopenai%2FopenaiClient:1",
+      "from": "src/features/translation/pipeline/aiBatch.ts",
+      "to": "src/features/translation/engines/openai/openaiClient.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../engines/openai/openaiClient",
+      "bindings": [
+        {
+          "name": "OpenAiCompatibleError",
+          "alias": "OpenAiCompatibleError",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translateOpenAiCompatibleBatch",
+          "alias": "translateOpenAiCompatibleBatch",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FaiBatch.ts:src%2Ffeatures%2Ftranslation%2Fprovider.ts:import:..%2Fprovider:1",
+      "from": "src/features/translation/pipeline/aiBatch.ts",
+      "to": "src/features/translation/provider.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../provider",
+      "bindings": [
+        {
+          "name": "resolveTranslationProvider",
+          "alias": "resolveTranslationProvider",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationProviderReadinessError",
+          "alias": "translationProviderReadinessError",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationProviderLabel",
+          "alias": "translationProviderLabel",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FaiBatch.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fopenai%2FopenaiClient.ts:import:..%2Fengines%2Fopenai%2FopenaiClient:2",
+      "from": "src/features/translation/pipeline/aiBatch.ts",
+      "to": "src/features/translation/engines/openai/openaiClient.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "../engines/openai/openaiClient",
+      "bindings": [
+        {
+          "name": "OpenAiBatchResponse",
+          "alias": "OpenAiBatchResponse",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FaiBatch.ts:src%2Ffeatures%2Ftranslation%2Fengines%2Fshared%2FbatchPrompt.ts:import:..%2Fengines%2Fshared%2FbatchPrompt:1",
+      "from": "src/features/translation/pipeline/aiBatch.ts",
+      "to": "src/features/translation/engines/shared/batchPrompt.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "../engines/shared/batchPrompt",
+      "bindings": [
+        {
+          "name": "TranslationPagePayload",
+          "alias": "TranslationPagePayload",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FaiBatch.ts:src%2Fcore%2Fsettings%2Findex.ts:import:%40core%2Fsettings:1",
+      "from": "src/features/translation/pipeline/aiBatch.ts",
+      "to": "src/core/settings/index.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "@core/settings",
+      "bindings": [
+        {
+          "name": "AppSettings",
+          "alias": "AppSettings",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FaiBatch.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FtranslationUsage.ts:import:.%2FtranslationUsage:1",
+      "from": "src/features/translation/pipeline/aiBatch.ts",
+      "to": "src/features/translation/pipeline/translationUsage.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./translationUsage",
+      "bindings": [
+        {
+          "name": "recordTranslationUsage",
+          "alias": "recordTranslationUsage",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FcacheIdentity.test.ts:src%2Fshared%2Fcontracts%2Findex.ts:import:%40shared%2Fcontracts:1",
+      "from": "src/features/translation/pipeline/cacheIdentity.test.ts",
+      "to": "src/shared/contracts/index.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "@shared/contracts",
+      "bindings": [
+        {
+          "name": "TranslationProviderConfig",
+          "alias": "TranslationProviderConfig",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FcacheIdentity.test.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FcacheIdentity.ts:import:.%2FcacheIdentity:1",
+      "from": "src/features/translation/pipeline/cacheIdentity.test.ts",
+      "to": "src/features/translation/pipeline/cacheIdentity.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./cacheIdentity",
+      "bindings": [
+        {
+          "name": "pageCacheIdentity",
+          "alias": "pageCacheIdentity",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationCacheKey",
+          "alias": "translationCacheKey",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FcacheIdentity.ts:src%2Fshared%2Fcontracts%2FregionDetector.ts:import:%40shared%2Fcontracts%2FregionDetector:1",
+      "from": "src/features/translation/pipeline/cacheIdentity.ts",
+      "to": "src/shared/contracts/regionDetector.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "@shared/contracts/regionDetector",
+      "bindings": [
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FcacheIdentity.ts:src%2Fshared%2Fcontracts%2FtranslationProvider.ts:import:%40shared%2Fcontracts%2FtranslationProvider:1",
+      "from": "src/features/translation/pipeline/cacheIdentity.ts",
+      "to": "src/shared/contracts/translationProvider.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "@shared/contracts/translationProvider",
+      "bindings": [
+        {
+          "name": "TranslationProviderConfig",
+          "alias": "TranslationProviderConfig",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FcontextPages.test.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FcontextPages.ts:import:.%2FcontextPages:1",
+      "from": "src/features/translation/pipeline/contextPages.test.ts",
+      "to": "src/features/translation/pipeline/contextPages.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./contextPages",
+      "bindings": [
+        {
+          "name": "selectPreviousContextPages",
+          "alias": "selectPreviousContextPages",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "selectPreviousContextPagesUnique",
+          "alias": "selectPreviousContextPagesUnique",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FtranslationRegions.test.ts:src%2Ffeatures%2Fvision%2Findex.ts:import:%40features%2Fvision:1",
+      "from": "src/features/translation/pipeline/translationRegions.test.ts",
+      "to": "src/features/vision/index.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "@features/vision",
+      "bindings": [
+        {
+          "name": "DetectionResult",
+          "alias": "DetectionResult",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FtranslationRegions.test.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FtranslationRegions.ts:import:.%2FtranslationRegions:1",
+      "from": "src/features/translation/pipeline/translationRegions.test.ts",
+      "to": "src/features/translation/pipeline/translationRegions.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./translationRegions",
+      "bindings": [
+        {
+          "name": "assignItemsToSlots",
+          "alias": "assignItemsToSlots",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "buildTranslationSlots",
+          "alias": "buildTranslationSlots",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "fillSlotTexts",
+          "alias": "fillSlotTexts",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "midpointBox",
+          "alias": "midpointBox",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "ocrRegionsForSlots",
+          "alias": "ocrRegionsForSlots",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
       "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FtranslationRegions.ts:src%2Ffeatures%2Fvision%2Findex.ts:import:%40features%2Fvision:1",
       "from": "src/features/translation/pipeline/translationRegions.ts",
       "to": "src/features/vision/index.ts",
@@ -35077,6 +36837,18 @@
         {
           "name": "DetectionResult",
           "alias": "DetectionResult",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "DetectionRole",
+          "alias": "DetectionRole",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "OcrRegion",
+          "alias": "OcrRegion",
           "kind": "named",
           "typeOnly": true
         },
@@ -35107,6 +36879,204 @@
           "alias": "TranslationSlot",
           "kind": "named",
           "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FtranslationUsage.ts:src%2Fshared%2Fcontracts%2FtranslationProvider.ts:import:%40shared%2Fcontracts%2FtranslationProvider:1",
+      "from": "src/features/translation/pipeline/translationUsage.ts",
+      "to": "src/shared/contracts/translationProvider.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "@shared/contracts/translationProvider",
+      "bindings": [
+        {
+          "name": "TranslationProviderConfig",
+          "alias": "TranslationProviderConfig",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FtranslationUsage.ts:src%2Fshared%2Fcontracts%2FtranslationProvider.ts:import:%40shared%2Fcontracts%2FtranslationProvider:2",
+      "from": "src/features/translation/pipeline/translationUsage.ts",
+      "to": "src/shared/contracts/translationProvider.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/contracts/translationProvider",
+      "bindings": [
+        {
+          "name": "isGeminiBaseUrl",
+          "alias": "isGeminiBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fpipeline%2FtranslationUsage.ts:src%2Fcore%2Fdb%2Frepositories%2FtranslationRepository.ts:import:%40core%2Fdb%2Frepositories%2FtranslationRepository:1",
+      "from": "src/features/translation/pipeline/translationUsage.ts",
+      "to": "src/core/db/repositories/translationRepository.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@core/db/repositories/translationRepository",
+      "bindings": [
+        {
+          "name": "countTranslationUsageSince",
+          "alias": "countTranslationUsageSince",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "insertTranslationUsage",
+          "alias": "insertTranslationUsage",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "sumTranslationInputTokensSince",
+          "alias": "sumTranslationInputTokensSince",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fprovider.test.ts:src%2Fshared%2Fcontracts%2FtranslationProvider.ts:import:%40shared%2Fcontracts%2FtranslationProvider:1",
+      "from": "src/features/translation/provider.test.ts",
+      "to": "src/shared/contracts/translationProvider.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/contracts/translationProvider",
+      "bindings": [
+        {
+          "name": "DEFAULT_TRANSLATION_BASE_URL",
+          "alias": "DEFAULT_TRANSLATION_BASE_URL",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "DEFAULT_TRANSLATION_MODELS",
+          "alias": "DEFAULT_TRANSLATION_MODELS",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isGeminiBaseUrl",
+          "alias": "isGeminiBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "normalizeTranslationBaseUrl",
+          "alias": "normalizeTranslationBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fprovider.test.ts:src%2Fcore%2Fsettings%2FsettingsSchema.ts:import:%40core%2Fsettings%2FsettingsSchema:1",
+      "from": "src/features/translation/provider.test.ts",
+      "to": "src/core/settings/settingsSchema.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@core/settings/settingsSchema",
+      "bindings": [
+        {
+          "name": "DEFAULT_SETTINGS",
+          "alias": "DEFAULT_SETTINGS",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fprovider.test.ts:src%2Ffeatures%2Ftranslation%2Fprovider.ts:import:.%2Fprovider:1",
+      "from": "src/features/translation/provider.test.ts",
+      "to": "src/features/translation/provider.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./provider",
+      "bindings": [
+        {
+          "name": "resolveTranslationProvider",
+          "alias": "resolveTranslationProvider",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationProviderReadinessError",
+          "alias": "translationProviderReadinessError",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fprovider.ts:src%2Fcore%2Fsettings%2Findex.ts:import:%40core%2Fsettings:1",
+      "from": "src/features/translation/provider.ts",
+      "to": "src/core/settings/index.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "@core/settings",
+      "bindings": [
+        {
+          "name": "AppSettings",
+          "alias": "AppSettings",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fprovider.ts:src%2Fshared%2Fcontracts%2Findex.ts:import:%40shared%2Fcontracts:1",
+      "from": "src/features/translation/provider.ts",
+      "to": "src/shared/contracts/index.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "@shared/contracts",
+      "bindings": [
+        {
+          "name": "TranslationEngine",
+          "alias": "TranslationEngine",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "TranslationProviderConfig",
+          "alias": "TranslationProviderConfig",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fprovider.ts:src%2Fshared%2Fcontracts%2Findex.ts:import:%40shared%2Fcontracts:2",
+      "from": "src/features/translation/provider.ts",
+      "to": "src/shared/contracts/index.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/contracts",
+      "bindings": [
+        {
+          "name": "allowsKeylessTranslation",
+          "alias": "allowsKeylessTranslation",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isGeminiBaseUrl",
+          "alias": "isGeminiBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "normalizeTranslationBaseUrl",
+          "alias": "normalizeTranslationBaseUrl",
+          "kind": "named",
+          "typeOnly": false
         }
       ]
     },
@@ -35353,6 +37323,66 @@
       ]
     },
     {
+      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2FdetectionTypes.ts:src%2Ffeatures%2Fvision%2Fmodels%2FregionModels.ts:import:..%2Fmodels%2FregionModels:1",
+      "from": "src/features/vision/detection/detectionTypes.ts",
+      "to": "src/features/vision/models/regionModels.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "../models/regionModels",
+      "bindings": [
+        {
+          "name": "DetectionRole",
+          "alias": "DetectionRole",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2Fgeometry.ts:src%2Ffeatures%2Fvision%2Fdetection%2FdetectionTypes.ts:import:.%2FdetectionTypes:1",
+      "from": "src/features/vision/detection/geometry.ts",
+      "to": "src/features/vision/detection/detectionTypes.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "./detectionTypes",
+      "bindings": [
+        {
+          "name": "Detection",
+          "alias": "Detection",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2FpageDetector.ts:src%2Ffeatures%2Fvision%2Fmodels%2FregionModels.ts:import:..%2Fmodels%2FregionModels:1",
+      "from": "src/features/vision/detection/pageDetector.ts",
+      "to": "src/features/vision/models/regionModels.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../models/regionModels",
+      "bindings": [
+        {
+          "name": "getRegionDetector",
+          "alias": "getRegionDetector",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
       "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2FpageDetector.ts:src%2Ffeatures%2Fvision%2Fsegmentation%2FmangaBubbleSeg.ts:import:..%2Fsegmentation%2FmangaBubbleSeg:1",
       "from": "src/features/vision/detection/pageDetector.ts",
       "to": "src/features/vision/segmentation/mangaBubbleSeg.ts",
@@ -35369,16 +37399,16 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2FpageDetector.ts:src%2Ffeatures%2Fvision%2Fdetection%2Fyolo.ts:import:.%2Fyolo:1",
+      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2FpageDetector.ts:src%2Ffeatures%2Fvision%2Fdetection%2Frtdetr.ts:import:.%2Frtdetr:1",
       "from": "src/features/vision/detection/pageDetector.ts",
-      "to": "src/features/vision/detection/yolo.ts",
+      "to": "src/features/vision/detection/rtdetr.ts",
       "kind": "import",
       "typeOnly": false,
-      "specifier": "./yolo",
+      "specifier": "./rtdetr",
       "bindings": [
         {
-          "name": "yoloDetector",
-          "alias": "yoloDetector",
+          "name": "rtdetrDetector",
+          "alias": "rtdetrDetector",
           "kind": "named",
           "typeOnly": false
         }
@@ -35407,8 +37437,8 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2Fyolo.ts:src%2Ffeatures%2Fvision%2Fdetection%2FdetectionTypes.ts:import:.%2FdetectionTypes:1",
-      "from": "src/features/vision/detection/yolo.ts",
+      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2Frtdetr.ts:src%2Ffeatures%2Fvision%2Fdetection%2FdetectionTypes.ts:import:.%2FdetectionTypes:1",
+      "from": "src/features/vision/detection/rtdetr.ts",
       "to": "src/features/vision/detection/detectionTypes.ts",
       "kind": "import",
       "typeOnly": true,
@@ -35427,12 +37457,6 @@
           "typeOnly": true
         },
         {
-          "name": "YoloClassName",
-          "alias": "YoloClassName",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
           "name": "YoloOptions",
           "alias": "YoloOptions",
           "kind": "named",
@@ -35441,52 +37465,46 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2Fyolo.ts:src%2Ffeatures%2Fvision%2Fdetection%2FdetectionTypes.ts:import:.%2FdetectionTypes:2",
-      "from": "src/features/vision/detection/yolo.ts",
-      "to": "src/features/vision/detection/detectionTypes.ts",
+      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2Frtdetr.ts:src%2Ffeatures%2Fvision%2Fmodels%2FregionModels.ts:import:..%2Fmodels%2FregionModels:1",
+      "from": "src/features/vision/detection/rtdetr.ts",
+      "to": "src/features/vision/models/regionModels.ts",
       "kind": "import",
       "typeOnly": false,
-      "specifier": "./detectionTypes",
+      "specifier": "../models/regionModels",
       "bindings": [
         {
-          "name": "YOLO_CLASS_NAMES",
-          "alias": "YOLO_CLASS_NAMES",
-          "kind": "named",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
-      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2Fyolo.ts:src%2Ffeatures%2Fvision%2Fdetection%2FyoloUtils.ts:import:.%2FyoloUtils:1",
-      "from": "src/features/vision/detection/yolo.ts",
-      "to": "src/features/vision/detection/yoloUtils.ts",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "./yoloUtils",
-      "bindings": [
-        {
-          "name": "decodeOutput",
-          "alias": "decodeOutput",
+          "name": "getRegionDetector",
+          "alias": "getRegionDetector",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "mergeDetections",
-          "alias": "mergeDetections",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "Letterbox",
-          "alias": "Letterbox",
+          "name": "RegionDetectorDef",
+          "alias": "RegionDetectorDef",
           "kind": "named",
           "typeOnly": true
         }
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2Fyolo.ts:src%2Ffeatures%2Fvision%2Focr%2FpageOcr.ts:import:..%2Focr%2FpageOcr:1",
-      "from": "src/features/vision/detection/yolo.ts",
+      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2Frtdetr.ts:src%2Ffeatures%2Fvision%2Fmodels%2FregionModelStore.ts:import:..%2Fmodels%2FregionModelStore:1",
+      "from": "src/features/vision/detection/rtdetr.ts",
+      "to": "src/features/vision/models/regionModelStore.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../models/regionModelStore",
+      "bindings": [
+        {
+          "name": "regionDetectorFileUri",
+          "alias": "regionDetectorFileUri",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2Frtdetr.ts:src%2Ffeatures%2Fvision%2Focr%2FpageOcr.ts:import:..%2Focr%2FpageOcr:1",
+      "from": "src/features/vision/detection/rtdetr.ts",
       "to": "src/features/vision/ocr/pageOcr.ts",
       "kind": "import",
       "typeOnly": false,
@@ -35501,90 +37519,100 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2Fyolo.ts:src%2Ffeatures%2Fvision%2Fdetection%2FdetectionTypes.ts:re-export:.%2FdetectionTypes:1",
-      "from": "src/features/vision/detection/yolo.ts",
-      "to": "src/features/vision/detection/detectionTypes.ts",
-      "kind": "re-export",
-      "typeOnly": true,
-      "specifier": "./detectionTypes",
-      "bindings": [
-        {
-          "name": "Detection",
-          "alias": "Detection",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
-          "name": "DetectionResult",
-          "alias": "DetectionResult",
-          "kind": "named",
-          "typeOnly": true
-        }
-      ]
-    },
-    {
-      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2FyoloUtils.ts:src%2Ffeatures%2Fvision%2Fdetection%2FdetectionTypes.ts:import:.%2FdetectionTypes:1",
-      "from": "src/features/vision/detection/yoloUtils.ts",
-      "to": "src/features/vision/detection/detectionTypes.ts",
+      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2Frtdetr.ts:src%2Ffeatures%2Fvision%2Focr%2Fruntime%2FonnxRuntime.ts:import:..%2Focr%2Fruntime%2FonnxRuntime:1",
+      "from": "src/features/vision/detection/rtdetr.ts",
+      "to": "src/features/vision/ocr/runtime/onnxRuntime.ts",
       "kind": "import",
-      "typeOnly": true,
-      "specifier": "./detectionTypes",
+      "typeOnly": false,
+      "specifier": "../ocr/runtime/onnxRuntime",
       "bindings": [
         {
-          "name": "Detection",
-          "alias": "Detection",
+          "name": "decodeSkiaImage",
+          "alias": "decodeSkiaImage",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "loadOcrRuntime",
+          "alias": "loadOcrRuntime",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "OcrRuntime",
+          "alias": "OcrRuntime",
           "kind": "named",
           "typeOnly": true
         },
         {
-          "name": "YoloOptions",
-          "alias": "YoloOptions",
+          "name": "OrtSession",
+          "alias": "OrtSession",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "SkiaImage",
+          "alias": "SkiaImage",
           "kind": "named",
           "typeOnly": true
         }
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Fvision%2Findex.ts:src%2Ffeatures%2Fvision%2Fdetection%2Fyolo.ts:re-export:.%2Fdetection%2Fyolo:1",
-      "from": "src/features/vision/index.ts",
-      "to": "src/features/vision/detection/yolo.ts",
+      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2Frtdetr.ts:src%2Ffeatures%2Fvision%2Fdetection%2FrtdetrTensor.ts:import:.%2FrtdetrTensor:1",
+      "from": "src/features/vision/detection/rtdetr.ts",
+      "to": "src/features/vision/detection/rtdetrTensor.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./rtdetrTensor",
+      "bindings": [
+        {
+          "name": "rtDetrTensorData",
+          "alias": "rtDetrTensorData",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "RtDetrError",
+          "alias": "RtDetrError",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "RtDetrTensorValue",
+          "alias": "RtDetrTensorValue",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2Frtdetr.ts:src%2Ffeatures%2Fvision%2Fdetection%2FrtdetrTensor.ts:re-export:.%2FrtdetrTensor:1",
+      "from": "src/features/vision/detection/rtdetr.ts",
+      "to": "src/features/vision/detection/rtdetrTensor.ts",
       "kind": "re-export",
       "typeOnly": false,
-      "specifier": "./detection/yolo",
+      "specifier": "./rtdetrTensor",
       "bindings": [
         {
-          "name": "detectImage",
-          "alias": "detectImage",
+          "name": "RtDetrError",
+          "alias": "RtDetrError",
           "kind": "named",
           "typeOnly": false
-        },
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Fdetection%2FrtdetrTensor.test.ts:src%2Ffeatures%2Fvision%2Fdetection%2FrtdetrTensor.ts:import:.%2FrtdetrTensor:1",
+      "from": "src/features/vision/detection/rtdetrTensor.test.ts",
+      "to": "src/features/vision/detection/rtdetrTensor.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./rtdetrTensor",
+      "bindings": [
         {
-          "name": "isYoloRuntimeAvailable",
-          "alias": "isYoloRuntimeAvailable",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "yoloDetector",
-          "alias": "yoloDetector",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "YOLO_CLASSES",
-          "alias": "YOLO_CLASSES",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "YoloDetector",
-          "alias": "YoloDetector",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "YoloError",
-          "alias": "YoloError",
+          "name": "rtDetrTensorData",
+          "alias": "rtDetrTensorData",
           "kind": "named",
           "typeOnly": false
         }
@@ -35595,34 +37623,6 @@
       "from": "src/features/vision/index.ts",
       "to": "src/features/vision/detection/detectionTypes.ts",
       "kind": "re-export",
-      "typeOnly": false,
-      "specifier": "./detection/detectionTypes",
-      "bindings": [
-        {
-          "name": "YOLO_CLASS_COLORS",
-          "alias": "YOLO_CLASS_COLORS",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "YOLO_CLASS_LABELS",
-          "alias": "YOLO_CLASS_LABELS",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "YOLO_CLASS_NAMES",
-          "alias": "YOLO_CLASS_NAMES",
-          "kind": "named",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
-      "id": "edge:src%2Ffeatures%2Fvision%2Findex.ts:src%2Ffeatures%2Fvision%2Fdetection%2FdetectionTypes.ts:re-export:.%2Fdetection%2FdetectionTypes:2",
-      "from": "src/features/vision/index.ts",
-      "to": "src/features/vision/detection/detectionTypes.ts",
-      "kind": "re-export",
       "typeOnly": true,
       "specifier": "./detection/detectionTypes",
       "bindings": [
@@ -35635,12 +37635,6 @@
         {
           "name": "DetectionResult",
           "alias": "DetectionResult",
-          "kind": "named",
-          "typeOnly": true
-        },
-        {
-          "name": "YoloClassName",
-          "alias": "YoloClassName",
           "kind": "named",
           "typeOnly": true
         },
@@ -35663,6 +37657,50 @@
         {
           "name": "detectPageRegions",
           "alias": "detectPageRegions",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Findex.ts:src%2Ffeatures%2Fvision%2Fdetection%2FpageDetector.ts:re-export:.%2Fdetection%2FpageDetector:2",
+      "from": "src/features/vision/index.ts",
+      "to": "src/features/vision/detection/pageDetector.ts",
+      "kind": "re-export",
+      "typeOnly": true,
+      "specifier": "./detection/pageDetector",
+      "bindings": [
+        {
+          "name": "DetectPageOptions",
+          "alias": "DetectPageOptions",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Findex.ts:src%2Ffeatures%2Fvision%2Fdetection%2Frtdetr.ts:re-export:.%2Fdetection%2Frtdetr:1",
+      "from": "src/features/vision/index.ts",
+      "to": "src/features/vision/detection/rtdetr.ts",
+      "kind": "re-export",
+      "typeOnly": false,
+      "specifier": "./detection/rtdetr",
+      "bindings": [
+        {
+          "name": "RtDetrDetector",
+          "alias": "RtDetrDetector",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "RtDetrError",
+          "alias": "RtDetrError",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "rtdetrDetector",
+          "alias": "rtdetrDetector",
           "kind": "named",
           "typeOnly": false
         }
@@ -36053,6 +38091,284 @@
         {
           "name": "LocalOcrModelId",
           "alias": "LocalOcrModelId",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Findex.ts:src%2Ffeatures%2Fvision%2Fmodels%2FregionModels.ts:re-export:.%2Fmodels%2FregionModels:1",
+      "from": "src/features/vision/index.ts",
+      "to": "src/features/vision/models/regionModels.ts",
+      "kind": "re-export",
+      "typeOnly": false,
+      "specifier": "./models/regionModels",
+      "bindings": [
+        {
+          "name": "DEFAULT_REGION_DETECTOR_ID",
+          "alias": "DEFAULT_REGION_DETECTOR_ID",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "getRegionDetector",
+          "alias": "getRegionDetector",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionDetectorId",
+          "alias": "isRegionDetectorId",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "REGION_DETECTORS",
+          "alias": "REGION_DETECTORS",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "regionRoleForClass",
+          "alias": "regionRoleForClass",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Findex.ts:src%2Ffeatures%2Fvision%2Fmodels%2FregionModels.ts:re-export:.%2Fmodels%2FregionModels:2",
+      "from": "src/features/vision/index.ts",
+      "to": "src/features/vision/models/regionModels.ts",
+      "kind": "re-export",
+      "typeOnly": true,
+      "specifier": "./models/regionModels",
+      "bindings": [
+        {
+          "name": "DetectionRole",
+          "alias": "DetectionRole",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionDetectorDef",
+          "alias": "RegionDetectorDef",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionDetectorKind",
+          "alias": "RegionDetectorKind",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionModelFile",
+          "alias": "RegionModelFile",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Findex.ts:src%2Ffeatures%2Fvision%2Fmodels%2FregionModelStore.ts:re-export:.%2Fmodels%2FregionModelStore:1",
+      "from": "src/features/vision/index.ts",
+      "to": "src/features/vision/models/regionModelStore.ts",
+      "kind": "re-export",
+      "typeOnly": false,
+      "specifier": "./models/regionModelStore",
+      "bindings": [
+        {
+          "name": "ALL_REGION_DETECTOR_IDS",
+          "alias": "ALL_REGION_DETECTOR_IDS",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "cancelRegionModelDownload",
+          "alias": "cancelRegionModelDownload",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "deleteRegionModel",
+          "alias": "deleteRegionModel",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "downloadRegionModel",
+          "alias": "downloadRegionModel",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "getRegionModelDownloadState",
+          "alias": "getRegionModelDownloadState",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionModelDownloaded",
+          "alias": "isRegionModelDownloaded",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "regionDetectorDirectoryUri",
+          "alias": "regionDetectorDirectoryUri",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "regionDetectorFileUri",
+          "alias": "regionDetectorFileUri",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "subscribeRegionModelDownloads",
+          "alias": "subscribeRegionModelDownloads",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Findex.ts:src%2Ffeatures%2Fvision%2Fmodels%2FregionModelStore.ts:re-export:.%2Fmodels%2FregionModelStore:2",
+      "from": "src/features/vision/index.ts",
+      "to": "src/features/vision/models/regionModelStore.ts",
+      "kind": "re-export",
+      "typeOnly": true,
+      "specifier": "./models/regionModelStore",
+      "bindings": [
+        {
+          "name": "RegionModelDownloadState",
+          "alias": "RegionModelDownloadState",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionModelDownloadStatus",
+          "alias": "RegionModelDownloadStatus",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Fmodels%2FregionModelStore.ts:src%2Ffeatures%2Fvision%2Fmodels%2FregionModels.ts:import:.%2FregionModels:1",
+      "from": "src/features/vision/models/regionModelStore.ts",
+      "to": "src/features/vision/models/regionModels.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./regionModels",
+      "bindings": [
+        {
+          "name": "REGION_DETECTORS",
+          "alias": "REGION_DETECTORS",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "getRegionDetector",
+          "alias": "getRegionDetector",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "RegionDetectorDef",
+          "alias": "RegionDetectorDef",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Fmodels%2FregionModels.test.ts:src%2Fshared%2Fcontracts%2FregionDetector.ts:import:%40shared%2Fcontracts%2FregionDetector:1",
+      "from": "src/features/vision/models/regionModels.test.ts",
+      "to": "src/shared/contracts/regionDetector.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/contracts/regionDetector",
+      "bindings": [
+        {
+          "name": "DEFAULT_REGION_DETECTOR_ID",
+          "alias": "DEFAULT_REGION_DETECTOR_ID",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Fmodels%2FregionModels.test.ts:src%2Ffeatures%2Fvision%2Fmodels%2FregionModels.ts:import:.%2FregionModels:1",
+      "from": "src/features/vision/models/regionModels.test.ts",
+      "to": "src/features/vision/models/regionModels.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./regionModels",
+      "bindings": [
+        {
+          "name": "REGION_DETECTORS",
+          "alias": "REGION_DETECTORS",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "getRegionDetector",
+          "alias": "getRegionDetector",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "regionRoleForClass",
+          "alias": "regionRoleForClass",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Fmodels%2FregionModels.ts:src%2Fshared%2Fcontracts%2FregionDetector.ts:import:%40shared%2Fcontracts%2FregionDetector:1",
+      "from": "src/features/vision/models/regionModels.ts",
+      "to": "src/shared/contracts/regionDetector.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@shared/contracts/regionDetector",
+      "bindings": [
+        {
+          "name": "DEFAULT_REGION_DETECTOR_ID",
+          "alias": "DEFAULT_REGION_DETECTOR_ID",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionDetectorId",
+          "alias": "isRegionDetectorId",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "DetectionRole",
+          "alias": "DetectionRole",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
           "kind": "named",
           "typeOnly": true
         }
@@ -36513,12 +38829,12 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Fvision%2Fsegmentation%2FmangaBubbleSeg.ts:src%2Ffeatures%2Fvision%2Fdetection%2FyoloUtils.ts:import:..%2Fdetection%2FyoloUtils:1",
+      "id": "edge:src%2Ffeatures%2Fvision%2Fsegmentation%2FmangaBubbleSeg.ts:src%2Ffeatures%2Fvision%2Fdetection%2Fgeometry.ts:import:..%2Fdetection%2Fgeometry:1",
       "from": "src/features/vision/segmentation/mangaBubbleSeg.ts",
-      "to": "src/features/vision/detection/yoloUtils.ts",
+      "to": "src/features/vision/detection/geometry.ts",
       "kind": "import",
       "typeOnly": false,
-      "specifier": "../detection/yoloUtils",
+      "specifier": "../detection/geometry",
       "bindings": [
         {
           "name": "mergeDetections",
@@ -36573,6 +38889,38 @@
         {
           "name": "ensureDecodablePageUri",
           "alias": "ensureDecodablePageUri",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Fsegmentation%2FmangaBubbleSeg.ts:src%2Ffeatures%2Fvision%2Fmodels%2FregionModelStore.ts:import:..%2Fmodels%2FregionModelStore:1",
+      "from": "src/features/vision/segmentation/mangaBubbleSeg.ts",
+      "to": "src/features/vision/models/regionModelStore.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../models/regionModelStore",
+      "bindings": [
+        {
+          "name": "regionDetectorFileUri",
+          "alias": "regionDetectorFileUri",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Fvision%2Fsegmentation%2FmangaBubbleSeg.ts:src%2Ffeatures%2Fvision%2Fmodels%2FregionModels.ts:import:..%2Fmodels%2FregionModels:1",
+      "from": "src/features/vision/segmentation/mangaBubbleSeg.ts",
+      "to": "src/features/vision/models/regionModels.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../models/regionModels",
+      "bindings": [
+        {
+          "name": "getRegionDetector",
+          "alias": "getRegionDetector",
           "kind": "named",
           "typeOnly": false
         }
@@ -36853,12 +39201,140 @@
       "from": "src/shared/contracts/index.ts",
       "to": "src/shared/contracts/translationEngine.ts",
       "kind": "re-export",
+      "typeOnly": false,
+      "specifier": "./translationEngine",
+      "bindings": [
+        {
+          "name": "isAiTranslationEngine",
+          "alias": "isAiTranslationEngine",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Fshared%2Fcontracts%2Findex.ts:src%2Fshared%2Fcontracts%2FtranslationEngine.ts:re-export:.%2FtranslationEngine:2",
+      "from": "src/shared/contracts/index.ts",
+      "to": "src/shared/contracts/translationEngine.ts",
+      "kind": "re-export",
       "typeOnly": true,
       "specifier": "./translationEngine",
       "bindings": [
         {
           "name": "TranslationEngine",
           "alias": "TranslationEngine",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Fshared%2Fcontracts%2Findex.ts:src%2Fshared%2Fcontracts%2FregionDetector.ts:re-export:.%2FregionDetector:1",
+      "from": "src/shared/contracts/index.ts",
+      "to": "src/shared/contracts/regionDetector.ts",
+      "kind": "re-export",
+      "typeOnly": false,
+      "specifier": "./regionDetector",
+      "bindings": [
+        {
+          "name": "DEFAULT_REGION_DETECTOR_ID",
+          "alias": "DEFAULT_REGION_DETECTOR_ID",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isRegionDetectorId",
+          "alias": "isRegionDetectorId",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Fshared%2Fcontracts%2Findex.ts:src%2Fshared%2Fcontracts%2FregionDetector.ts:re-export:.%2FregionDetector:2",
+      "from": "src/shared/contracts/index.ts",
+      "to": "src/shared/contracts/regionDetector.ts",
+      "kind": "re-export",
+      "typeOnly": true,
+      "specifier": "./regionDetector",
+      "bindings": [
+        {
+          "name": "DetectionRole",
+          "alias": "DetectionRole",
+          "kind": "named",
+          "typeOnly": true
+        },
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Fshared%2Fcontracts%2Findex.ts:src%2Fshared%2Fcontracts%2FtranslationProvider.ts:re-export:.%2FtranslationProvider:1",
+      "from": "src/shared/contracts/index.ts",
+      "to": "src/shared/contracts/translationProvider.ts",
+      "kind": "re-export",
+      "typeOnly": false,
+      "specifier": "./translationProvider",
+      "bindings": [
+        {
+          "name": "allowsKeylessTranslation",
+          "alias": "allowsKeylessTranslation",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "DEFAULT_TRANSLATION_BASE_URL",
+          "alias": "DEFAULT_TRANSLATION_BASE_URL",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "DEFAULT_TRANSLATION_MODELS",
+          "alias": "DEFAULT_TRANSLATION_MODELS",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isGeminiBaseUrl",
+          "alias": "isGeminiBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "isLocalTranslationEndpoint",
+          "alias": "isLocalTranslationEndpoint",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "normalizeBaseUrl",
+          "alias": "normalizeBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "normalizeTranslationBaseUrl",
+          "alias": "normalizeTranslationBaseUrl",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Fshared%2Fcontracts%2Findex.ts:src%2Fshared%2Fcontracts%2FtranslationProvider.ts:re-export:.%2FtranslationProvider:2",
+      "from": "src/shared/contracts/index.ts",
+      "to": "src/shared/contracts/translationProvider.ts",
+      "kind": "re-export",
+      "typeOnly": true,
+      "specifier": "./translationProvider",
+      "bindings": [
+        {
+          "name": "TranslationProviderConfig",
+          "alias": "TranslationProviderConfig",
           "kind": "named",
           "typeOnly": true
         }
@@ -36969,6 +39445,22 @@
         {
           "name": "ViewerChapterRow",
           "alias": "ViewerChapterRow",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Fshared%2Fcontracts%2FtranslationProvider.ts:src%2Fshared%2Fcontracts%2FtranslationEngine.ts:import:.%2FtranslationEngine:1",
+      "from": "src/shared/contracts/translationProvider.ts",
+      "to": "src/shared/contracts/translationEngine.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "./translationEngine",
+      "bindings": [
+        {
+          "name": "TranslationEngine",
+          "alias": "TranslationEngine",
           "kind": "named",
           "typeOnly": true
         }
@@ -38107,8 +40599,8 @@
   "violations": [],
   "warnings": [],
   "counts": {
-    "files": 368,
-    "edges": 1134,
+    "files": 389,
+    "edges": 1208,
     "zones": 6,
     "features": 10
   }

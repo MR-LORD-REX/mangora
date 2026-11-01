@@ -1,25 +1,32 @@
 /**
  * pipeline/translationRegions.ts
  * ---------------------------------------------------------------------------
- * Turns one page's YOLO detections + OCR word items into translatable slots.
+ * Turns one page's semantic detections + OCR word items into translatable slots.
  *
- * YOLO classes (see @features/vision detectionTypes):
- *   0 clean_text  - the actual glyphs inside a speech bubble (erase target)
- *   1 messy_text  - free text with no bubble (OCR + erase target)
- *   2 text_bubble - the whole bubble (OCR crop + translation paste container)
- *
- * OCR runs over the messy (1) and bubble (2) crops only. The resulting items
+ * Raw class ids differ between detectors, so this module only consumes the
+ * semantic roles bubble / text_in_bubble / free_text. OCR runs over bubble and
+ * free-text crops. The resulting items
  * are matched back onto their parent slot by geometry, then joined into one
  * source string per slot in reading order.
  * ---------------------------------------------------------------------------
  */
 
-import type { Detection, DetectionResult, OcrTextItem } from "@features/vision";
+import type {
+  Detection,
+  DetectionResult,
+  DetectionRole,
+  OcrRegion,
+  OcrTextItem,
+} from "@features/vision";
 
 import type { Box, TranslationSlot } from "../domain/types";
 
 function boxFromDetection(box: Detection): Box {
   return { x1: box.x1, y1: box.y1, x2: box.x2, y2: box.y2 };
+}
+
+function roleOf(box: Detection): DetectionRole | null {
+  return box.role ?? null;
 }
 
 function boxCenter(box: Box): { cx: number; cy: number } {
@@ -87,18 +94,6 @@ function unionBoxes(boxes: Box[]): Box {
   };
 }
 
-/** Grows a box by `ratio` of its own width/height (split evenly per side). */
-function expandBox(box: Box, ratio: number): Box {
-  const dx = (boxWidth(box) * ratio) / 2;
-  const dy = (boxHeight(box) * ratio) / 2;
-  return {
-    x1: box.x1 - dx,
-    y1: box.y1 - dy,
-    x2: box.x2 + dx,
-    y2: box.y2 + dy,
-  };
-}
-
 /** Keeps a paste box inside the bubble it came from. */
 function clipBox(box: Box, outer: Box): Box {
   return {
@@ -107,6 +102,40 @@ function clipBox(box: Box, outer: Box): Box {
     x2: Math.min(box.x2, outer.x2),
     y2: Math.min(box.y2, outer.y2),
   };
+}
+
+/** Midpoint between each corresponding edge of a bubble and its text box. */
+export function midpointBox(bubble: Box, text: Box): Box {
+  return {
+    x1: (bubble.x1 + text.x1) / 2,
+    y1: (bubble.y1 + text.y1) / 2,
+    x2: (bubble.x2 + text.x2) / 2,
+    y2: (bubble.y2 + text.y2) / 2,
+  };
+}
+
+/** Clamps a rectangle to the page while preserving its size where possible. */
+function clampToPage(box: Box, width: number, height: number): Box {
+  return {
+    x1: Math.max(0, Math.min(width, box.x1)),
+    y1: Math.max(0, Math.min(height, box.y1)),
+    x2: Math.max(0, Math.min(width, box.x2)),
+    y2: Math.max(0, Math.min(height, box.y2)),
+  };
+}
+
+/**
+ * Converts translation slots into OCR crops without losing slot semantics.
+ * Bubble slots must remain bubble regions and free-text slots must remain
+ * free-text regions so recognized lines are assigned back to the right slot.
+ */
+export function ocrRegionsForSlots(slots: TranslationSlot[]): OcrRegion[] {
+  return slots.map((slot) => ({
+    ...slot.pasteBox,
+    classId: slot.kind === "bubble" ? 2 : 1,
+    role: slot.kind === "bubble" ? "bubble" : "free_text",
+    confidence: 1,
+  }));
 }
 
 /**
@@ -169,10 +198,11 @@ function clusterBoxes(boxes: Box[]): Box[][] {
 }
 
 /**
- * Builds one slot per text_bubble / messy_text detection.
- * - Bubble slots erase the clean_text boxes living inside them and paste into
- *   the bubble box (the overlay insets it to ~90%).
- * - Messy slots erase and paste into the messy box.
+ * Builds one slot per bubble and one per free-text detection.
+ * - Bubble slots erase the detected text-in-bubble boxes and paste into the
+ *   midpoint between the bubble and its grouped text box (or the bubble box
+ *   when there is no paired text box).
+ * - Free-text slots render and erase in the detected box as-is.
  */
 export function buildTranslationSlots(detection: DetectionResult): TranslationSlot[] {
   const boxes = detection.boxes ?? [];
@@ -180,7 +210,7 @@ export function buildTranslationSlots(detection: DetectionResult): TranslationSl
   const acceptedBubbles: Box[] = [];
 
   for (const bubble of boxes) {
-    if (bubble.classId !== 2) continue;
+    if (roleOf(bubble) !== "bubble") continue;
     // Segmentation detections carry a page-space contour. Use its tight
     // bounds and keep the mask on the slot so the overlay can erase and fit
     // against the real bubble shape instead of a rectangle.
@@ -191,21 +221,40 @@ export function buildTranslationSlots(detection: DetectionResult): TranslationSl
       continue;
     }
     acceptedBubbles.push(bubbleBox);
+    const padded = inflate(bubbleBox, 0.1);
+    const cleanInside = boxes
+      .filter(
+        (box) =>
+          roleOf(box) === "text_in_bubble" &&
+          centerInside(padded, boxFromDetection(box)),
+      )
+      .map(boxFromDetection);
+
     if (mask) {
+      const textGroups = clusterBoxes(cleanInside);
+      const groupBoxes = textGroups.map(unionBoxes);
+      const hasPairedText = groupBoxes.length > 0;
+      const pasteBox = hasPairedText
+        ? clipBox(midpointBox(bubbleBox, unionBoxes(groupBoxes)), bubbleBox)
+        : bubbleBox;
       slots.push({
         id: slots.length,
         kind: "bubble",
-        pasteBox: bubbleBox,
-        eraseBoxes: [],
+        pasteBox: clampToPage(
+          pasteBox,
+          detection.imageWidth,
+          detection.imageHeight,
+        ),
+        eraseBoxes: cleanInside,
         mask,
         sourceText: "",
+        // Mask-only detectors provide no text box. OCR measures the text
+        // extent on the bubble crop, then moves the final render target to
+        // the bubble/text midpoint.
+        ...(hasPairedText ? {} : { resolvePasteFromOcr: true }),
       });
       continue;
     }
-    const padded = inflate(bubbleBox, 0.1);
-    const cleanInside = boxes
-      .filter((box) => box.classId === 0 && centerInside(padded, boxFromDetection(box)))
-      .map(boxFromDetection);
 
     // A single YOLO bubble can contain two joined bubbles. Clean-text boxes
     // reveal how many separate text groups live inside it, so split the slot
@@ -213,10 +262,15 @@ export function buildTranslationSlots(detection: DetectionResult): TranslationSl
     const groups = clusterBoxes(cleanInside);
     if (groups.length > 1) {
       for (const group of groups) {
+        const groupBox = unionBoxes(group);
         slots.push({
           id: slots.length,
           kind: "bubble",
-          pasteBox: clipBox(expandBox(unionBoxes(group), 0.3), bubbleBox),
+          pasteBox: clampToPage(
+            clipBox(midpointBox(bubbleBox, groupBox), bubbleBox),
+            detection.imageWidth,
+            detection.imageHeight,
+          ),
           eraseBoxes: group,
           sourceText: "",
         });
@@ -225,7 +279,13 @@ export function buildTranslationSlots(detection: DetectionResult): TranslationSl
       slots.push({
         id: slots.length,
         kind: "bubble",
-        pasteBox: bubbleBox,
+        pasteBox: clampToPage(
+          groups.length === 1
+            ? clipBox(midpointBox(bubbleBox, unionBoxes(groups[0])), bubbleBox)
+            : bubbleBox,
+          detection.imageWidth,
+          detection.imageHeight,
+        ),
         eraseBoxes: cleanInside,
         sourceText: "",
       });
@@ -234,7 +294,7 @@ export function buildTranslationSlots(detection: DetectionResult): TranslationSl
 
   const acceptedMessy: Box[] = [];
   for (const messy of boxes) {
-    if (messy.classId !== 1) continue;
+    if (roleOf(messy) !== "free_text") continue;
     const messyBox = boxFromDetection(messy);
     if (acceptedMessy.some((accepted) => nearDuplicate(accepted, messyBox))) {
       continue;
@@ -317,8 +377,21 @@ export function assignItemsToSlots(
 
   for (const item of items) {
     const itemBox: Box = { x1: item.x1, y1: item.y1, x2: item.x2, y2: item.y2 };
+    const itemRole =
+      item.role ??
+      (item.classId === 2
+        ? "bubble"
+        : item.classId === 1
+          ? "free_text"
+          : item.classId === 0
+            ? "text_in_bubble"
+            : null);
     const preferredKind: "bubble" | "messy" | null =
-      item.classId === 2 ? "bubble" : item.classId === 1 ? "messy" : null;
+      itemRole === "bubble" || itemRole === "text_in_bubble"
+        ? "bubble"
+        : itemRole === "free_text"
+          ? "messy"
+          : null;
     const candidates = preferredKind
       ? slots.filter((slot) => slot.kind === preferredKind)
       : slots;
@@ -357,9 +430,23 @@ export function fillSlotTexts(
       }));
     }
     const lineCount = countTextRows(items);
+    let pasteBox = slot.pasteBox;
+    if (slot.resolvePasteFromOcr && items.length > 0) {
+      const textBounds = unionBoxes(
+        items.map((item) => ({
+          x1: item.x1,
+          y1: item.y1,
+          x2: item.x2,
+          y2: item.y2,
+        })),
+      );
+      const textInsideBubble = clipBox(textBounds, slot.pasteBox);
+      pasteBox = midpointBox(slot.pasteBox, textInsideBubble);
+    }
 
     return {
       ...slot,
+      pasteBox,
       eraseBoxes,
       lineCount: lineCount > 0 ? lineCount : slot.lineCount,
       sourceText: assembleSlotText(items, sourceIsCjk),

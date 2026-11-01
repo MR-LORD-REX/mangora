@@ -61,6 +61,7 @@
       "./plugins/withLtrLayout",
       "./plugins/withSubsamplingScaleImageView",
       "./plugins/withAvifDecoder",
+      "./plugins/withCleartextTraffic",
       "expo-sqlite",
       "expo-notifications",
       "expo-font"

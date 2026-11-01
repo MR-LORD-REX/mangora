@@ -102,7 +102,9 @@ previous process; it must never clear an active reader's session.
 
 Completed translated pages are cached in `translation_pages` and
 `translation_regions`, keyed by canonical manga id, page key, source/target
-language and prompt version. Gemini usage is recorded in `translation_usage`.
+language and cache identity. The identity includes provider, endpoint, model,
+detector and prompt version. AI usage is recorded in `translation_usage` with
+provider, endpoint and model identity.
 The cache stores page dimensions and geometry in natural source-image
 coordinates, not viewport coordinates.
 

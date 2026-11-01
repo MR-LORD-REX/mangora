@@ -5,8 +5,8 @@
  *
  * Every independent unit (page scan, bubble OCR, bubble/page translation) is
  * pushed here instead of being fired with Promise.all. Callers choose the
- * concurrency, and the queue hands each task a stable worker slot so AI
- * translation can pin one Gemini model to each worker.
+ * concurrency, and the queue hands each task a stable worker slot for staged
+ * scan, OCR and translation work.
  * ---------------------------------------------------------------------------
  */
 

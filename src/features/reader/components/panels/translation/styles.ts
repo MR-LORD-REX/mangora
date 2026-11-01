@@ -331,6 +331,16 @@ export const styles = StyleSheet.create({
     fontSize: 14,
   },
   modalError: { color: "#fda4af", fontSize: 12.5 },
+  detectorNotice: { gap: 8, marginTop: 4 },
+  detectorSettingsButton: {
+    alignSelf: "flex-start",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#38bdf8",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  detectorSettingsText: { color: "#38bdf8", fontSize: 12, fontWeight: "700" },
   modalActions: { flexDirection: "row", gap: 10, marginTop: 4 },
   modalButton: {
     flex: 1,

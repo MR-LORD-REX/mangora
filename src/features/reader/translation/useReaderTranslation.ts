@@ -39,10 +39,11 @@ function pipelineConfig(options: UseReaderTranslationOptions): PipelineConfig {
     translationMode: options.translationMode,
     sourceLanguage: options.ocrLanguage,
     targetLanguage: options.targetLanguage || "en",
-    geminiApiKey: options.geminiApiKey,
-    geminiModelId: options.geminiModelId,
+    translationModelId: options.translationModelId,
+    regionDetectorId: options.regionDetectorId,
     aiMaxContextPages: options.aiMaxContextPages,
     autoModelSwitch: options.autoModelSwitch,
+    settings: options.settings,
   };
 }
 
@@ -120,10 +121,11 @@ export function useReaderTranslation(
     options.translationMode,
     options.ocrLanguage,
     options.targetLanguage,
-    options.geminiApiKey,
-    options.geminiModelId,
+    options.translationModelId,
+    options.regionDetectorId,
     options.aiMaxContextPages,
     options.autoModelSwitch,
+    options.settings,
   ]);
 
   useEffect(() => {

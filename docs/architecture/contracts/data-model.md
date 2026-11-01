@@ -69,8 +69,9 @@ Text and natural-source-pixel geometry for each page region, cascading from
 feature-owned.
 
 ### `translation_usage`
-One Gemini attempt per row: model, occurrence, success, input/output tokens and
-error code. It is the source of truth for RPM/TPM/RPD meters.
+One AI-provider attempt per row: provider, endpoint key, model, occurrence,
+success, input/output tokens and error code. It is the source of truth for
+RPM/TPM/RPD meters; Gemini limits are applied only when the endpoint is Gemini.
 
 ### `downloads`
 One downloaded chapter/gallery archive. The row is both queue state and offline

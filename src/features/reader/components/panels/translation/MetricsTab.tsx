@@ -1,4 +1,4 @@
-/* Pipeline and Gemini quota metrics for the reader translation sheet. */
+/* Pipeline and provider-aware API usage metrics for the reader sheet. */
 
 import { ChevronDown, ChevronUp } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
@@ -6,14 +6,13 @@ import { Pressable, Text, View } from "react-native";
 
 import type { ReaderPipelineMetrics } from "../../../translation/types";
 import {
-  GEMINI_MODELS,
-  getGeminiUsageSnapshot,
-  subscribeGeminiUsage,
-  type GeminiModelId,
-  type GeminiUsageSnapshot,
+  getTranslationsUsageSnapshot,
+  isGeminiBaseUrl,
+  subscribeTranslationUsage,
+  type TranslationProviderConfig,
+  type TranslationUsageSnapshot,
 } from "@features/translation";
 import type { ReaderTranslationEngine } from "@core/settings";
-import { HelperText } from "../ReaderPanelPrimitives";
 import { styles } from "./styles";
 import type { ReaderTranslationPanelProps } from "./types";
 
@@ -30,15 +29,16 @@ function UsageMeter({
 }: {
   label: string;
   used: number;
-  limit: number;
+  limit?: number;
 }) {
-  const ratio = limit > 0 ? Math.min(1, used / limit) : 0;
+  const boundedLimit = limit ?? 0;
+  const ratio = boundedLimit > 0 ? Math.min(1, used / boundedLimit) : 0;
   return (
     <View style={styles.meterRow}>
       <View style={styles.meterHeader}>
         <Text style={styles.meterLabel}>{label}</Text>
         <Text style={styles.meterValue}>
-          {formatCount(used)} / {formatCount(limit)}
+          {limit == null ? formatCount(used) + " used" : formatCount(used) + " / " + formatCount(limit)}
         </Text>
       </View>
       <View style={styles.barTrack}>
@@ -54,101 +54,135 @@ function UsageMeter({
   );
 }
 
-/** Live Gemini quota meters (rolling 60s RPM/TPM, Pacific-day RPD). */
+/** Live provider usage. Only Gemini's hosted endpoint includes reference caps. */
 function ApiUsageSection({
-  geminiModelId,
+  translationModelId,
   includeFallbackModel,
+  provider,
 }: {
-  geminiModelId: GeminiModelId;
+  translationModelId: string;
   includeFallbackModel: boolean;
+  provider: TranslationProviderConfig | null;
 }) {
   const [open, setOpen] = useState(false);
-  const [rows, setRows] = useState<GeminiUsageSnapshot[]>([]);
+  const [rows, setRows] = useState<TranslationUsageSnapshot[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const modelIds = useMemo(
+  const models = useMemo(
     () =>
-      includeFallbackModel
-        ? GEMINI_MODELS.map((model) => model.id)
-        : [geminiModelId],
-    [includeFallbackModel, geminiModelId],
+      provider
+        ? includeFallbackModel
+          ? provider.models
+          : [translationModelId || provider.model]
+        : [],
+    [includeFallbackModel, provider, translationModelId],
   );
 
   useEffect(() => {
+    if (!provider || models.length === 0) {
+      setRows([]);
+      setError(null);
+      return;
+    }
     let active = true;
     const refresh = async () => {
       try {
-        const next = await Promise.all(modelIds.map(getGeminiUsageSnapshot));
-        if (!active) return;
-        setRows(next);
-        setError(null);
-      } catch (err) {
-        if (active) setError("Usage meters unavailable.");
-        console.warn("[reader][metrics] usage refresh failed", err);
+        const next = await Promise.all(
+          models.map((model) => getTranslationsUsageSnapshot(provider, model)),
+        );
+        if (active) {
+          setRows(next);
+          setError(null);
+        }
+      } catch (nextError) {
+        if (active) {
+          setError(
+            nextError instanceof Error
+              ? nextError.message
+              : "Could not read usage data.",
+          );
+        }
       }
     };
     void refresh();
-    const unsubscribe = subscribeGeminiUsage(() => {
-      void refresh();
-    });
-    const timer = setInterval(() => {
-      void refresh();
-    }, 5000);
+    const unsubscribe = subscribeTranslationUsage(() => void refresh());
+    const timer = setInterval(() => void refresh(), 15_000);
     return () => {
       active = false;
       unsubscribe();
       clearInterval(timer);
     };
-  }, [modelIds]);
+  }, [models, provider]);
+
+  if (!provider) {
+    return (
+      <View style={styles.usageModel}>
+        <Text style={styles.usageModelLabel}>API usage</Text>
+        <Text style={styles.usageNote}>
+          Free translation does not use a provider quota.
+        </Text>
+      </View>
+    );
+  }
 
   const primary = rows[0];
+  const isGemini = isGeminiBaseUrl(provider.baseUrl);
+  const summary = primary
+    ? isGemini && primary.limits
+      ? primary.rpmUsed +
+        "/" +
+        primary.limits.rpm +
+        " RPM · " +
+        primary.rpdUsed +
+        "/" +
+        primary.limits.rpd +
+        " RPD"
+      : primary.rpmUsed + " RPM · " + primary.rpdUsed + " RPD used"
+    : isGemini
+      ? "Live Gemini usage"
+      : "Live endpoint usage";
+
   return (
-    <View style={styles.dropdown}>
+    <View style={styles.meterWrap}>
       <Pressable
-        style={styles.dropdownHeader}
+        style={styles.usageModel}
         onPress={() => setOpen((value) => !value)}
       >
-        <View style={styles.dropdownTitleWrap}>
-          <Text style={styles.dropdownTitle}>API usage</Text>
-          <Text style={styles.dropdownSubtitle}>
-            {primary
-              ? `${primary.rpmUsed}/${primary.rpmLimit} RPM · ${primary.rpdUsed}/${primary.rpdLimit} RPD`
-              : "Live Gemini quota"}
+        <View style={styles.meterHeader}>
+          <Text style={styles.usageModelLabel}>
+            {isGemini ? "Gemini usage" : "API usage"}
           </Text>
+          <Text style={styles.meterValue}>{summary}</Text>
         </View>
-        {open ? (
-          <ChevronUp size={18} color="#94a3b8" />
-        ) : (
-          <ChevronDown size={18} color="#94a3b8" />
-        )}
+        <Text style={styles.usageNote}>
+          {isGemini
+            ? "Usage counts requests sent by this app; limits are Gemini free-tier references."
+            : provider.endpointKey +
+              " · usage counts requests sent by this app. No provider limit is assumed."}
+        </Text>
       </Pressable>
-      {open ? (
-        <View style={styles.dropdownBody}>
-          {error ? <Text style={styles.modalError}>{error}</Text> : null}
-          {rows.map((row) => (
-            <View key={row.model} style={styles.usageModel}>
+      {open
+        ? rows.map((row) => (
+            <View key={row.model + row.endpointKey} style={styles.usageModel}>
               <Text style={styles.usageModelLabel}>{row.label}</Text>
               <UsageMeter
                 label="RPM"
                 used={row.rpmUsed}
-                limit={row.rpmLimit}
+                limit={row.limits?.rpm}
               />
               <UsageMeter
                 label="TPM"
                 used={row.tpmUsed}
-                limit={row.tpmLimit}
+                limit={row.limits?.tpm}
               />
               <UsageMeter
                 label="RPD"
                 used={row.rpdUsed}
-                limit={row.rpdLimit}
+                limit={row.limits?.rpd}
               />
             </View>
-          ))}
-          <Text style={styles.usageNote}>
-            RPM/TPM use a rolling 60s window. RPD resets at midnight Pacific.
-          </Text>
-        </View>
-      ) : null}
+          ))
+        : null}
+      {error ? <Text style={styles.usageNote}>{error}</Text> : null}
     </View>
   );
 }
@@ -258,24 +292,20 @@ function PipelineMetrics({
 export default function MetricsTab(props: ReaderTranslationPanelProps) {
   const {
     translationEngine,
-    geminiModelId,
+    translationModelId,
     autoModelSwitch,
     metrics,
+    aiProvider,
   } = props;
 
   return (
     <View>
       <PipelineMetrics metrics={metrics} mode={translationEngine} />
-      {translationEngine === "ai" ? (
-        <ApiUsageSection
-          geminiModelId={geminiModelId}
-          includeFallbackModel={autoModelSwitch}
-        />
-      ) : (
-        <HelperText>
-          API usage is available when the AI translation engine is selected.
-        </HelperText>
-      )}
+      <ApiUsageSection
+        translationModelId={translationModelId}
+        includeFallbackModel={autoModelSwitch}
+        provider={aiProvider}
+      />
     </View>
   );
 }

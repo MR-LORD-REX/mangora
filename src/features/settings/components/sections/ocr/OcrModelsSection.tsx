@@ -1,7 +1,7 @@
 /**
  * OcrModelsSection.tsx
  * ---------------------------------------------------------------------------
- * Settings -> OCR models. Lists the two on-device providers, their languages
+ * Settings -> Models > OCR. Lists the two on-device providers, their languages
  * and download size, and exposes download / cancel / delete for each pack.
  * ---------------------------------------------------------------------------
  */

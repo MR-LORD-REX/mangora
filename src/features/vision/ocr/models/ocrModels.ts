@@ -4,8 +4,8 @@
  * Catalog of the two on-device OCR providers the reader can use.
  *
  * Both providers run through onnxruntime-react-native. Model files are not
- * bundled with the APK: Settings -> OCR models downloads only the provider the
- * user needs into the app's documents directory.
+ * bundled with the APK: Settings -> Models downloads only the provider the user
+ * needs into the app's documents directory.
  *
  *   paddle-v6     - PP-OCRv6 medium CTC recognizer plus the PP-OCRv5 mobile
  *                   text-line detector (DBNet). Japanese, Chinese and English

@@ -18,14 +18,16 @@ import { fetchExtensionPageImage } from "@platform/extensions";
 import { isAvifUri, transcodeAvifToPng } from "@core/images/avif";
 
 
-/** A YOLO text-region box in natural page pixels. */
+/** A semantic region box in natural page pixels. */
 export interface OcrRegion {
   x1: number;
   y1: number;
   x2: number;
   y2: number;
-  /** YOLO class id: 0 = clean_text, 1 = messy_text. */
+  /** Raw detector class id, retained for diagnostics only. */
   classId: number;
+  /** Detector-independent role used to choose OCR crops. */
+  role?: "bubble" | "text_in_bubble" | "free_text";
   /** 0..1 model confidence, used to prioritise when crops are capped. */
   confidence?: number;
 }
@@ -38,8 +40,10 @@ export interface OcrTextItem {
   /** 0..1 confidence. */
   confidence: number;
   level: OcrRecognitionLevel;
-  /** YOLO class id of the crop this item came from. */
+  /** Raw detector class id of the crop this item came from. */
   classId: number;
+  /** Semantic role of the crop this item came from. */
+  role?: "bubble" | "text_in_bubble" | "free_text";
   x1: number;
   y1: number;
   x2: number;
@@ -56,7 +60,7 @@ export interface PageOcrOptions {
   imageWidth: number;
   /** Natural height of the decoded page. */
   imageHeight: number;
-  /** Text regions to OCR. Only messy_text / text_bubble (classId 1/2) run. */
+  /** Text regions to OCR. Bubble and free-text roles run. */
   regions: OcrRegion[];
   /** Cap on crops sent to the recognizer. Default 24. */
   maxCrops?: number;
@@ -211,14 +215,20 @@ export async function ensureDecodablePageUri(
 export const MIN_CROP_PX = 6;
 
 /**
- * Keeps only the OCR-able YOLO regions (messy_text/text_bubble = classId 1/2),
+ * Keeps only OCR-able regions (bubble / free text),
  * sorts them by confidence and caps the count. Regions are returned top-first
  * so vertical manga text keeps reading order even when several crops map to
  * the same column.
  */
 export function prepareTextRegions(regions: OcrRegion[], maxCrops = 24): OcrRegion[] {
   return regions
-    .filter((region) => region.classId === 1 || region.classId === 2)
+    .filter(
+      (region) =>
+        region.role === "bubble" ||
+        region.role === "free_text" ||
+        // Compatibility for callers that still create legacy OCR regions.
+        (!region.role && (region.classId === 1 || region.classId === 2)),
+    )
     .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
     .slice(0, Math.max(1, maxCrops))
     .sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
@@ -227,7 +237,7 @@ export function prepareTextRegions(regions: OcrRegion[], maxCrops = 24): OcrRegi
 /**
  * Region selector for the Paddle detector + recognizer pair.
  *
- * DBNet finds text lines *inside* whatever crop it receives, so a whole YOLO
+ * DBNet finds text lines *inside* whatever crop it receives, so a whole
  * bubble is the correct input. Clean-text boxes are only a fallback for pages
  * where YOLO emitted no bubble/messy boxes at all.
  */
@@ -237,8 +247,14 @@ export function preparePaddleRegions(
 ): OcrRegion[] {
   const bubbles = prepareTextRegions(regions, maxCrops);
   if (bubbles.length > 0) return bubbles;
+  const hasSemanticRoles = regions.some((region) => region.role !== undefined);
+  if (hasSemanticRoles) return [];
   return regions
-    .filter((region) => region.classId === 0)
+    .filter(
+      (region) =>
+        region.role === "text_in_bubble" ||
+        (!region.role && region.classId === 0),
+    )
     .sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
     .slice(0, Math.max(1, maxCrops))
     .sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
@@ -355,6 +371,7 @@ export function makePageItem(opts: {
   confidence: number;
   level: OcrRecognitionLevel;
   classId: number;
+  role?: "bubble" | "text_in_bubble" | "free_text";
   x1: number;
   y1: number;
   x2: number;
@@ -366,6 +383,7 @@ export function makePageItem(opts: {
     confidence: opts.confidence,
     level: opts.level,
     classId: opts.classId,
+    role: opts.role,
     x1: roundPx(opts.crop.originX + opts.x1 / opts.crop.scale),
     y1: roundPx(opts.crop.originY + opts.y1 / opts.crop.scale),
     x2: roundPx(opts.crop.originX + opts.x2 / opts.crop.scale),

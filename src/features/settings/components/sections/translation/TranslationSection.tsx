@@ -1,15 +1,10 @@
 /**
- * TranslationSection.tsx
- * ---------------------------------------------------------------------------
- * Settings -> Translation: engine-agnostic batch/context limits, Gemini model
- * selection and credentials, and the cached page translations.
- * ---------------------------------------------------------------------------
+ * Settings -> Translation: one OpenAI-compatible provider configuration,
+ * context/batch limits, auto model fallback and the translated-page cache.
  */
 
 import {
   BookOpen,
-  Cpu,
-  KeyRound,
   Languages,
   Layers,
   Repeat,
@@ -18,8 +13,7 @@ import {
 import React, { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
-import MenuSheet from "@shared/ui/overlays/MenuSheet";
-import { ConfirmDialog, PromptDialog } from "@shared/ui/overlays";
+import { ConfirmDialog } from "@shared/ui/overlays";
 import { colors } from "@shared/theme";
 import {
   clearTranslationCache,
@@ -30,11 +24,6 @@ import {
   modelIdForLanguage,
 } from "@features/vision";
 import type { AppSettings } from "@core/settings";
-import {
-  GEMINI_MODELS,
-  type GeminiModelId,
-} from "@features/translation";
-import { validateGeminiApiKey } from "@features/translation";
 
 import {
   SettingsRow,
@@ -43,12 +32,7 @@ import {
   SliderRow,
   ToggleRow,
 } from "../../primitives/SettingsPrimitives";
-
-function maskKey(key: string): string {
-  if (!key) return "Not set";
-  if (key.length <= 8) return "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
-  return key.slice(0, 4) + "\u2022\u2022\u2022\u2022" + key.slice(-4);
-}
+import CustomProviderSection from "./CustomProviderSection";
 
 export default function TranslationSection({
   settings,
@@ -59,17 +43,11 @@ export default function TranslationSection({
   onChange: (patch: Partial<AppSettings>) => void;
   standalone?: boolean;
 }) {
-  const [keyOpen, setKeyOpen] = useState(false);
-  const [modelOpen, setModelOpen] = useState(false);
-  const [keyBusy, setKeyBusy] = useState(false);
   const [cachePages, setCachePages] = useState<number | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const selectedModel =
-    GEMINI_MODELS.find((model) => model.id === settings.geminiModelId) ??
-    GEMINI_MODELS[0];
   const ocrModelId = modelIdForLanguage(settings.readerLanguage || "ja");
   const maxBatch = maxOcrBubbleWorkers(ocrModelId);
   const batchValue = Math.min(maxBatch, Math.max(1, settings.ocrBubbleWorkers));
@@ -83,28 +61,6 @@ export default function TranslationSection({
   useEffect(() => {
     refreshCache();
   }, [refreshCache]);
-
-  const onSaveKey = async (value: string) => {
-    setKeyBusy(true);
-    try {
-      if (value) await validateGeminiApiKey(value, settings.geminiModelId);
-      onChange({ geminiApiKey: value });
-      setNotice(
-        value
-          ? "Gemini key validated and saved."
-          : "Gemini key cleared. AI translation will stay off until a key is saved.",
-      );
-      setKeyOpen(false);
-    } catch (error) {
-      setNotice(
-        error instanceof Error
-          ? "Key rejected: " + error.message
-          : "The key could not be validated.",
-      );
-    } finally {
-      setKeyBusy(false);
-    }
-  };
 
   const onClearCache = async () => {
     setConfirmClear(false);
@@ -129,28 +85,15 @@ export default function TranslationSection({
   return (
     <SettingsSection
       title="Translation"
-      subtitle="Models, batch limits and the stored page cache."
+      subtitle="Endpoint, models, batch limits and the stored page cache."
       icon={Languages}
       standalone={standalone}
     >
-      <SettingsRow
-        icon={KeyRound}
-        title="Gemini API key"
-        subtitle="Used by AI translation. Free translation needs no key."
-        right={<SettingsValue text={maskKey(settings.geminiApiKey)} accent />}
-        onPress={() => setKeyOpen(true)}
-      />
-      <SettingsRow
-        icon={Cpu}
-        title="Translation model"
-        subtitle="Primary Gemini model for AI translation."
-        right={<SettingsValue text={selectedModel.label} accent />}
-        onPress={() => setModelOpen(true)}
-      />
+      <CustomProviderSection settings={settings} onChange={onChange} />
       <ToggleRow
         icon={Repeat}
         title="Auto model switch"
-        subtitle="On a rate limit, retry with the other model. Two failed switches turn this off until you enable it again."
+        subtitle="On a rate limit, retry with the next configured model. Two failed switches turn this off until you enable it again."
         value={settings.readerAutoModelSwitch}
         onChange={(value) => onChange({ readerAutoModelSwitch: value })}
       />
@@ -196,29 +139,6 @@ export default function TranslationSection({
       />
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
 
-      <MenuSheet
-        visible={modelOpen}
-        title="Translation model"
-        onClose={() => setModelOpen(false)}
-        options={GEMINI_MODELS.map((model) => ({
-          key: model.id,
-          label: model.label,
-          selected: model.id === settings.geminiModelId,
-          onPress: () => onChange({ geminiModelId: model.id as GeminiModelId }),
-        }))}
-      />
-      <PromptDialog
-        visible={keyOpen}
-        title="Gemini API key"
-        message="Stored on this device only. Leave empty to disable AI translation."
-        placeholder="AIza..."
-        initialValue={settings.geminiApiKey}
-        confirmLabel="Save"
-        secure
-        busy={keyBusy}
-        onCancel={() => setKeyOpen(false)}
-        onSubmit={(value) => void onSaveKey(value)}
-      />
       <ConfirmDialog
         visible={confirmClear}
         title="Clear translation cache?"

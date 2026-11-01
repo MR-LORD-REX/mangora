@@ -1,9 +1,14 @@
-import {
-  GEMINI_DEFAULT_MODEL,
-  isGeminiModelId,
-  type GeminiModelId,
-} from "./geminiModelId";
 import type { TranslationEngine } from "@shared/contracts/translationEngine";
+import {
+  DEFAULT_TRANSLATION_BASE_URL,
+  DEFAULT_TRANSLATION_MODELS,
+  normalizeTranslationBaseUrl,
+} from "@shared/contracts/translationProvider";
+import {
+  DEFAULT_REGION_DETECTOR_ID,
+  isRegionDetectorId,
+  type RegionDetectorId,
+} from "@shared/contracts/regionDetector";
 
 /** Translation backend used when a reader page is translated. */
 export type ReaderTranslationEngine = TranslationEngine;
@@ -66,14 +71,20 @@ export interface AppSettings {
    * Empty string means "auto" (derive from the chapter's language param).
    */
   readerLanguage: string;
-  /** Translation engine: free Google endpoint or Gemini. */
+  /** Translation engine: free Google endpoint or OpenAI-compatible. */
   readerTranslationEngine: ReaderTranslationEngine;
   /** Translation mode: off / single page / auto. */
   readerTranslationMode: ReaderTranslationMode;
-  /** Gemini API key used by AI translation ("" = not set). */
-  geminiApiKey: string;
-  /** Gemini model used by AI translation. */
-  geminiModelId: GeminiModelId;
+  /** OpenAI-compatible endpoint (defaults to the Gemini base URL). */
+  translationBaseUrl: string;
+  /** API key for the selected OpenAI-compatible endpoint. */
+  translationApiKey: string;
+  /** Model names available on the selected endpoint. */
+  translationModels: string[];
+  /** Model used for new translation requests. */
+  translationModelId: string;
+  /** Region detector used to scan pages (one detector per page). */
+  regionDetectorId: RegionDetectorId;
   /** OCR pipeline: PP-OCR recognition batch size (1..8, default 8). */
   ocrBubbleWorkers: number;
   /** Pages queued ahead of the visible page (1..5, default 2). */
@@ -170,8 +181,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   readerLanguage: "",
   readerTranslationEngine: "free",
   readerTranslationMode: "off",
-  geminiApiKey: "",
-  geminiModelId: GEMINI_DEFAULT_MODEL,
+  translationBaseUrl: DEFAULT_TRANSLATION_BASE_URL,
+  translationApiKey: "",
+  translationModels: [...DEFAULT_TRANSLATION_MODELS],
+  translationModelId: DEFAULT_TRANSLATION_MODELS[0],
+  regionDetectorId: DEFAULT_REGION_DETECTOR_ID,
   ocrBubbleWorkers: 8,
   ocrLookahead: 2,
   aiMaxContextPages: 10,
@@ -291,6 +305,114 @@ function num(value: unknown, fallback: number, min: number, max: number): number
   return Math.min(max, Math.max(min, parsed));
 }
 
+function sanitizeModelNames(
+  value: unknown,
+  fallback: readonly string[],
+): string[] {
+  if (!Array.isArray(value)) return [...fallback];
+  const seen = new Set<string>();
+  const models: string[] = [];
+  for (const entry of value) {
+    if (typeof entry !== "string") continue;
+    const model = entry.trim();
+    if (!model || seen.has(model)) continue;
+    seen.add(model);
+    models.push(model);
+    if (models.length >= 24) break;
+  }
+  return models.length > 0 ? models : [...fallback];
+}
+
+type LegacyProviderSettings = Omit<
+  Partial<AppSettings>,
+  "readerTranslationEngine"
+> & {
+  geminiApiKey?: unknown;
+  geminiModelId?: unknown;
+  customApiKey?: unknown;
+  customApiModels?: unknown;
+  customApiModelId?: unknown;
+  customApiUseGeminiKey?: unknown;
+  readerTranslationEngine?: unknown;
+};
+
+function legacyProviderSettings(value: Partial<AppSettings>): LegacyProviderSettings {
+  return value as LegacyProviderSettings;
+}
+
+function legacyCustomModels(value: LegacyProviderSettings): string[] {
+  return sanitizeModelNames(value.customApiModels, DEFAULT_TRANSLATION_MODELS)
+    .map((model) =>
+      /^gemini-2\.5-/.test(model) ? DEFAULT_TRANSLATION_MODELS[0] : model,
+    )
+    .filter((model, index, all) => all.indexOf(model) === index);
+}
+
+function sanitizeTranslationApiKey(value: Partial<AppSettings>): string {
+  const legacy = legacyProviderSettings(value);
+  if (typeof value.translationApiKey === "string") {
+    return value.translationApiKey;
+  }
+  const geminiKey =
+    typeof legacy.geminiApiKey === "string" ? legacy.geminiApiKey : "";
+  const customKey =
+    typeof legacy.customApiKey === "string" ? legacy.customApiKey : "";
+  const customEngine =
+    legacy.readerTranslationEngine === "custom" ||
+    (typeof legacy.customApiUseGeminiKey === "boolean" &&
+      legacy.customApiUseGeminiKey === false);
+  return (customEngine ? customKey || geminiKey : geminiKey || customKey).trim();
+}
+
+function sanitizeTranslationModels(value: Partial<AppSettings>): string[] {
+  if (Array.isArray(value.translationModels)) {
+    return sanitizeModelNames(
+      value.translationModels,
+      DEFAULT_TRANSLATION_MODELS,
+    );
+  }
+  const legacy = legacyProviderSettings(value);
+  const rawUrl =
+    typeof value.translationBaseUrl === "string"
+      ? value.translationBaseUrl.trim()
+      : "";
+  const legacyGeminiUrl =
+    /^https?:\/\/generativelanguage\.googleapis\.com\//i.test(rawUrl);
+  const savedGeminiUrl =
+    !rawUrl ||
+    legacyGeminiUrl ||
+    rawUrl === DEFAULT_TRANSLATION_BASE_URL;
+  if (
+    legacy.readerTranslationEngine === "custom" ||
+    !savedGeminiUrl
+  ) {
+    return legacyCustomModels(legacy);
+  }
+  return [...DEFAULT_TRANSLATION_MODELS];
+}
+
+function sanitizeTranslationModelId(value: Partial<AppSettings>): string {
+  const models = sanitizeTranslationModels(value);
+  const legacy = legacyProviderSettings(value);
+  const requested =
+    typeof value.translationModelId === "string"
+      ? value.translationModelId.trim()
+      : typeof legacy.customApiModelId === "string"
+        ? legacy.customApiModelId.trim()
+        : typeof legacy.geminiModelId === "string"
+          ? legacy.geminiModelId.trim()
+          : "";
+  const migrated = /^gemini-2\.5-/.test(requested)
+    ? DEFAULT_TRANSLATION_MODELS[0]
+    : requested;
+  if (migrated && (models.includes(migrated) || models.length === 0)) {
+    return migrated;
+  }
+  return models.includes(DEFAULT_TRANSLATION_MODELS[0])
+    ? DEFAULT_TRANSLATION_MODELS[0]
+    : models[0];
+}
+
 export function sanitizeSettings(raw: unknown): AppSettings {
   const value = (raw ?? {}) as Partial<AppSettings>;
   // Legacy `readerTranslateMode` bundled engine + off state. Split it into
@@ -299,9 +421,14 @@ export function sanitizeSettings(raw: unknown): AppSettings {
     readerTranslateMode?: string;
   };
   const rawLegacy = legacy.readerTranslateMode;
+  const rawEngine = legacyProviderSettings(value).readerTranslationEngine;
   const engine: ReaderTranslationEngine =
-    value.readerTranslationEngine === "ai" || rawLegacy === "ai"
-      ? "ai"
+    rawEngine === "openai" ||
+    rawEngine === "custom" ||
+    rawEngine === "ai" ||
+    rawLegacy === "custom" ||
+    rawLegacy === "ai"
+      ? "openai"
       : "free";
   const rawMode = value.readerTranslationMode as string | undefined;
   const mode: ReaderTranslationMode =
@@ -315,6 +442,12 @@ export function sanitizeSettings(raw: unknown): AppSettings {
           rawLegacy === "perPage"
         ? "auto"
         : "off";
+  const baseUrl = normalizeTranslationBaseUrl(
+    typeof value.translationBaseUrl === "string" &&
+      value.translationBaseUrl.trim()
+      ? value.translationBaseUrl
+      : DEFAULT_TRANSLATION_BASE_URL,
+  );
   return {
     readerLanguage:
       typeof value.readerLanguage === "string" &&
@@ -327,11 +460,13 @@ export function sanitizeSettings(raw: unknown): AppSettings {
       typeof value.readerTargetLanguage === "string"
         ? value.readerTargetLanguage
         : "en",
-    geminiApiKey:
-      typeof value.geminiApiKey === "string" ? value.geminiApiKey : "",
-    geminiModelId: isGeminiModelId(value.geminiModelId)
-      ? value.geminiModelId
-      : GEMINI_DEFAULT_MODEL,
+    translationBaseUrl: baseUrl,
+    translationApiKey: sanitizeTranslationApiKey(value),
+    translationModels: sanitizeTranslationModels(value),
+    translationModelId: sanitizeTranslationModelId(value),
+    regionDetectorId: isRegionDetectorId(value.regionDetectorId)
+      ? value.regionDetectorId
+      : DEFAULT_REGION_DETECTOR_ID,
     ocrBubbleWorkers: Math.round(num(value.ocrBubbleWorkers, 8, 1, 8)),
     ocrLookahead: Math.round(num(value.ocrLookahead, 2, 1, 5)),
     aiMaxContextPages: Math.round(num(value.aiMaxContextPages, 10, 1, 50)),

@@ -111,7 +111,7 @@ function waitForPoolChange(id: LocalOcrModelId): Promise<void> {
 function missingModelMessage(id: LocalOcrModelId): string {
   const model = getLocalOcrModel(id);
   const label = model?.label ?? id;
-  return `${label} is not downloaded yet. Open Settings > OCR models and download it once.`;
+  return `${label} is not downloaded yet. Open Settings > Models and download it once.`;
 }
 
 async function loadEngine(id: LocalOcrModelId): Promise<CtcEngine> {
@@ -303,6 +303,7 @@ async function recognizeCtcPageRegions(args: {
               confidence: clampConfidence(line.confidence),
               level: "line",
               classId: entry.region.classId,
+              role: entry.region.role,
               x1: line.x1,
               y1: line.y1,
               x2: line.x2,
@@ -324,6 +325,7 @@ async function recognizeCtcPageRegions(args: {
           confidence: clampConfidence(result.confidence),
           level: "line",
           classId: entry.region.classId,
+          role: entry.region.role,
           x1: 0,
           y1: 0,
           x2: entry.crop.width,

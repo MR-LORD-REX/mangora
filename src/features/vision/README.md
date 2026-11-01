@@ -7,8 +7,10 @@ Owner: vision / on-device inference (assign a GitHub handle in `CODEOWNERS`).
 This feature turns one decodable page image into text regions and localized
 text boxes:
 
-- YOLO text detection (`clean_text`, `messy_text`, `text_bubble`)
-- Manga109 speech-bubble segmentation and page-space masks
+- one selected region detector per page: RT-DETR Comic v4 or Manga109
+  speech-bubble segmentation
+- detector-independent roles and optional page-space bubble masks
+- downloadable detector registry, download state and storage
 - PP-OCR model registry, download state, line detection and recognition
 - page decoding/cropping helpers used by both detection and OCR
 
@@ -31,8 +33,8 @@ classes. Translation and reader code should depend on:
 - May import `@shared/*`, `@core/*` and platform-neutral packages.
 - Must not import translation, reader or download features.
 - Page pixels stay in natural source-image coordinates.
-- Model files remain under `assets/models`; this feature owns their runtime
-  contract but not app asset publishing.
+- Region and OCR model files are downloaded under app documents and are not
+  packaged in the APK. This feature owns their runtime contract and catalog.
 
 ## Validation
 

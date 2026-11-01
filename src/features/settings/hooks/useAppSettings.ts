@@ -8,6 +8,9 @@ import {
   type AppSettings,
 } from "@core/settings";
 
+const subscribeToSettingsSnapshot = (listener: () => void) =>
+  subscribeSettings(() => listener());
+
 export function useAppSettings(): {
   settings: AppSettings;
   update: (patch: Partial<AppSettings>) => void;
@@ -17,7 +20,7 @@ export function useAppSettings(): {
   }, []);
 
   const settings = useSyncExternalStore(
-    (listener) => subscribeSettings(() => listener()),
+    subscribeToSettingsSnapshot,
     getSettingsSnapshot,
     getSettingsSnapshot,
   );

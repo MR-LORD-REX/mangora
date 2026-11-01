@@ -22,6 +22,8 @@ interface CacheContext {
   identity: ReaderIdentity;
   sourceLanguage: string;
   targetLanguage: string;
+  /** Full provider/model/detector cache identity. */
+  promptVersion?: string;
 }
 
 function storedRegions(page: OcrPageRecord) {
@@ -53,6 +55,7 @@ export async function savePageToCache(
     sourceLanguage: context.sourceLanguage,
     targetLanguage: context.targetLanguage,
     model: page.modelId,
+    promptVersion: context.promptVersion,
     imageWidth: page.imageWidth,
     imageHeight: page.imageHeight,
     regions,
@@ -70,6 +73,7 @@ export async function loadPageFromCache(input: {
   pageIndex: number;
   sourceLanguage: string;
   targetLanguage: string;
+  promptVersion?: string;
 }) {
   return findTranslationPage({
     mangaId: input.identity.mangaId,
@@ -79,6 +83,7 @@ export async function loadPageFromCache(input: {
     targetLanguage: input.targetLanguage,
     chapterId: input.identity.chapterId,
     legacyPageIndex: input.pageIndex,
+    promptVersion: input.promptVersion,
   });
 }
 
@@ -88,6 +93,7 @@ export async function deletePageFromCache(input: {
   pageIndex: number;
   sourceLanguage: string;
   targetLanguage: string;
+  promptVersion?: string;
 }): Promise<void> {
   await deleteTranslationPage({
     mangaId: input.identity.mangaId,
@@ -95,6 +101,7 @@ export async function deletePageFromCache(input: {
     pageKey: translationPageKey(input.identity.chapterId, input.pageIndex),
     sourceLanguage: input.sourceLanguage,
     targetLanguage: input.targetLanguage,
+    promptVersion: input.promptVersion,
   });
 }
 

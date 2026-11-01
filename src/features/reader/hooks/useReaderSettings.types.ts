@@ -2,7 +2,7 @@
  * Public settings state returned by useReaderSettings.
  */
 import type { AppSettings } from "@core/settings";
-import type { GeminiModelId } from "@features/translation";
+import type { RegionDetectorId } from "@features/translation";
 
 import type { ReaderOverlayFont } from "../components/panels/readerChrome";
 export type ReaderSettingsValues = Omit<
@@ -20,7 +20,8 @@ export type ReaderSettingsValues = Omit<
   | "setTranslationMode"
   | "setShowPageStatus"
   | "setHideTranslated"
-  | "setGeminiModelId"
+  | "setTranslationModelId"
+  | "setRegionDetectorId"
   | "setOcrLookahead"
   | "queueSettingsPatch"
   | "flushSettingsPatch"
@@ -37,8 +38,8 @@ export interface ReaderSettingsState {
   overlayFontWeight: number;
   overlayFontScale: number;
   overlayTextColor: string;
-  geminiApiKey: string;
-  geminiModelId: GeminiModelId;
+  translationModelId: string;
+  regionDetectorId: RegionDetectorId;
   autoModelSwitch: boolean;
   ocrBubbleWorkers: number;
   ocrLookahead: number;
@@ -60,7 +61,8 @@ export interface ReaderSettingsState {
   setTranslationMode: (mode: AppSettings["readerTranslationMode"]) => void;
   setShowPageStatus: (value: boolean) => void;
   setHideTranslated: (value: boolean) => void;
-  setGeminiModelId: (model: GeminiModelId) => void;
+  setTranslationModelId: (model: string) => void;
+  setRegionDetectorId: (id: RegionDetectorId) => void;
   setOcrLookahead: (value: number) => void;
   /** Coalesces slider drags into one file/DB write. */
   queueSettingsPatch: (patch: Partial<AppSettings>, delay?: number) => void;

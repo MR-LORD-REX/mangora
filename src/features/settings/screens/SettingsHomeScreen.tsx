@@ -78,18 +78,18 @@ const ENTRIES: SettingsEntry[] = [
   {
     key: "translation",
     title: "Translation",
-    tagline: "Gemini key and the translated-page cache",
+    tagline: "AI providers, keys and the translated-page cache",
     icon: Languages,
     accent: "#c084fc",
     href: "/settings/translation",
   },
   {
-    key: "ocr-models",
-    title: "OCR models",
-    tagline: "Download on-device recognition for your languages",
+    key: "models",
+    title: "Models",
+    tagline: "Region detection and on-device OCR models",
     icon: ScanText,
     accent: "#7dd3fc",
-    href: "/settings/ocr-models",
+    href: "/settings/models",
   },
   {
     key: "about",

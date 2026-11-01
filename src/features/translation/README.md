@@ -5,9 +5,12 @@ Owner: translation pipeline and translation settings surfaces.
 ## Public API
 
 Import from `@features/translation` only. The entry point exposes language
-helpers, overlay geometry types, Gemini/Google engine adapters, the page-region
-pipeline, quota tracking, the app-wide translation lock and the pre-translate
-queue.
+helpers, overlay geometry types, the free Google adapter, the
+OpenAI-compatible adapter, provider resolution, the strict batch
+prompt/validator, the page-region pipeline, provider-aware usage tracking, the
+app-wide translation lock and the pre-translate queue. Provider readiness is
+exported so the reader, pretranslate and batch runner cannot drift on
+key/model/keyless-LAN rules.
 
 ## Boundaries
 
@@ -17,6 +20,10 @@ queue.
   leak into screens.
 - `pipeline/` turns vision detections plus OCR items into translatable slots.
 - `jobs/` owns the one-at-a-time pre-translate scheduler and its runtime lock.
+- The engines are `free` and `openai` only. Gemini is the default base URL for
+  the OpenAI-compatible engine, not a separate transport.
+- Resumed pretranslate jobs restore cached prior-page context for the
+  OpenAI-compatible engine.
 - The feature reads persisted settings through `@core/settings`.
 - Downloaded pages and notifications arrive through `DownloadSessionPort` and
   `TranslationNotificationPort`; the queue never imports the downloader barrel

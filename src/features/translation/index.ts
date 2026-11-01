@@ -1,6 +1,7 @@
 /**
  * Public API for translation. Consumers import this module only; the reader
- * and pre-translate queue use the same engines, cache keys and quota policy.
+ * and pre-translate queue use the same endpoint adapter, cache keys and usage
+ * policy.
  */
 
 export {
@@ -22,51 +23,74 @@ export type {
 } from "./domain/types";
 
 export {
-  GEMINI_MODELS,
-  geminiModelInfo,
-} from "./engines/gemini/geminiModels";
-export {
-  GEMINI_DEFAULT_MODEL,
-  GEMINI_MODEL_IDS,
-  isGeminiModelId,
-} from "@core/settings/geminiModelId";
-export type { GeminiModelId } from "@core/settings/geminiModelId";
+  DEFAULT_REGION_DETECTOR_ID,
+  isRegionDetectorId,
+} from "@shared/contracts/regionDetector";
+export type {
+  DetectionRole,
+  RegionDetectorId,
+} from "@shared/contracts/regionDetector";
 
 export {
-  GeminiApiError,
-  parseGeminiJson,
-  translateGeminiBatch,
-  validateGeminiApiKey,
-} from "./engines/gemini/geminiClient";
+  DEFAULT_TRANSLATION_BASE_URL,
+  DEFAULT_TRANSLATION_MODELS,
+  isGeminiBaseUrl,
+  normalizeBaseUrl,
+  normalizeTranslationBaseUrl,
+} from "@shared/contracts/translationProvider";
+export type { TranslationProviderConfig } from "@shared/contracts/translationProvider";
+
+export {
+  resolveTranslationProvider,
+  translationProviderReadinessError,
+  translationProviderLabel,
+} from "./provider";
+
+export {
+  isOpenAiRateLimitError,
+  OpenAiCompatibleError,
+  translateOpenAiCompatibleBatch,
+  translationEndpoint,
+  validateOpenAiCompatibleEndpoint,
+} from "./engines/openai/openaiClient";
 export type {
-  GeminiBatchRegion,
-  GeminiBatchResponse,
-  GeminiBatchResult,
-  GeminiPagePayload,
-  GeminiUsageInfo,
-} from "./engines/gemini/geminiClient";
+  OpenAiBatchRequest,
+  OpenAiBatchResponse,
+  OpenAiUsageInfo,
+} from "./engines/openai/openaiClient";
+
+export {
+  buildTranslationSystemPrompt,
+  buildTranslationUserPrompt,
+  parseBatchJson,
+  validateBatchResults,
+} from "./engines/shared/batchPrompt";
+export type {
+  TranslationBatchRegion,
+  TranslationBatchResult,
+  TranslationPagePayload,
+} from "./engines/shared/batchPrompt";
+
 export {
   AUTO_MODEL_SWITCH_FAILURE_LIMIT,
-  fallbackModelChain,
-  isGeminiRateLimitError,
   nextAutoSwitchFailureState,
   requestWithModelFallback,
-} from "./engines/gemini/geminiFallback";
+} from "./engines/shared/modelFallback";
 export type {
   AutoSwitchFailureState,
   ModelFallbackOutcome,
-} from "./engines/gemini/geminiFallback";
+} from "./engines/shared/modelFallback";
+
 export {
-  getGeminiUsageSnapshot,
+  getTranslationsUsageSnapshot,
   pacificDayStartMs,
-  recordGeminiUsage,
-  subscribeGeminiUsage,
-  waitForRpmCapacity,
-} from "./engines/gemini/geminiUsage";
+  recordTranslationUsage,
+  subscribeTranslationUsage,
+} from "./pipeline/translationUsage";
 export type {
-  GeminiUsageRecordInput,
-  GeminiUsageSnapshot,
-} from "./engines/gemini/geminiUsage";
+  TranslationUsageRecordInput,
+  TranslationUsageSnapshot,
+} from "./pipeline/translationUsage";
 
 export {
   localTranslate,
@@ -84,7 +108,20 @@ export {
   buildTranslationSlots,
   countTextRows,
   fillSlotTexts,
+  ocrRegionsForSlots,
 } from "./pipeline/translationRegions";
+export {
+  selectPreviousContextPages,
+  selectPreviousContextPagesUnique,
+} from "./pipeline/contextPages";
+export {
+  pageCacheIdentity,
+  translationCacheKey,
+} from "./pipeline/cacheIdentity";
+export type { TranslationCacheIdentity } from "./pipeline/cacheIdentity";
+export { runAiTranslationBatch } from "./pipeline/aiBatch";
+export type { AiBatchContext, AiBatchOutcome } from "./pipeline/aiBatch";
+export type { ContextPage } from "./pipeline/contextPages";
 
 export {
   getTranslationLockOwner,

@@ -5,7 +5,10 @@ import type {
   ReaderTranslationMode,
 } from "@core/settings";
 import type { ReaderPipelineMetrics } from "../../../translation/types";
-import type { GeminiModelId } from "@features/translation";
+import type {
+  RegionDetectorId,
+  TranslationProviderConfig,
+} from "@features/translation";
 import type { ReaderOverlayFont } from "../readerChrome";
 
 export type ReaderTranslationTab =
@@ -38,10 +41,10 @@ export const ENGINE_OPTIONS: {
       "No API key needed. Each page is scanned and OCRed once, then every speech bubble is translated by the free Google endpoint as it finishes and pasted over the original text.",
   },
   {
-    value: "ai",
-    label: "AI translation",
+    value: "openai",
+    label: "AI Translation",
     description:
-      "Context-aware Gemini translation. Revisiting an already translated page restores it from the saved cache. Requires a Gemini API key.",
+      "Context aware AI translation , Open settings -> Translation for setup",
   },
 ];
 
@@ -69,6 +72,7 @@ export const MODE_OPTIONS: {
       "The current page and look-ahead pages are translated automatically as you read. A page waits for its full OCR pass before translation starts.",
   },
 ];
+
 export interface ReaderTranslationPanelProps {
   tab: ReaderTranslationTab;
   onTabChange: (tab: ReaderTranslationTab) => void;
@@ -89,16 +93,21 @@ export interface ReaderTranslationPanelProps {
   onSelectTranslationMode: (mode: ReaderTranslationMode) => void;
 
   // Advance tab.
-  geminiModelId: GeminiModelId;
-  onSelectGeminiModel: (model: GeminiModelId) => void;
+  translationModelId: string;
+  onSelectTranslationModel: (model: string) => void;
+  onOpenTranslationSettings: () => void;
+  regionDetectorId: RegionDetectorId;
+  onSelectRegionDetector: (id: RegionDetectorId) => void;
   autoModelSwitch: boolean;
   onChangeAutoModelSwitch: (value: boolean) => void;
   ocrLookahead: number;
   onChangeLookahead: (value: number) => void;
+  onOpenModelsSettings: () => void;
   onClearTrCache: () => Promise<number>;
 
   // Metrics tab.
   metrics: ReaderPipelineMetrics;
+  aiProvider: TranslationProviderConfig | null;
 
   // Overlay tab.
   overlayFont: ReaderOverlayFont;

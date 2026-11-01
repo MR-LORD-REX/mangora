@@ -57,6 +57,13 @@
       "when": 1792650000000,
       "tag": "0007_remove_reader_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793000000000,
+      "tag": "0008_translation_usage_identity",
+      "breakpoints": true
     }
   ]
 }

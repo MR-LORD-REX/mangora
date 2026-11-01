@@ -47,13 +47,18 @@ export interface ReaderChromeRendererProps {
   translationEngine: ReaderChromeStackProps["translationEngine"];
   handleSelectTranslationEngine: ReaderChromeStackProps["handleSelectTranslationEngine"];
   handleSelectTranslationMode: ReaderChromeStackProps["handleSelectTranslationMode"];
-  geminiModelId: ReaderChromeStackProps["geminiModelId"];
-  handleSelectGeminiModel: ReaderChromeStackProps["handleSelectGeminiModel"];
+  translationModelId: ReaderChromeStackProps["translationModelId"];
+  handleSelectTranslationModel: ReaderChromeStackProps["handleSelectTranslationModel"];
+  regionDetectorId: ReaderChromeStackProps["regionDetectorId"];
+  handleSelectRegionDetector: ReaderChromeStackProps["handleSelectRegionDetector"];
   autoModelSwitch: boolean;
   handleChangeAutoModelSwitch: (value: boolean) => void;
   ocrLookahead: number;
   handleChangeLookahead: (value: number) => void;
+  onOpenModelsSettings: () => void;
+  onOpenTranslationSettings: () => void;
   metrics: ReaderChromeStackProps["metrics"];
+  aiProvider: ReaderChromeStackProps["aiProvider"];
   handleClearTranslationCache: ReaderChromeStackProps["handleClearTrCache"];
   overlayFont: ReaderChromeStackProps["overlayFont"];
   handleSelectOverlayFont: ReaderChromeStackProps["handleSelectOverlayFont"];
@@ -137,13 +142,18 @@ export default function ReaderChromeRenderer({
   translationEngine,
   handleSelectTranslationEngine,
   handleSelectTranslationMode,
-  geminiModelId,
-  handleSelectGeminiModel,
+    translationModelId,
+    handleSelectTranslationModel,
+  regionDetectorId,
+  handleSelectRegionDetector,
   autoModelSwitch,
   handleChangeAutoModelSwitch,
   ocrLookahead,
   handleChangeLookahead,
+  onOpenModelsSettings,
+  onOpenTranslationSettings,
   metrics,
+  aiProvider,
   handleClearTranslationCache,
   overlayFont,
   handleSelectOverlayFont,
@@ -227,13 +237,18 @@ export default function ReaderChromeRenderer({
       translationEngine={translationEngine}
       handleSelectTranslationEngine={handleSelectTranslationEngine}
       handleSelectTranslationMode={handleSelectTranslationMode}
-      geminiModelId={geminiModelId}
-      handleSelectGeminiModel={handleSelectGeminiModel}
+          translationModelId={translationModelId}
+          handleSelectTranslationModel={handleSelectTranslationModel}
+      regionDetectorId={regionDetectorId}
+      handleSelectRegionDetector={handleSelectRegionDetector}
       autoModelSwitch={autoModelSwitch}
       handleChangeAutoModelSwitch={handleChangeAutoModelSwitch}
       ocrLookahead={ocrLookahead}
       handleChangeLookahead={handleChangeLookahead}
+      onOpenModelsSettings={onOpenModelsSettings}
+      onOpenTranslationSettings={onOpenTranslationSettings}
       metrics={metrics}
+      aiProvider={aiProvider}
       handleClearTrCache={handleClearTranslationCache}
       overlayFont={overlayFont}
       handleSelectOverlayFont={handleSelectOverlayFont}

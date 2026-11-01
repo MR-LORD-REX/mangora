@@ -7,6 +7,7 @@
  */
 
 import type {
+  AppSettings,
   ReaderTranslationEngine,
   ReaderTranslationMode,
 } from "@core/settings";
@@ -14,7 +15,6 @@ import type { WorkQueue, WorkQueueMetrics } from "@shared/async/workQueue";
 import type {
   Box,
   BubbleMask,
-  GeminiModelId,
   PageTranslationState,
   TranslationRegionState,
   TranslationSlot,
@@ -23,6 +23,7 @@ import type {
   DetectionResult,
   OcrRegion,
   OcrTextItem,
+  RegionDetectorId,
 } from "@features/vision";
 
 import type { ReaderIdentity } from "@core/catalog/readerIdentity";
@@ -102,10 +103,13 @@ export interface PipelineConfig {
   translationMode: ReaderTranslationMode;
   sourceLanguage: string;
   targetLanguage: string;
-  geminiApiKey: string;
-  geminiModelId: GeminiModelId;
+  /** Selected OpenAI-compatible model; free translation ignores it. */
+  translationModelId: string;
+  regionDetectorId: RegionDetectorId;
   aiMaxContextPages: number;
   autoModelSwitch: boolean;
+  /** Null only while the initial persisted-settings read is in flight. */
+  settings: AppSettings | null;
 }
 
 export interface ReaderPipelineMetrics {
@@ -159,12 +163,13 @@ export interface UseReaderTranslationOptions {
   translationEngine: ReaderTranslationEngine;
   translationMode: ReaderTranslationMode;
   targetLanguage: string;
-  geminiApiKey: string;
-  geminiModelId: GeminiModelId;
+  translationModelId: string;
+  regionDetectorId: RegionDetectorId;
   ocrBubbleWorkers: number;
   ocrLookahead: number;
   aiMaxContextPages: number;
   autoModelSwitch: boolean;
+  settings: AppSettings | null;
   onAutoModelSwitchDisabled: () => void;
   onTranslationSetupRequired: () => void;
 }
@@ -206,6 +211,8 @@ export interface ReaderTranslationRuntime {
   readonly identity: ReaderIdentity;
   readonly detection: Map<string, DetectionResult>;
   readonly ocrStore: Map<string, OcrPageRecord>;
+  /** Candidate previous pages loaded from persistent translation cache. */
+  readonly cachedContext: Map<number, OcrPageRecord>;
   readonly queues: TranslationQueues;
   readonly effectiveOcrBubbleWorkers: number;
   readonly pages: string[];
@@ -224,6 +231,8 @@ export interface ReaderTranslationRuntime {
     pageIndex: number,
     generation: number,
   ): Promise<boolean>;
+  /** Rehydrates a previous page for AI context without publishing overlays. */
+  hydrateContextPage(url: string, pageIndex: number): Promise<void>;
   savePageRecord(page: OcrPageRecord): Promise<void>;
   getAutoSwitchFailures(): number;
   setAutoSwitchFailures(value: number): void;

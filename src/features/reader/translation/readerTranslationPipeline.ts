@@ -29,6 +29,12 @@ import {
 } from "@features/vision";
 import { WorkQueue } from "@shared/async/workQueue";
 import { languageLabel } from "@features/reader/components/panels/readerLanguages";
+import {
+  pageCacheIdentity,
+  resolveTranslationProvider,
+  translationCacheKey,
+  translationProviderReadinessError,
+} from "@features/translation";
 
 import type { ReaderIdentity } from "@core/catalog/readerIdentity";
 
@@ -85,6 +91,7 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
   identity: ReaderIdentity;
   readonly detection = new Map<string, DetectionResult>();
   readonly ocrStore = new Map<string, OcrPageRecord>();
+  readonly cachedContext = new Map<number, OcrPageRecord>();
   readonly queues: TranslationQueues;
 
   get pages(): string[] {
@@ -108,6 +115,8 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
   private singlePageIndexValue: number | null = null;
   private ocrSequence = 0;
   private autoSwitchFailures = 0;
+  private contextCacheVersion: string | undefined;
+  private translationIdentity: string | null = null;
   private ramMangaId: string | null = null;
   private errorTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly queueMetrics: Record<
@@ -175,7 +184,27 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
   }
 
   updateConfig(config: PipelineConfig): void {
+    const previousConfig = this.config;
+    const previousIdentity =
+      this.translationIdentity ?? this.configTranslationIdentity();
     this.config = config;
+    const nextIdentity = this.configTranslationIdentity();
+    this.translationIdentity = nextIdentity;
+    if (
+      previousIdentity !== null &&
+      nextIdentity !== null &&
+      previousIdentity !== nextIdentity
+    ) {
+      this.invalidateTranslationIdentity(
+        previousConfig.regionDetectorId !== config.regionDetectorId ||
+          previousConfig.sourceLanguage !== config.sourceLanguage,
+      );
+    }
+    const nextContextVersion = this.cacheVersion();
+    if (this.contextCacheVersion !== nextContextVersion) {
+      this.cachedContext.clear();
+      this.contextCacheVersion = nextContextVersion;
+    }
     const ocrModelId = modelIdForLanguage(config.sourceLanguage);
     this.queues.ocr.setConcurrency(
       ocrEngineConcurrency(ocrModelId, this.effectiveOcrBubbleWorkers),
@@ -308,9 +337,7 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
     });
     const pageTask = { url: page.url, pageIndex: page.pageIndex, generation };
     if (this.config.engine === "free") this.queues.free.push(pageTask, page.url);
-    else if (this.config.engine === "ai") {
-      this.queues.ai.push(pageTask, page.url);
-    }
+    else this.queues.ai.push(pageTask, page.url);
     const settled = [...page.bubbles.values()].every(
       (item) => item.status === "translated" || item.status === "error",
     );
@@ -355,12 +382,82 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
     this.publish();
   }
 
+  /** Cache key for the engine/detector selected for this reader run. */
+  private cacheVersion(): string | undefined {
+    const settings = this.config.settings;
+    if (!settings) return undefined;
+    const providerSettings = {
+      ...settings,
+      translationModelId: this.config.translationModelId || settings.translationModelId,
+    };
+    const provider =
+      this.config.engine === "free"
+        ? null
+        : resolveTranslationProvider(providerSettings, this.config.engine);
+    return translationCacheKey(
+      pageCacheIdentity({
+        engine: this.config.engine,
+        provider,
+        model: provider?.model ?? null,
+        detectorId: this.config.regionDetectorId,
+      }),
+    );
+  }
+
+  /** Non-secret identity for the in-memory OCR/translation store. */
+  private configTranslationIdentity(): string | null {
+    if (!this.config.settings) return null;
+    return [
+      this.config.sourceLanguage,
+      this.config.targetLanguage,
+      this.config.engine,
+      this.config.translationModelId,
+      this.cacheVersion() ?? "pending",
+    ].join("|");
+  }
+
+  /**
+   * Drops results produced by the previous provider/model/detector. OCR can be
+   * reused for a model-only change, but a detector or source-language change
+   * must rescan because slot geometry may differ.
+   */
+  private invalidateTranslationIdentity(clearOcr: boolean): void {
+    this.generation += 1;
+    this.clearPendingQueues();
+    this.cachedContext.clear();
+    this.state.translationPages = {};
+    this.state.pipelineError = null;
+    this.state.singlePageBusy = false;
+    this.state.singlePageIndex = null;
+    this.singlePageIndexValue = null;
+    if (this.singleActive) {
+      this.singleActive = false;
+      releaseTranslationLock(this.singleLockKey);
+    }
+    if (clearOcr) {
+      this.detection.clear();
+      this.ocrStore.clear();
+      this.ocrSequence = 0;
+    } else {
+      for (const page of this.ocrStore.values()) {
+        for (const bubble of page.bubbles.values()) {
+          bubble.status = "ready";
+          bubble.translatedText = null;
+        }
+        page.status = "scan";
+      }
+    }
+    if (this.autoActive) this.enqueueWindow(this.generation);
+    this.publish();
+  }
+
   async savePageRecord(page: OcrPageRecord): Promise<void> {
     try {
       await savePageToCache(page, {
         identity: this.identity,
         sourceLanguage: this.config.sourceLanguage,
         targetLanguage: this.config.targetLanguage,
+        promptVersion: this.cacheVersion() ?? undefined,
       });
     } catch (error) {
       // Cache persistence is deliberately non-fatal: a failed write must not
@@ -380,6 +477,7 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
       pageIndex,
       sourceLanguage: this.config.sourceLanguage,
       targetLanguage: this.config.targetLanguage,
+      promptVersion: this.cacheVersion() ?? undefined,
     }).catch((error) => {
       console.warn("[reader][tr] cache lookup failed", error);
       return null;
@@ -437,6 +535,49 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
       bubbles: bubbles.size,
     });
     return true;
+  }
+
+  /** Loads only the source text needed by the AI context window. */
+  async hydrateContextPage(url: string, pageIndex: number): Promise<void> {
+    if (this.cachedContext.has(pageIndex)) return;
+    const cached = await loadPageFromCache({
+      identity: this.identity,
+      url,
+      pageIndex,
+      sourceLanguage: this.config.sourceLanguage,
+      targetLanguage: this.config.targetLanguage,
+      promptVersion: this.cacheVersion() ?? undefined,
+    }).catch((error) => {
+      console.warn("[reader][tr] context cache lookup failed", error);
+      return null;
+    });
+    if (!cached || cached.regions.length === 0) return;
+    this.cachedContext.set(pageIndex, {
+      url,
+      pageIndex,
+      chapterId: this.identity.chapterId,
+      seq: this.nextOcrSequence(),
+      imageWidth: cached.imageWidth,
+      imageHeight: cached.imageHeight,
+      slots: [],
+      regions: [],
+      bubbles: bubblesFromCachedRegions({
+        regions: cached.regions,
+        url,
+        pageIndex,
+        sourceLanguage: this.config.sourceLanguage,
+        targetLanguage: this.config.targetLanguage,
+      }),
+      items: [],
+      regionsTotal: 0,
+      regionsDone: 0,
+      regionsFailed: 0,
+      ocrComplete: true,
+      pendingRegions: new Set(),
+      slotRegions: new Map(),
+      status: "done",
+      modelId: cached.model,
+    });
   }
 
   finishSinglePage(url: string): void {
@@ -569,6 +710,7 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
       pageIndex,
       sourceLanguage: this.config.sourceLanguage,
       targetLanguage: this.config.targetLanguage,
+      promptVersion: this.cacheVersion() ?? undefined,
     }).catch((error) => {
       console.warn("[reader][tr] retry cache delete failed", error);
     });
@@ -602,6 +744,7 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
   clearRamCache(): void {
     this.ocrStore.clear();
     this.detection.clear();
+    this.cachedContext.clear();
     this.ocrSequence = 0;
     this.state.translationPages = {};
     this.publish();
@@ -642,6 +785,7 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
     this.state.singlePageIndex = null;
     this.singlePageIndexValue = null;
     this.detection.clear();
+    this.cachedContext.clear();
     this.state.translationPages = {};
     this.state.pipelineError = null;
     this.state.autoTranslation = false;
@@ -719,8 +863,22 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
     ) {
       return `Target language (${languageLabel(this.config.targetLanguage)}) matches the page language (${languageLabel(this.config.sourceLanguage)}) - nothing to translate.`;
     }
-    if (this.config.engine === "ai" && !this.config.geminiApiKey.trim()) {
-      return "AI translation needs a Gemini API key - set it in Settings > Translation.";
+    if (this.config.engine === "openai") {
+      if (!this.config.settings) {
+        return "Translation settings are still loading. Try again in a moment.";
+      }
+      const providerSettings = {
+        ...this.config.settings,
+        translationModelId:
+          this.config.translationModelId ||
+          this.config.settings.translationModelId,
+      };
+      const provider = resolveTranslationProvider(
+        providerSettings,
+        this.config.engine,
+      );
+      const readinessError = translationProviderReadinessError(provider);
+      if (readinessError) return readinessError;
     }
     return null;
   }

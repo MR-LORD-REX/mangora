@@ -66,6 +66,12 @@ const migrations: MigrationConfig = {
         tag: "0007_remove_reader_cache",
         breakpoints: true,
       },
+      {
+        idx: 8,
+        when: 1793000000000,
+        tag: "0008_translation_usage_identity",
+        breakpoints: true,
+      },
     ],
   },
   migrations: {
@@ -276,6 +282,9 @@ CREATE INDEX \`downloads_updated_index\` ON \`downloads\` (\`updated_at\`);`,
 CREATE UNIQUE INDEX \`reader_cache_chapter_identity_unique\` ON \`reader_cache_chapters\` (\`chapter_id\`);--> statement-breakpoint
 CREATE INDEX \`reader_cache_last_accessed_index\` ON \`reader_cache_chapters\` (\`last_accessed_at\`);`,
   m0007: `DROP TABLE IF EXISTS \`reader_cache_chapters\`;`,
+  m0008: `ALTER TABLE \`translation_usage\` ADD COLUMN \`provider\` text DEFAULT 'gemini' NOT NULL;--> statement-breakpoint
+ALTER TABLE \`translation_usage\` ADD COLUMN \`endpoint_key\` text DEFAULT 'gemini' NOT NULL;--> statement-breakpoint
+CREATE INDEX \`translation_usage_endpoint_time_index\` ON \`translation_usage\` (\`provider\`,\`endpoint_key\`,\`occurred_at\`);`,
   },
 };
 

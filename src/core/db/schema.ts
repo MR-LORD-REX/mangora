@@ -281,11 +281,13 @@ export const downloadFolders = sqliteTable("download_folders", {
   grantedAt: integer("granted_at", { mode: "number" }).notNull(),
   updatedAt: integer("updated_at", { mode: "number" }).notNull(),
 });
-/** One Gemini API attempt - the source of truth for RPM/TPM/RPD meters. */
+/** One AI provider attempt - the source of truth for RPM/TPM/RPD meters. */
 export const translationUsage = sqliteTable(
   "translation_usage",
   {
     id: text("id").primaryKey(),
+    provider: text("provider").notNull().default("gemini"),
+    endpointKey: text("endpoint_key").notNull().default("gemini"),
     model: text("model").notNull(),
     occurredAt: integer("occurred_at", { mode: "number" }).notNull(),
     success: integer("success", { mode: "boolean" }).notNull(),
@@ -295,6 +297,11 @@ export const translationUsage = sqliteTable(
     createdAt: integer("created_at", { mode: "number" }).notNull(),
   },
   (table) => [
+    index("translation_usage_endpoint_time_index").on(
+      table.provider,
+      table.endpointKey,
+      table.occurredAt,
+    ),
     index("translation_usage_model_time_index").on(table.model, table.occurredAt),
   ],
 );

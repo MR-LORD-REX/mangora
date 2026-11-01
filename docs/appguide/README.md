@@ -14,7 +14,7 @@ module names, database tables or internal import rules.
 | Library and history | Save manga, organise libraries, sort/filter and resume reading. |
 | Reader | Paged versus long-strip reading, zoom, tap zones, auto-scroll, reading modes and orientation. |
 | Downloads | Choose a storage folder, download chapters, read offline and recover interrupted downloads. |
-| Translation | Enable translation, choose free or Gemini, install OCR models and understand network/privacy behavior. |
+| Translation | Enable translation, choose free Google or an OpenAI-compatible endpoint, download region/OCR models and understand network/privacy behavior. |
 | Settings and updates | Display defaults, storage, backup/restore, updates and release channels. |
 | Troubleshooting | Missing sources, permissions, download recovery, translation limits and how to report a problem. |
 

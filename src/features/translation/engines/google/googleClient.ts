@@ -132,8 +132,8 @@ export interface FreeBatchResult {
 /**
  * Translates one page batch through the free Google endpoint.
  *
- * Mirrors translateGeminiBatch's request/response shape so the reader and the
- * pre-translation queue can share one page-batch pipeline for both engines.
+ * Mirrors the provider-neutral batch request/response shape so the reader and
+ * the pre-translation queue can share one page-batch pipeline for both engines.
  * Free translation is stateless, so history is accepted but not sent.
  */
 export async function translateFreeBatch(opts: {

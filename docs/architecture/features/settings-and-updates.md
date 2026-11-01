@@ -21,8 +21,9 @@ headerless stack page under `app/settings/`:
 | `app/settings/storage.tsx` | SAF root, backup/restore and storage usage. |
 | `app/settings/queue.tsx` | Live/incomplete download jobs. |
 | `app/settings/translation-queue.tsx` | Pre-translate jobs. |
-| `app/settings/translation.tsx` | Gemini key/model, context and translated-page cache. |
-| `app/settings/ocr-models.tsx` | PP-OCR model downloads/deletion. |
+| `app/settings/translation.tsx` | OpenAI-compatible base URL/key/models, context, fallback and translated-page cache. |
+| `app/settings/models.tsx` | Region-detection and PP-OCR model downloads/deletion. |
+| `app/settings/ocr-models.tsx` | Alias for the Models screen retained for deep links. |
 | `app/settings/about.tsx` | Version, update flow, links and content preferences. |
 
 `SettingsPage` supplies the back/title/shell. Shared rows, toggles, sliders and
@@ -45,6 +46,11 @@ page.
 The extension-source card layout (`sourceCardLayout`: `grid2`, `grid4`, `list`)
 is one persisted value used by both Settings → Display and the source header. A
 view change must update that value rather than keep a page-local preference.
+
+Translation keeps Gemini's OpenAI-compatible URL and two Flash Lite model names
+as defaults, but the endpoint is generic. Changing the base URL asks whether to
+keep the current model names or reset them. API keys remain in settings JSON for
+this pass; do not add a second credential store ad hoc.
 
 ### Storage and backup
 

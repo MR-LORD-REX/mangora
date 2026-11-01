@@ -1,7 +1,7 @@
 /**
  * translationRepository.ts
  * ---------------------------------------------------------------------------
- * Persists the reader's per-page translation cache and the Gemini usage rows.
+ * Persists the reader's per-page translation cache and AI-provider usage rows.
  *
  * Page cache
  * ----------
@@ -14,9 +14,8 @@
  *
  * Usage
  * -----
- * Every Gemini attempt writes a translation_usage row (model, timestamp,
- * success, tokens) which backs the RPM / TPM / RPD meters in the translation
- * options panel.
+ * Every AI attempt writes a translation_usage row (provider, endpoint, model,
+ * timestamp, success, tokens), which backs the RPM / TPM / RPD meters.
  * ---------------------------------------------------------------------------
  */
 
@@ -30,10 +29,9 @@ import {
 } from "../schema";
 import type { BubbleMask } from "@shared/contracts/bubbleMask";
 import type { Box } from "@shared/geometry";
-import type { GeminiModelId } from "@core/settings/geminiModelId";
 
 /** Bump when the stored geometry/prompt contract changes. */
-export const TRANSLATION_CACHE_PROMPT_VERSION = "v3";
+export const TRANSLATION_CACHE_PROMPT_VERSION = "v4";
 
 /** Stable cache identity for a page within a chapter, independent of file URI. */
 export function translationPageKey(chapterId: string, pageIndex: number): string {
@@ -59,6 +57,8 @@ export interface SaveTranslationPageInput {
   sourceLanguage: string;
   targetLanguage: string;
   model?: string | null;
+  /** Full cache identity (provider, endpoint, model and detector). */
+  promptVersion?: string;
   imageWidth: number;
   imageHeight: number;
   regions: StoredTranslationRegion[];
@@ -88,6 +88,7 @@ async function findPageId(input: {
   pageKey: string;
   sourceLanguage: string;
   targetLanguage: string;
+  promptVersion?: string;
 }): Promise<string | null> {
   const rows = await db
     .select({ id: translationPages.id })
@@ -100,7 +101,7 @@ async function findPageId(input: {
         eq(translationPages.targetLanguage, input.targetLanguage),
         eq(
           translationPages.promptVersion,
-          TRANSLATION_CACHE_PROMPT_VERSION,
+          input.promptVersion ?? TRANSLATION_CACHE_PROMPT_VERSION,
         ),
       ),
     )
@@ -188,7 +189,7 @@ export async function saveTranslationPage(
       sourceLanguage: input.sourceLanguage,
       targetLanguage: input.targetLanguage,
       model: input.model ?? null,
-      promptVersion: TRANSLATION_CACHE_PROMPT_VERSION,
+      promptVersion: input.promptVersion ?? TRANSLATION_CACHE_PROMPT_VERSION,
       imageWidth: input.imageWidth,
       imageHeight: input.imageHeight,
       createdAt: now,
@@ -225,6 +226,8 @@ export async function findTranslationPage(input: {
   /** Used to find records saved with older page-URI-based cache keys. */
   chapterId?: string;
   legacyPageIndex?: number;
+  /** Full cache identity; defaults to the current prompt version. */
+  promptVersion?: string;
 }): Promise<CachedTranslationPage | null> {
   let pageId = await findPageId({
     ...input,
@@ -250,7 +253,7 @@ export async function findTranslationPage(input: {
           eq(translationPages.targetLanguage, input.targetLanguage),
           eq(
             translationPages.promptVersion,
-            TRANSLATION_CACHE_PROMPT_VERSION,
+            input.promptVersion ?? TRANSLATION_CACHE_PROMPT_VERSION,
           ),
           like(translationPages.pageKey, `%/${pageNumber}.%`),
         ),
@@ -378,6 +381,7 @@ export async function deleteTranslationPage(input: {
   pageKey?: string;
   sourceLanguage: string;
   targetLanguage: string;
+  promptVersion?: string;
 }): Promise<void> {
   await db
     .delete(translationPages)
@@ -392,14 +396,16 @@ export async function deleteTranslationPage(input: {
         eq(translationPages.targetLanguage, input.targetLanguage),
         eq(
           translationPages.promptVersion,
-          TRANSLATION_CACHE_PROMPT_VERSION,
+          input.promptVersion ?? TRANSLATION_CACHE_PROMPT_VERSION,
         ),
       ),
     );
 }
 
 export interface InsertTranslationUsageInput {
-  model: GeminiModelId;
+  provider: "gemini" | "openai-compatible";
+  endpointKey: string;
+  model: string;
   occurredAt: number;
   success: boolean;
   inputTokens?: number;
@@ -413,6 +419,8 @@ export async function insertTranslationUsage(
   const now = Date.now();
   await db.insert(translationUsage).values({
     id: newId("tu"),
+    provider: input.provider,
+    endpointKey: input.endpointKey,
     model: input.model,
     occurredAt: input.occurredAt,
     success: input.success,
@@ -427,6 +435,7 @@ export async function insertTranslationUsage(
 export async function countTranslationUsageSince(
   model: string,
   sinceMs: number,
+  endpoint?: { provider: "gemini" | "openai-compatible"; endpointKey: string },
 ): Promise<number> {
   const rows = await db
     .select({ count: sql<number>`count(*)` })
@@ -435,6 +444,8 @@ export async function countTranslationUsageSince(
       and(
         eq(translationUsage.model, model),
         gte(translationUsage.occurredAt, sinceMs),
+        endpoint ? eq(translationUsage.provider, endpoint.provider) : undefined,
+        endpoint ? eq(translationUsage.endpointKey, endpoint.endpointKey) : undefined,
       ),
     );
   return rows[0]?.count ?? 0;
@@ -444,6 +455,7 @@ export async function countTranslationUsageSince(
 export async function sumTranslationInputTokensSince(
   model: string,
   sinceMs: number,
+  endpoint?: { provider: "gemini" | "openai-compatible"; endpointKey: string },
 ): Promise<number> {
   const rows = await db
     .select({
@@ -454,6 +466,8 @@ export async function sumTranslationInputTokensSince(
       and(
         eq(translationUsage.model, model),
         gte(translationUsage.occurredAt, sinceMs),
+        endpoint ? eq(translationUsage.provider, endpoint.provider) : undefined,
+        endpoint ? eq(translationUsage.endpointKey, endpoint.endpointKey) : undefined,
       ),
     );
   return rows[0]?.total ?? 0;

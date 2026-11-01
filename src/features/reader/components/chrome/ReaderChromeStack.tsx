@@ -56,13 +56,18 @@ export default function ReaderChromeStack({
   translationEngine,
   handleSelectTranslationEngine,
   handleSelectTranslationMode,
-  geminiModelId,
-  handleSelectGeminiModel,
+  translationModelId,
+  handleSelectTranslationModel,
+  onOpenModelsSettings,
+  onOpenTranslationSettings,
+  regionDetectorId,
+  handleSelectRegionDetector,
   autoModelSwitch,
   handleChangeAutoModelSwitch,
   ocrLookahead,
   handleChangeLookahead,
   metrics,
+  aiProvider,
   handleClearTrCache,
   overlayFont,
   handleSelectOverlayFont,
@@ -159,13 +164,18 @@ export default function ReaderChromeStack({
             onSelectTranslationEngine={handleSelectTranslationEngine}
             translationMode={translationMode}
             onSelectTranslationMode={handleSelectTranslationMode}
-            geminiModelId={geminiModelId}
-            onSelectGeminiModel={handleSelectGeminiModel}
+            translationModelId={translationModelId}
+            onSelectTranslationModel={handleSelectTranslationModel}
+            onOpenTranslationSettings={onOpenTranslationSettings}
+            regionDetectorId={regionDetectorId}
+            onSelectRegionDetector={handleSelectRegionDetector}
             autoModelSwitch={autoModelSwitch}
             onChangeAutoModelSwitch={handleChangeAutoModelSwitch}
             ocrLookahead={ocrLookahead}
             onChangeLookahead={handleChangeLookahead}
+            onOpenModelsSettings={onOpenModelsSettings}
             metrics={metrics}
+            aiProvider={aiProvider}
             onClearTrCache={handleClearTrCache}
             overlayFont={overlayFont}
             onChangeOverlayFont={handleSelectOverlayFont}

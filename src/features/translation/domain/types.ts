@@ -42,6 +42,12 @@ export interface TranslationSlot {
   lineCount?: number;
   /** OCR text assembled for this slot (reading order). */
   sourceText: string;
+  /**
+   * True when a mask-only detector supplied no text box. The OCR pass measures
+   * the recognized text extent, then replaces pasteBox with the bubble/text
+   * midpoint before translation render.
+   */
+  resolvePasteFromOcr?: boolean;
 }
 
 /** Per-slot progress state used by the page overlay. */

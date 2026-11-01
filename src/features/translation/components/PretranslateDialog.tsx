@@ -8,6 +8,7 @@
  * ---------------------------------------------------------------------------
  */
 
+import { useRouter, type Href } from "expo-router";
 import { Languages, Settings, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -32,6 +33,14 @@ import {
   updateSettings,
   type ReaderTranslationEngine,
 } from "@core/settings";
+import {
+  DEFAULT_REGION_DETECTOR_ID,
+  REGION_DETECTORS,
+  getRegionDetector,
+  isRegionModelDownloaded,
+  type RegionDetectorId,
+} from "@features/vision";
+import { resolveTranslationProvider, translationProviderReadinessError } from "../provider";
 import { READER_TARGET_OPTIONS, isSameEngineLanguage } from "../domain/languages";
 import { enqueuePretranslateJob } from "../jobs/pretranslateQueue";
 
@@ -59,10 +68,17 @@ export default function PretranslateDialog({
   onClose,
   onDownload,
 }: PretranslateDialogProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [pages, setPages] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [engine, setEngine] = useState<ReaderTranslationEngine>("free");
+  const [detector, setDetector] = useState<RegionDetectorId>(
+    DEFAULT_REGION_DETECTOR_ID,
+  );
+  const [detectorReady, setDetectorReady] = useState<
+    Partial<Record<RegionDetectorId, boolean>>
+  >({});
   const [source, setSource] = useState("ja");
   const [target, setTarget] = useState("en");
   const [busy, setBusy] = useState(false);
@@ -78,6 +94,7 @@ export default function PretranslateDialog({
     setPages([]);
     setNotice(null);
     setShowSettings(false);
+    setDetectorReady({});
     const pageSessionPromise = openDownloadedPageSessionForChapter(
       candidate.target.chapterId,
     ).then((session) => {
@@ -96,6 +113,7 @@ export default function PretranslateDialog({
         }
         setPages(session.pages);
         setEngine(settings.readerTranslationEngine);
+        setDetector(settings.regionDetectorId);
         setSource(settings.readerLanguage || chapterLanguage || "ja");
         setTarget(settings.readerTargetLanguage || "en");
         console.log("[pretranslate] dialog opened", {
@@ -128,6 +146,24 @@ export default function PretranslateDialog({
 
   const downloaded = pages.length > 0;
 
+  const chooseDetector = async (id: RegionDetectorId) => {
+    setDetector(id);
+    setNotice(null);
+    const ready = await isRegionModelDownloaded(id).catch(() => false);
+    setDetectorReady((current) => ({ ...current, [id]: ready }));
+    if (!ready) {
+      setNotice(
+        getRegionDetector(id).label +
+          " is not downloaded. Download it from Settings > Models before queueing.",
+      );
+    }
+  };
+
+  const openModelsSettings = () => {
+    onClose();
+    router.push("/settings/models" as Href);
+  };
+
   const confirm = async () => {
     if (!downloaded) return;
     if (isSameEngineLanguage(source, target)) {
@@ -136,17 +172,31 @@ export default function PretranslateDialog({
     }
     setBusy(true);
     try {
+      const detectorDownloaded = await isRegionModelDownloaded(detector).catch(
+        () => false,
+      );
+      setDetectorReady((current) => ({ ...current, [detector]: detectorDownloaded }));
+      if (!detectorDownloaded) {
+        setNotice(
+          getRegionDetector(detector).label +
+            " is not downloaded. Download it from Settings > Models before queueing.",
+        );
+        setBusy(false);
+        return;
+      }
       const settings = await getSettings();
       const next = await updateSettings({
         readerTranslationEngine: engine,
+        regionDetectorId: detector,
         readerLanguage:
           source === chapterLanguage ? settings.readerLanguage : source,
         readerTargetLanguage: target,
       });
-      if (engine === "ai" && !next.geminiApiKey.trim()) {
-        setNotice(
-          "AI translation needs a Gemini API key in Settings > Translation.",
-        );
+      const readinessError = translationProviderReadinessError(
+        resolveTranslationProvider(next, engine),
+      );
+      if (readinessError) {
+        setNotice(readinessError);
         setBusy(false);
         return;
       }
@@ -170,6 +220,7 @@ export default function PretranslateDialog({
       console.log("[pretranslate] queued", {
         chapterId: candidate.target.chapterId,
         engine,
+        detector,
         pages: pages.length,
       });
       setNotice("Added to the translation queue.");
@@ -251,7 +302,7 @@ export default function PretranslateDialog({
               {showSettings ? (
                 <>
                   <Text style={styles.sectionLabel}>Engine</Text>
-                  {(["free", "ai"] as ReaderTranslationEngine[]).map((value) => (
+                  {(["free", "openai"] as ReaderTranslationEngine[]).map((value) => (
                     <Pressable
                       key={value}
                       style={styles.radioRow}
@@ -268,10 +319,51 @@ export default function PretranslateDialog({
                         ) : null}
                       </View>
                       <Text style={styles.radioLabel}>
-                        {value === "free" ? "Free Google" : "Gemini AI"}
+                        {value === "free" ? "Free Google" : "OpenAI-compatible"}
                       </Text>
                     </Pressable>
                   ))}
+
+                  <Text style={styles.sectionLabel}>Detection model</Text>
+                  {REGION_DETECTORS.map((model) => {
+                    const ready = detectorReady[model.id];
+                    return (
+                      <Pressable
+                        key={model.id}
+                        style={styles.radioRow}
+                        onPress={() => void chooseDetector(model.id)}
+                      >
+                        <View
+                          style={[
+                            styles.radio,
+                            detector === model.id && styles.radioActive,
+                          ]}
+                        >
+                          {detector === model.id ? (
+                            <View style={styles.radioDot} />
+                          ) : null}
+                        </View>
+                        <View style={styles.modelTextWrap}>
+                          <Text style={styles.radioLabel}>{model.label}</Text>
+                          <Text style={styles.modelDetail}>
+                            {ready === false
+                              ? "Not downloaded - download needed"
+                              : model.detail}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                  {detectorReady[detector] === false ? (
+                    <Pressable
+                      onPress={openModelsSettings}
+                      style={styles.detectorSettingsButton}
+                    >
+                      <Text style={styles.detectorSettingsText}>
+                        Go to Settings &gt; Models
+                      </Text>
+                    </Pressable>
+                  ) : null}
 
                   <Text style={styles.sectionLabel}>Source language</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -409,6 +501,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
   },
   radioLabel: { color: colors.text, fontSize: 14, fontWeight: "600" },
+  modelTextWrap: { flex: 1, gap: 2 },
+  modelDetail: { color: colors.textFaint, fontSize: 11, lineHeight: 15 },
+  detectorSettingsButton: {
+    alignSelf: "flex-start",
+    marginTop: 4,
+    marginBottom: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  detectorSettingsText: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: "700",
+  },
   chip: {
     paddingHorizontal: 10,
     paddingVertical: 7,

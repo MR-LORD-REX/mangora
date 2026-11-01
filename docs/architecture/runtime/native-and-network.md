@@ -27,7 +27,7 @@ Other network boundaries:
 
 - repository/catalog fetch: extensions feature;
 - GitHub release metadata/APK: updates feature;
-- Google/Gemini translation: translation engines;
+- free Google and OpenAI-compatible translation: translation engines;
 - model downloads: vision model store;
 - extension pages: native host via the platform facade.
 
@@ -92,7 +92,10 @@ reference checkout under `_ref/mihon`.
 - Extension browsing/content requests go to extension-selected endpoints.
 - OCR inference stays on device; translation sends recognized text only when the
   user selects a translation engine.
-- Gemini key validation/translation sends the key to Google; never log it.
+- API-key validation/translation sends the key to the configured endpoint; never
+  log it.
+- Local/LAN HTTP endpoints are supported deliberately and show a cleartext
+  warning. Public hosted endpoints should use HTTPS.
 - Model downloads and updater requests use HTTPS endpoints configured in the
   feature.
 - Extension image headers may include cookies/source secrets; keep them in the

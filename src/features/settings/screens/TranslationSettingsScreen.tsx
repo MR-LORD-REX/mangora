@@ -8,7 +8,10 @@ export function TranslationSettingsScreen() {
   const { settings, update } = useAppSettings();
 
   return (
-    <SettingsPage title="Translation" subtitle="Gemini key and cached pages">
+    <SettingsPage
+      title="Translation"
+      subtitle="OpenAI-compatible endpoint, models and cached pages"
+    >
       <TranslationSection settings={settings} onChange={update} standalone />
     </SettingsPage>
   );

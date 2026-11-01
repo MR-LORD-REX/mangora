@@ -25,23 +25,20 @@ import type {
   TranslationNotificationPort,
 } from "@shared/contracts";
 import type { TranslationEngine } from "@shared/contracts/translationEngine";
+import { isAiTranslationEngine } from "@shared/contracts/translationEngine";
+import {
+  DEFAULT_REGION_DETECTOR_ID,
+  isRegionDetectorId,
+  type RegionDetectorId,
+} from "@shared/contracts/regionDetector";
 import { getSettings, updateSettings, type AppSettings } from "@core/settings";
 import { translateFreeBatch } from "../engines/google/googleClient";
-import { GeminiApiError, translateGeminiBatch } from "../engines/gemini/geminiClient";
-import {
-  GEMINI_DEFAULT_MODEL,
-  type GeminiModelId,
-} from "../engines/gemini/geminiModels";
-import {
-  fallbackModelChain,
-  nextAutoSwitchFailureState,
-  requestWithModelFallback,
-} from "../engines/gemini/geminiFallback";
-import { recordGeminiUsage, waitForRpmCapacity } from "../engines/gemini/geminiUsage";
+import { resolveTranslationProvider } from "../provider";
 import {
   assignItemsToSlots,
   buildTranslationSlots,
   fillSlotTexts,
+  ocrRegionsForSlots,
 } from "../pipeline/translationRegions";
 import {
   releaseTranslationLock,
@@ -52,6 +49,8 @@ import {
   clampOcrBubbleWorkers,
   detectPageRegions,
   getLocalOcrModel,
+  getRegionDetector,
+  isRegionModelDownloaded,
   isModelDownloaded,
   modelIdForLanguage,
   preparePaddleRegions,
@@ -64,6 +63,9 @@ import {
   translationPageKey,
 } from "@core/db/repositories/translationRepository";
 import { isCjkLanguageCode } from "../domain/languages";
+import { selectPreviousContextPages } from "../pipeline/contextPages";
+import { runAiTranslationBatch } from "../pipeline/aiBatch";
+import { pageCacheIdentity, translationCacheKey } from "../pipeline/cacheIdentity";
 
 const MAX_CROPS_PER_PAGE = 24;
 const STORE_FILE = "trapp-translation-jobs.json";
@@ -86,6 +88,26 @@ function requirePorts(): PretranslateQueuePorts {
 }
 
 /** Persistently disables auto-switch after repeated fallback failures. */
+/** Cache identity used by one pretranslate job page. */
+function cacheVersionForJob(
+  job: PretranslateJob,
+  settings: AppSettings,
+  model: string | null,
+): string {
+  const provider =
+    job.engine === "free"
+      ? null
+      : resolveTranslationProvider(settings, job.engine);
+  return translationCacheKey(
+    pageCacheIdentity({
+      engine: job.engine,
+      provider,
+      model,
+      detectorId: job.regionDetectorId,
+    }),
+  );
+}
+
 function disableAutoModelSwitch(job: PretranslateJob): void {
   autoSwitchFailures = 0;
   job.autoModelSwitch = false;
@@ -116,7 +138,8 @@ export interface PretranslateJob {
   engine: TranslationEngine;
   sourceLanguage: string;
   targetLanguage: string;
-  geminiModelId: string;
+  translationModelId: string;
+  regionDetectorId: RegionDetectorId;
   autoModelSwitch: boolean;
   aiMaxContextPages: number;
   /** PP-OCR recognition batch size for this job. */
@@ -153,6 +176,12 @@ let initialised = false;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 const cancelRequested = new Set<string>();
 const listeners = new Set<(snapshot: PretranslateSnapshot) => void>();
+let cachedSnapshot: PretranslateSnapshot = {
+  jobs: [],
+  runningCount: 0,
+  pendingCount: 0,
+  paused: false,
+};
 
 function snapshot(): PretranslateSnapshot {
   return {
@@ -166,8 +195,8 @@ function snapshot(): PretranslateSnapshot {
 }
 
 function publish(): void {
-  const next = snapshot();
-  listeners.forEach((listener) => listener(next));
+  cachedSnapshot = snapshot();
+  listeners.forEach((listener) => listener(cachedSnapshot));
   scheduleSave();
 }
 
@@ -175,14 +204,14 @@ export function subscribePretranslate(
   listener: (snapshot: PretranslateSnapshot) => void,
 ): () => void {
   listeners.add(listener);
-  listener(snapshot());
+  listener(cachedSnapshot);
   return () => {
     listeners.delete(listener);
   };
 }
 
 export function getPretranslateSnapshot(): PretranslateSnapshot {
-  return snapshot();
+  return cachedSnapshot;
 }
 
 function storeFile(): File {
@@ -237,10 +266,20 @@ async function loadPersisted(): Promise<void> {
             Math.max(0, Math.round(job.pagesFailed ?? 0)),
           )
         : 0;
-      const geminiModelId =
-        typeof job.geminiModelId === "string" && job.geminiModelId
-          ? job.geminiModelId
-          : (currentSettings?.geminiModelId ?? GEMINI_DEFAULT_MODEL);
+      const legacyEngine = job.engine as string;
+      const engine: TranslationEngine =
+        legacyEngine === "ai" || legacyEngine === "custom"
+          ? "openai"
+          : legacyEngine === "openai"
+            ? "openai"
+            : "free";
+      const translationModelId =
+        typeof job.translationModelId === "string" && job.translationModelId
+          ? job.translationModelId
+          : (currentSettings?.translationModelId ?? "");
+      const regionDetectorId = isRegionDetectorId(job.regionDetectorId)
+        ? job.regionDetectorId
+        : (currentSettings?.regionDetectorId ?? DEFAULT_REGION_DETECTOR_ID);
       const autoModelSwitch =
         typeof job.autoModelSwitch === "boolean"
           ? job.autoModelSwitch
@@ -260,7 +299,9 @@ async function loadPersisted(): Promise<void> {
       return {
         ...job,
         pageUris,
-        geminiModelId,
+        engine,
+        translationModelId,
+        regionDetectorId,
         autoModelSwitch,
         aiMaxContextPages,
         recognitionBatch: clampOcrBubbleWorkers(
@@ -331,7 +372,8 @@ function settingsSnapshot(settings: AppSettings) {
     engine: settings.readerTranslationEngine,
     sourceLanguage: settings.readerLanguage || "ja",
     targetLanguage: settings.readerTargetLanguage || "en",
-    geminiModelId: settings.geminiModelId,
+    translationModelId: settings.translationModelId,
+    regionDetectorId: settings.regionDetectorId,
     autoModelSwitch: settings.readerAutoModelSwitch,
     aiMaxContextPages: settings.aiMaxContextPages,
     recognitionBatch: clampOcrBubbleWorkers(
@@ -377,7 +419,8 @@ export async function enqueuePretranslateJob(input: {
     engine: input.engine ?? snap.engine,
     sourceLanguage: input.sourceLanguage ?? snap.sourceLanguage,
     targetLanguage: input.targetLanguage ?? snap.targetLanguage,
-    geminiModelId: snap.geminiModelId,
+    translationModelId: snap.translationModelId,
+    regionDetectorId: snap.regionDetectorId,
     autoModelSwitch: snap.autoModelSwitch,
     aiMaxContextPages: snap.aiMaxContextPages,
     recognitionBatch: clampOcrBubbleWorkers(
@@ -429,21 +472,33 @@ async function translatePage(
   pageIndex: number,
   history: HistoryPage[],
 ): Promise<{ bubbles: number; history: HistoryPage } | null> {
+  const detector = getRegionDetector(job.regionDetectorId);
+  if (!(await isRegionModelDownloaded(job.regionDetectorId))) {
+    throw new Error(
+      detector.label +
+        " is not downloaded. Open Settings > Models and download it.",
+    );
+  }
   const modelId = modelIdForLanguage(job.sourceLanguage);
   if (!(await isModelDownloaded(modelId))) {
     const model = getLocalOcrModel(modelId);
     throw new Error(
-      `${model?.label ?? modelId} is not downloaded. Open Settings > OCR models.`,
+      `${model?.label ?? modelId} is not downloaded. Open Settings > Models.`,
     );
   }
 
-  const detection = await detectPageRegions(pageUri);
+  const detection = await detectPageRegions(pageUri, {
+    detectorId: job.regionDetectorId,
+  });
   const slots = buildTranslationSlots(detection).filter(
     (slot) =>
       slot.pasteBox.x2 > slot.pasteBox.x1 &&
       slot.pasteBox.y2 > slot.pasteBox.y1,
   );
-  const regions = preparePaddleRegions(detection.boxes, MAX_CROPS_PER_PAGE);
+  const regions = preparePaddleRegions(
+    ocrRegionsForSlots(slots),
+    MAX_CROPS_PER_PAGE,
+  );
   if (slots.length === 0 || regions.length === 0) {
     throw new Error(`No text regions found on page ${pageIndex + 1}.`);
   }
@@ -470,6 +525,7 @@ async function translatePage(
     throw new Error(`OCR returned no usable text on page ${pageIndex + 1}.`);
   }
 
+  const settings = await getSettings();
   let modelIdUsed: string | null = null;
   if (job.engine === "free") {
     const response = await translateFreeBatch({
@@ -496,14 +552,11 @@ async function translatePage(
     }
     modelIdUsed = "free-google";
   } else {
-    const settings = await getSettings();
-    const apiKey = settings.geminiApiKey.trim();
-    if (!apiKey) throw new Error("AI translation needs a Gemini API key.");
-    const context = Math.min(
+    const recent = selectPreviousContextPages(
+      history.map((item) => ({ pageIndex: item.pageIndex, value: item })),
+      pageIndex,
       job.aiMaxContextPages,
-      Math.max(0, history.length),
-    );
-    const recent = history.slice(-context);
+    ).map((entry) => entry.value);
     const historyPayload = recent.map((item, index) => ({
       label: "history_" + index,
       pageIndex: item.pageIndex,
@@ -522,24 +575,15 @@ async function translatePage(
         })),
       },
     ];
-    const primary = job.geminiModelId as GeminiModelId;
-    const models: GeminiModelId[] = fallbackModelChain(
-      primary,
-      job.autoModelSwitch && settings.readerAutoModelSwitch,
-    );
-    const outcome = await requestWithModelFallback({
-      models,
-      request: async (model) => {
-        await waitForRpmCapacity(model);
-        return translateGeminiBatch({
-          apiKey,
-          model,
-          sourceCode: job.sourceLanguage,
-          targetCode: job.targetLanguage,
-          history: historyPayload,
-          batch: batchPayload,
-        });
-      },
+    const outcome = await runAiTranslationBatch({
+      settings,
+      engine: job.engine,
+      sourceCode: job.sourceLanguage,
+      targetCode: job.targetLanguage,
+      history: historyPayload,
+      batch: batchPayload,
+      autoSwitch: job.autoModelSwitch && settings.readerAutoModelSwitch,
+      previousFailures: autoSwitchFailures,
       onSwitch: (from, to) => {
         console.warn("[translation][queue][ai] rate limited; fallback model", {
           from,
@@ -547,42 +591,21 @@ async function translatePage(
         });
       },
     });
-    const response = outcome.value;
-    const usedModel = outcome.usedModel;
-    const lastError = outcome.lastError;
-    const failureState = nextAutoSwitchFailureState(
-      autoSwitchFailures,
-      outcome,
-    );
-    autoSwitchFailures = failureState.failures;
-    if (failureState.disable) disableAutoModelSwitch(job);
-    if (!response) {
-      void recordGeminiUsage({
-        model: usedModel,
-        success: false,
-        errorCode:
-          lastError instanceof GeminiApiError
-            ? String(lastError.code ?? lastError.status ?? "error")
-            : "network",
-      });
-      throw lastError instanceof Error
-        ? lastError
-        : new Error("AI translation failed.");
+    autoSwitchFailures = outcome.failures;
+    if (outcome.disableAutoSwitch) disableAutoModelSwitch(job);
+    if (!outcome.response) {
+      throw outcome.lastError instanceof Error
+        ? outcome.lastError
+        : new Error(outcome.providerLabel + " translation failed.");
     }
-    void recordGeminiUsage({
-      model: usedModel,
-      success: true,
-      inputTokens: response.usage.inputTokens,
-      outputTokens: response.usage.outputTokens,
-    });
     const byRegion = new Map<number, string>();
-    for (const item of response.results) {
+    for (const item of outcome.response.results) {
       if (item.label === "page_0") byRegion.set(item.regionId, item.text);
     }
     for (const bubble of bubbles) {
       bubble.translatedText = byRegion.get(bubble.id)?.trim() ?? "";
     }
-    modelIdUsed = usedModel;
+    modelIdUsed = outcome.usedModel;
   }
 
   const translated = bubbles.filter((bubble) => bubble.translatedText.trim());
@@ -595,6 +618,7 @@ async function translatePage(
       sourceLanguage: job.sourceLanguage,
       targetLanguage: job.targetLanguage,
       model: modelIdUsed,
+      promptVersion: cacheVersionForJob(job, settings, modelIdUsed),
       imageWidth: detection.imageWidth,
       imageHeight: detection.imageHeight,
       regions: translated.map((bubble) => ({
@@ -700,7 +724,7 @@ async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
 
   // Resume with the same AI context the job had before it was paused. Only
   // the context window is read back; earlier pages are not re-counted.
-  if (job.engine === "ai" && startIndex > 0) {
+  if (isAiTranslationEngine(job.engine) && startIndex > 0) {
     const contextPages = Math.min(job.aiMaxContextPages, startIndex);
     const firstContext = startIndex - contextPages;
     for (let index = firstContext; index < startIndex; index += 1) {
@@ -712,6 +736,7 @@ async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
         targetLanguage: job.targetLanguage,
         chapterId: job.chapterId,
         legacyPageIndex: index,
+        promptVersion: cacheVersionForJob(job, await getSettings(), null),
       }).catch(() => null);
       if (!cached) continue;
       history.push({
@@ -743,6 +768,7 @@ async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
         targetLanguage: job.targetLanguage,
         chapterId: job.chapterId,
         legacyPageIndex: index,
+        promptVersion: cacheVersionForJob(job, await getSettings(), null),
       }).catch(() => null);
       if (cached) {
         console.log("[translation][queue] page cached", { page: index + 1 });

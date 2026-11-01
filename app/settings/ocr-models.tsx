@@ -1,3 +1,3 @@
-import { OcrModelsSettingsScreen } from "@features/settings";
+import { ModelsSettingsScreen } from "@features/settings";
 
-export default OcrModelsSettingsScreen;
+export default ModelsSettingsScreen;

@@ -14,7 +14,7 @@ import {
   subscribeSettings,
   updateSettings,
 } from "@core/settings";
-import type { GeminiModelId } from "@features/translation";
+import type { RegionDetectorId } from "@features/translation";
 import { modelIdForLanguage } from "@features/vision";
 
 import type {
@@ -27,7 +27,9 @@ export interface ReaderSettingsControls {
   applySettings: (settings: AppSettings, autoLanguage: string) => void;
   translationEngine: AppSettings["readerTranslationEngine"];
   translationMode: AppSettings["readerTranslationMode"];
-  geminiModelId: GeminiModelId;
+  translationModelId: string;
+  regionDetectorId: RegionDetectorId;
+  setRegionDetectorId: (id: RegionDetectorId) => void;
   setAutoModelSwitch: (value: boolean) => void;
   setDefaultZoomScale: (scale: number) => void;
   setOverlayFont: (font: ReaderOverlayFont) => void;
@@ -42,7 +44,7 @@ export interface ReaderSettingsControls {
   setTranslationMode: (mode: AppSettings["readerTranslationMode"]) => void;
   setShowPageStatus: (value: boolean) => void;
   setHideTranslated: (value: boolean) => void;
-  setGeminiModelId: (model: GeminiModelId) => void;
+  setTranslationModelId: (model: string) => void;
   setOcrLookahead: (value: number) => void;
   flushSettingsPatch: () => void;
 }
@@ -68,7 +70,8 @@ export interface ReaderSettingsBridgeState {
   ) => void;
   handleChangeShowPageStatus: (value: boolean) => void;
   handleChangeHideTranslated: (value: boolean) => void;
-  handleSelectGeminiModel: (model: GeminiModelId) => void;
+  handleSelectTranslationModel: (model: string) => void;
+  handleSelectRegionDetector: (id: RegionDetectorId) => void;
   handleChangeAutoModelSwitch: (value: boolean) => void;
   handleChangeLookahead: (value: number) => void;
   handleSelectOverlayFont: (font: ReaderOverlayFont) => void;
@@ -91,7 +94,9 @@ export function useReaderSettingsBridge({
     applySettings,
     translationEngine,
     translationMode,
-    geminiModelId,
+    translationModelId,
+    regionDetectorId,
+    setRegionDetectorId,
     setAutoModelSwitch,
     setDefaultZoomScale,
     setOverlayFont,
@@ -104,7 +109,7 @@ export function useReaderSettingsBridge({
     setTranslationMode,
     setShowPageStatus,
     setHideTranslated,
-    setGeminiModelId,
+    setTranslationModelId,
     setOcrLookahead,
     flushSettingsPatch,
   } = settings;
@@ -163,12 +168,19 @@ export function useReaderSettingsBridge({
     },
     [setTranslationMode, stopTranslationRun, translationMode],
   );
-  const handleSelectGeminiModel = useCallback(
-    (model: GeminiModelId) => {
-      if (model !== geminiModelId) stopTranslationRun();
-      setGeminiModelId(model);
+  const handleSelectTranslationModel = useCallback(
+    (model: string) => {
+      if (model !== translationModelId) stopTranslationRun();
+      setTranslationModelId(model);
     },
-    [geminiModelId, setGeminiModelId, stopTranslationRun],
+    [translationModelId, setTranslationModelId, stopTranslationRun],
+  );
+  const handleSelectRegionDetector = useCallback(
+    (id: RegionDetectorId) => {
+      if (id !== regionDetectorId) stopTranslationRun();
+      setRegionDetectorId(id);
+    },
+    [regionDetectorId, setRegionDetectorId, stopTranslationRun],
   );
 
   const handleChangeShowPageStatus = useCallback(
@@ -216,7 +228,8 @@ export function useReaderSettingsBridge({
     handleSelectTranslationMode,
     handleChangeShowPageStatus,
     handleChangeHideTranslated,
-    handleSelectGeminiModel,
+    handleSelectTranslationModel,
+    handleSelectRegionDetector,
     handleChangeAutoModelSwitch,
     handleChangeLookahead,
     handleSelectOverlayFont,

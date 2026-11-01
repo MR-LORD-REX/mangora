@@ -8,6 +8,8 @@
 
 import {
   detectPageRegions,
+  getRegionDetector,
+  isRegionModelDownloaded,
   getLocalOcrModel,
   isModelDownloaded,
   modelIdForLanguage,
@@ -17,7 +19,10 @@ import {
   type DetectionResult,
   type OcrRegion,
 } from "@features/vision";
-import { buildTranslationSlots } from "@features/translation";
+import {
+  buildTranslationSlots,
+  ocrRegionsForSlots,
+} from "@features/translation";
 
 import { imageHeadersForPage } from "@shared/net/imageHeaders";
 
@@ -162,6 +167,16 @@ export async function scanPage(
   }
   if (!runtime.isCurrentRun(generation)) return;
   const modelId = modelIdForLanguage(runtime.config.sourceLanguage);
+  const detector = getRegionDetector(runtime.config.regionDetectorId);
+  if (!(await isRegionModelDownloaded(runtime.config.regionDetectorId))) {
+    if (!runtime.isCurrentRun(generation)) return;
+    runtime.markPageError(
+      url,
+      detector.label +
+        " is not downloaded. Open Settings > Models, download it, then retry this page.",
+    );
+    return;
+  }
   if (!(await isModelDownloaded(modelId))) {
     if (!runtime.isCurrentRun(generation)) return;
     const label = getLocalOcrModel(modelId)?.label ?? modelId;
@@ -171,7 +186,7 @@ export async function scanPage(
     });
     runtime.markPageError(
       url,
-      `${label} is not downloaded. Open Settings > OCR models and download it, then retry this page.`,
+      `${label} is not downloaded. Open Settings > Models and download it, then retry this page.`,
     );
     return;
   }
@@ -186,6 +201,7 @@ export async function scanPage(
   });
   try {
     const detection = await detectPageRegions(url, {
+      detectorId: runtime.config.regionDetectorId,
       headers: imageHeadersForPage(source, url),
       extensionSourceId: extensionSourceIdFor(source),
     });
@@ -196,7 +212,10 @@ export async function scanPage(
         slot.pasteBox.x2 > slot.pasteBox.x1 &&
         slot.pasteBox.y2 > slot.pasteBox.y1,
     );
-    const regions = preparePaddleRegions(detection.boxes, MAX_CROPS_PER_PAGE);
+    const regions = preparePaddleRegions(
+      ocrRegionsForSlots(slots),
+      MAX_CROPS_PER_PAGE,
+    );
     if (regions.length === 0 || slots.length === 0) {
       await releaseDecodablePageUri(url);
       runtime.markPageError(

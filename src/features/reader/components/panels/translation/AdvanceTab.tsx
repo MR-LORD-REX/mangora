@@ -1,7 +1,7 @@
-/* Look-ahead, Gemini model and TR-cache controls. */
+/* Look-ahead, region model, translation model and TR-cache controls. */
 
-import { ChevronDown, Trash2 } from "lucide-react-native";
-import { useState } from "react";
+import { Check, ChevronDown, Download, Trash2 } from "lucide-react-native";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -11,7 +11,12 @@ import {
 } from "react-native";
 
 import MenuSheet from "@shared/ui/overlays/MenuSheet";
-import { GEMINI_MODELS } from "@features/translation";
+import type { RegionDetectorId } from "@features/translation";
+import {
+  getRegionDetector,
+  isRegionModelDownloaded,
+  REGION_DETECTORS,
+} from "@features/vision";
 import DotSlider from "../DotSlider";
 import { HelperText, SectionLabel } from "../ReaderPanelPrimitives";
 import { styles } from "./styles";
@@ -21,24 +26,65 @@ export default function AdvanceTab(props: ReaderTranslationPanelProps) {
   const {
     translationEngine,
     translationMode,
-    geminiModelId,
-    onSelectGeminiModel,
+    translationModelId,
+    onSelectTranslationModel,
+    aiProvider,
+    onOpenTranslationSettings,
+    regionDetectorId,
+    onSelectRegionDetector,
     autoModelSwitch,
     onChangeAutoModelSwitch,
     ocrLookahead,
     onChangeLookahead,
+    onOpenModelsSettings,
     onClearTrCache,
   } = props;
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
+  const [detectorMenuOpen, setDetectorMenuOpen] = useState(false);
+  const [detectorReady, setDetectorReady] = useState<
+    Partial<Record<RegionDetectorId, boolean>>
+  >({});
+  const [detectorNotice, setDetectorNotice] = useState<string | null>(null);
   const [clearState, setClearState] = useState<
     "idle" | "confirm" | "clearing" | "done"
   >("idle");
   const [clearedPages, setClearedPages] = useState(0);
   const [clearError, setClearError] = useState<string | null>(null);
 
-  const selectedModel =
-    GEMINI_MODELS.find((model) => model.id === geminiModelId) ??
-    GEMINI_MODELS[0];
+  const selectedDetector = getRegionDetector(regionDetectorId);
+  const availableModels = aiProvider?.models ?? [];
+  const selectedModel = translationModelId || aiProvider?.model || "";
+
+  useEffect(() => {
+    let active = true;
+    void Promise.all(
+      REGION_DETECTORS.map(async (detector) => {
+        const downloaded = await isRegionModelDownloaded(detector.id).catch(
+          () => false,
+        );
+        return [detector.id, downloaded] as const;
+      }),
+    ).then((entries) => {
+      if (active) setDetectorReady(Object.fromEntries(entries));
+    });
+    return () => {
+      active = false;
+    };
+  }, [detectorMenuOpen]);
+
+  const chooseDetector = async (id: RegionDetectorId) => {
+    setDetectorNotice(null);
+    const downloaded = await isRegionModelDownloaded(id).catch(() => false);
+    setDetectorReady((current) => ({ ...current, [id]: downloaded }));
+    if (!downloaded) {
+      setDetectorNotice(
+        getRegionDetector(id).label +
+          " is not downloaded yet. Open Settings > Models to download it, then select it here.",
+      );
+      return;
+    }
+    onSelectRegionDetector(id);
+  };
 
   const clearCache = async () => {
     setClearState("clearing");
@@ -82,6 +128,60 @@ export default function AdvanceTab(props: ReaderTranslationPanelProps) {
             Upcoming pages are queued for OCR and translation as you read. Two
             is the default.
           </HelperText>
+
+          <SectionLabel>Region detection model</SectionLabel>
+          <Pressable
+            style={styles.dropdown}
+            onPress={() => setDetectorMenuOpen(true)}
+          >
+            <View style={styles.dropdownHeader}>
+              <View style={styles.dropdownTitleWrap}>
+                <Text style={styles.dropdownTitle}>{selectedDetector.label}</Text>
+                <Text style={styles.dropdownSubtitle}>
+                  {selectedDetector.speedProfile === "fast"
+                    ? "Fast"
+                    : selectedDetector.speedProfile === "quality"
+                      ? "Quality boxes"
+                      : "Bubble masks"}
+                  {" · "}
+                  {selectedDetector.detail}
+                </Text>
+              </View>
+              <ChevronDown size={18} color="#94a3b8" />
+            </View>
+          </Pressable>
+          <MenuSheet
+            visible={detectorMenuOpen}
+            title="Region detection model"
+            onClose={() => setDetectorMenuOpen(false)}
+            options={REGION_DETECTORS.map((detector) => {
+              const ready = detectorReady[detector.id];
+              return {
+                key: detector.id,
+                label:
+                  detector.label +
+                  (ready === false ? " - download needed" : ""),
+                icon: ready === false ? Download : ready ? Check : undefined,
+                selected: detector.id === regionDetectorId,
+                onPress: () => void chooseDetector(detector.id),
+              };
+            })}
+          />
+          {detectorNotice ? (
+            <View style={styles.detectorNotice}>
+              <Text style={styles.modalError}>{detectorNotice}</Text>
+              <Pressable
+                onPress={onOpenModelsSettings}
+                style={styles.detectorSettingsButton}
+              >
+                <Text style={styles.detectorSettingsText}>{"Go to Settings > Models"}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+          <HelperText>
+            One detector scans each page. Bubble masks are available only with a
+            segmentation detector.
+          </HelperText>
         </>
       ) : (
         <HelperText>
@@ -89,43 +189,68 @@ export default function AdvanceTab(props: ReaderTranslationPanelProps) {
         </HelperText>
       )}
 
-      {translationEngine === "ai" ? (
+      {translationEngine === "openai" ? (
         <>
           <SectionLabel>Translation model</SectionLabel>
-          <Pressable
-            style={styles.dropdown}
-            onPress={() => setModelMenuOpen(true)}
-          >
-            <View style={styles.dropdownHeader}>
-              <View style={styles.dropdownTitleWrap}>
-                <Text style={styles.dropdownTitle}>{selectedModel.label}</Text>
-                <Text style={styles.dropdownSubtitle}>
-                  Used for new AI translation requests
-                </Text>
+          {availableModels.length > 0 ? (
+            <Pressable
+              style={styles.dropdown}
+              onPress={() => setModelMenuOpen(true)}
+            >
+              <View style={styles.dropdownHeader}>
+                <View style={styles.dropdownTitleWrap}>
+                  <Text style={styles.dropdownTitle}>
+                    {selectedModel || "Choose a model"}
+                  </Text>
+                  <Text style={styles.dropdownSubtitle}>
+                    Available from {aiProvider?.endpointKey}
+                  </Text>
+                </View>
+                <ChevronDown size={18} color="#94a3b8" />
               </View>
-              <ChevronDown size={18} color="#94a3b8" />
+            </Pressable>
+          ) : (
+            <View style={styles.dropdown}>
+              <View style={styles.dropdownHeader}>
+                <View style={styles.dropdownTitleWrap}>
+                  <Text style={styles.dropdownTitle}>
+                    {aiProvider?.model || "Endpoint not configured"}
+                  </Text>
+                  <Text style={styles.dropdownSubtitle}>
+                    Add a model in Settings &gt; Translation
+                  </Text>
+                </View>
+              </View>
             </View>
-          </Pressable>
+          )}
           <MenuSheet
             visible={modelMenuOpen}
             title="Translation model"
             onClose={() => setModelMenuOpen(false)}
-            options={GEMINI_MODELS.map((model) => ({
-              key: model.id,
-              label: model.label,
-              selected: model.id === geminiModelId,
-              onPress: () => onSelectGeminiModel(model.id),
+            options={availableModels.map((model) => ({
+              key: model,
+              label: model,
+              selected: model === selectedModel,
+              onPress: () => onSelectTranslationModel(model),
             }))}
           />
+          <Pressable
+            onPress={onOpenTranslationSettings}
+            style={styles.detectorSettingsButton}
+          >
+            <Text style={styles.detectorSettingsText}>
+              Go to Settings &gt; Translation
+            </Text>
+          </Pressable>
 
           <SectionLabel>Auto model switch</SectionLabel>
           <View style={styles.toggleRow}>
             <View style={styles.toggleTextWrap}>
               <Text style={styles.toggleLabel}>Switch on rate limits</Text>
               <Text style={styles.toggleDetail}>
-                When Gemini reports a rate limit, retry the page with the other
-                model. Two failed switches turn this off until you enable it
-                again.
+                When the endpoint reports a rate limit, retry with the next
+                configured model. Two failed switches turn this off until you
+                enable it again.
               </Text>
             </View>
             <Switch
