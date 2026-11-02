@@ -42,18 +42,16 @@ export function startBackgroundServices(services: AppServices): void {
     console.warn("Startup library sync failed:", error);
   });
   void services.downloadedMetadata.refresh();
-  void services.notifications
-    .initialize()
-    .then(() =>
-      initPretranslateQueue({
-        downloads: services.downloadSessions,
-        notifications: services.translationNotifications,
-        notificationCommands: services.translationNotificationCommands,
-      }),
-    )
-    .catch((error) => {
+  void services.notifications.initialize().catch((error) => {
+    console.warn("Notification setup failed:", error);
+  });
+  void initPretranslateQueue({
+    downloads: services.downloadSessions,
+    notifications: services.translationNotifications,
+    notificationCommands: services.translationNotificationCommands,
+  }).catch((error) => {
       console.warn("Translation queue failed to start:", error);
-    });
+  });
 }
 
 /** Refreshes downloaded metadata on foreground at most once per interval. */

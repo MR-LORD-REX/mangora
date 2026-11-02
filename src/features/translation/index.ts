@@ -123,13 +123,8 @@ export { runAiTranslationBatch } from "./pipeline/aiBatch";
 export type { AiBatchContext, AiBatchOutcome } from "./pipeline/aiBatch";
 export type { ContextPage } from "./pipeline/contextPages";
 
-export {
-  getTranslationLockOwner,
-  releaseTranslationLock,
-  subscribeTranslationLock,
-  tryAcquireTranslationLock,
-} from "./jobs/translationRuntimeLock";
-export type { TranslationLockOwner } from "./jobs/translationRuntimeLock";
+export { withTranslationComputePermit } from "./jobs/translationComputeCoordinator";
+export type { TranslationComputePriority } from "./jobs/translationComputeCoordinator";
 
 export {
   cancelTranslationQueue,

@@ -6,13 +6,13 @@ can later be rendered on the website without maintaining two copies.
 
 ## Start here
 
-| Audience | Entry point | Purpose |
-| --- | --- | --- |
-| New contributor | [Architecture overview](architecture/overview.md) | The app's mental model, runtime layers and first files to read. |
-| Feature developer | [Architecture boundaries](architecture/boundaries.md) | Zone ownership, import direction and feature public contracts. |
-| Reader or native developer | [Reader architecture](architecture/features/reader.md) | Reader view model, gestures, image path and device validation. |
-| Release maintainer | [Build and release](architecture/operations/build-and-release.md) | Local builds, CI, APK variants and release gates. |
-| Documentation maintainer | [Documentation plan](plan.md) | Phased documentation, website and graph work. |
+| Audience                   | Entry point                                                      | Purpose                                                         |
+| -------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------- |
+| New contributor            | [Architecture overview](architecture/overview.md)                 | The app's mental model, runtime layers and first files to read. |
+| Feature developer          | [Architecture boundaries](architecture/boundaries.md)             | Zone ownership, import direction and feature public contracts.  |
+| Reader or native developer | [Reader architecture](architecture/features/reader.md)            | Reader view model, gestures, image path and device validation.  |
+| Release maintainer         | [Build and release](architecture/operations/build-and-release.md) | Local builds, CI, APK variants and release gates.               |
+| Documentation maintainer   | [Documentation plan](plan.md)                                     | Phased documentation, website and graph work.                   |
 
 The stable runtime and contract pages are the first place to check when a change
 crosses a feature boundary:

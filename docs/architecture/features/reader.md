@@ -99,6 +99,12 @@ Translation geometry is stored in natural source-image coordinates. The image
 transform, crop/rotate/split geometry and overlay must use the same transform;
 placing a second transform on the overlay causes drift.
 
+The translation pipeline checks SQLite for a completed page before starting
+vision work. A cache hit can render while a pre-translate job processes another
+chapter. Cache misses share a vision permit with that job; reader detection and
+OCR are selected first after the current operation finishes. An OCR pool release
+on reader unmount also waits for this permit.
+
 ## Loading, progress and chapters
 
 `useReaderChapterPages` resolves pages (download/local cache or extension),

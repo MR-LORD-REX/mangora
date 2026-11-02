@@ -157,60 +157,63 @@ export async function saveTranslationPage(
   input: SaveTranslationPageInput,
 ): Promise<void> {
   const now = Date.now();
-  const existingId = await findPageId({
-    ...input,
-    pageKey: input.pageKey ?? input.pageUrl,
-  });
-  let pageId = existingId;
-
-  if (pageId) {
-    await db
-      .update(translationPages)
-      .set({
+  // The reader and pre-translate job may finish the same page together. A
+  // synchronous SQLite transaction keeps the row and its regions indivisible.
+  db.transaction((tx) => {
+    const pageKey = input.pageKey ?? input.pageUrl;
+    const promptVersion = input.promptVersion ?? TRANSLATION_CACHE_PROMPT_VERSION;
+    const existing = tx.select({ id: translationPages.id })
+      .from(translationPages)
+      .where(and(
+        eq(translationPages.mangaId, input.mangaId),
+        eq(translationPages.pageKey, pageKey),
+        eq(translationPages.sourceLanguage, input.sourceLanguage),
+        eq(translationPages.targetLanguage, input.targetLanguage),
+        eq(translationPages.promptVersion, promptVersion),
+      ))
+      .limit(1)
+      .all()[0];
+    const pageId = existing?.id ?? newId("tp");
+    if (existing) {
+      tx.update(translationPages).set({
         chapterId: input.chapterId ?? null,
         pageUrl: input.pageUrl,
         model: input.model ?? null,
         imageWidth: input.imageWidth,
         imageHeight: input.imageHeight,
         updatedAt: now,
-      })
-      .where(eq(translationPages.id, pageId));
-    await db
-      .delete(translationRegions)
-      .where(eq(translationRegions.pageId, pageId));
-  } else {
-    pageId = newId("tp");
-    await db.insert(translationPages).values({
-      id: pageId,
-      mangaId: input.mangaId,
-      chapterId: input.chapterId ?? null,
-      pageKey: input.pageKey ?? input.pageUrl,
-      pageUrl: input.pageUrl,
-      sourceLanguage: input.sourceLanguage,
-      targetLanguage: input.targetLanguage,
-      model: input.model ?? null,
-      promptVersion: input.promptVersion ?? TRANSLATION_CACHE_PROMPT_VERSION,
-      imageWidth: input.imageWidth,
-      imageHeight: input.imageHeight,
-      createdAt: now,
-      updatedAt: now,
-    });
-  }
-
-  if (input.regions.length > 0) {
-    await db.insert(translationRegions).values(
-      input.regions.map((region) => ({
+      }).where(eq(translationPages.id, pageId)).run();
+      tx.delete(translationRegions).where(eq(translationRegions.pageId, pageId)).run();
+    } else {
+      tx.insert(translationPages).values({
+        id: pageId,
+        mangaId: input.mangaId,
+        chapterId: input.chapterId ?? null,
+        pageKey,
+        pageUrl: input.pageUrl,
+        sourceLanguage: input.sourceLanguage,
+        targetLanguage: input.targetLanguage,
+        model: input.model ?? null,
+        promptVersion,
+        imageWidth: input.imageWidth,
+        imageHeight: input.imageHeight,
+        createdAt: now,
+        updatedAt: now,
+      }).run();
+    }
+    if (input.regions.length > 0) {
+      tx.insert(translationRegions).values(input.regions.map((region) => ({
         id: newId("tr"),
-        pageId: pageId as string,
+        pageId,
         regionId: region.regionId,
         sourceText: region.sourceText,
         translatedText: region.translatedText,
         geometryJson: regionGeometry(region),
         createdAt: now,
         updatedAt: now,
-      })),
-    );
-  }
+      }))).run();
+    }
+  });
 }
 
 /**

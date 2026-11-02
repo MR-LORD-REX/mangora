@@ -218,6 +218,8 @@ export interface ReaderTranslationRuntime {
   readonly pages: string[];
 
   isCurrentRun(generation: number): boolean;
+  /** Provider setup is checked only after a persisted cache miss. */
+  validateUncachedRun(): string | null;
   nextOcrSequence(): number;
   updatePage(url: string, patch: Partial<PageTranslationState>): void;
   buildPageRegions(page: OcrPageRecord): TranslationRegionState[];

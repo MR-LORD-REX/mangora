@@ -84,7 +84,12 @@ lifecycle owners:
   for translation jobs.
 
 The translation queue receives command handlers through composition; it must not
-import the notification implementation.
+import the notification implementation. Its presentation port receives a
+running, paused or cancelling job snapshot, an action-free terminal summary, and
+a clear operation. Action
+callbacks carry the originating job ID so stale notifications cannot control a
+new job. The Expo notification layer buffers a cold-start action until the
+queue has restored persisted jobs and registered its handlers.
 
 ## Translation engine port
 

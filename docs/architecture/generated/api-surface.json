@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedBy": "scripts/generate-architecture-docs.mjs",
-  "appVersion": "0.0.7",
+  "appVersion": "0.0.8",
   "entries": [
     {
       "entry": "app/downloads/index.tsx",
@@ -2357,9 +2357,9 @@
     },
     {
       "entry": "src/features/translation/index.ts",
-      "name": "TranslationLockOwner",
-      "exportedAs": "TranslationLockOwner",
-      "source": "./jobs/translationRuntimeLock",
+      "name": "TranslationComputePriority",
+      "exportedAs": "TranslationComputePriority",
+      "source": "./jobs/translationComputeCoordinator",
       "kind": "re-export",
       "typeOnly": true
     },
@@ -2501,14 +2501,6 @@
     },
     {
       "entry": "src/features/translation/index.ts",
-      "name": "getTranslationLockOwner",
-      "exportedAs": "getTranslationLockOwner",
-      "source": "./jobs/translationRuntimeLock",
-      "kind": "re-export",
-      "typeOnly": false
-    },
-    {
-      "entry": "src/features/translation/index.ts",
       "name": "getTranslationsUsageSnapshot",
       "exportedAs": "getTranslationsUsageSnapshot",
       "source": "./pipeline/translationUsage",
@@ -2645,14 +2637,6 @@
     },
     {
       "entry": "src/features/translation/index.ts",
-      "name": "releaseTranslationLock",
-      "exportedAs": "releaseTranslationLock",
-      "source": "./jobs/translationRuntimeLock",
-      "kind": "re-export",
-      "typeOnly": false
-    },
-    {
-      "entry": "src/features/translation/index.ts",
       "name": "removePretranslateJob",
       "exportedAs": "removePretranslateJob",
       "source": "./jobs/pretranslateQueue",
@@ -2712,14 +2696,6 @@
       "name": "subscribePretranslate",
       "exportedAs": "subscribePretranslate",
       "source": "./jobs/pretranslateQueue",
-      "kind": "re-export",
-      "typeOnly": false
-    },
-    {
-      "entry": "src/features/translation/index.ts",
-      "name": "subscribeTranslationLock",
-      "exportedAs": "subscribeTranslationLock",
-      "source": "./jobs/translationRuntimeLock",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -2789,14 +2765,6 @@
     },
     {
       "entry": "src/features/translation/index.ts",
-      "name": "tryAcquireTranslationLock",
-      "exportedAs": "tryAcquireTranslationLock",
-      "source": "./jobs/translationRuntimeLock",
-      "kind": "re-export",
-      "typeOnly": false
-    },
-    {
-      "entry": "src/features/translation/index.ts",
       "name": "validateBatchResults",
       "exportedAs": "validateBatchResults",
       "source": "./engines/shared/batchPrompt",
@@ -2808,6 +2776,14 @@
       "name": "validateOpenAiCompatibleEndpoint",
       "exportedAs": "validateOpenAiCompatibleEndpoint",
       "source": "./engines/openai/openaiClient",
+      "kind": "re-export",
+      "typeOnly": false
+    },
+    {
+      "entry": "src/features/translation/index.ts",
+      "name": "withTranslationComputePermit",
+      "exportedAs": "withTranslationComputePermit",
+      "source": "./jobs/translationComputeCoordinator",
       "kind": "re-export",
       "typeOnly": false
     },
@@ -4397,6 +4373,6 @@
     }
   ],
   "counts": {
-    "entries": 549
+    "entries": 546
   }
 }

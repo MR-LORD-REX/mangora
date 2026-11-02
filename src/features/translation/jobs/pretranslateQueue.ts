@@ -33,18 +33,13 @@ import {
 } from "@shared/contracts/regionDetector";
 import { getSettings, updateSettings, type AppSettings } from "@core/settings";
 import { translateFreeBatch } from "../engines/google/googleClient";
-import { resolveTranslationProvider } from "../provider";
 import {
   assignItemsToSlots,
   buildTranslationSlots,
   fillSlotTexts,
   ocrRegionsForSlots,
 } from "../pipeline/translationRegions";
-import {
-  releaseTranslationLock,
-  subscribeTranslationLock,
-  tryAcquireTranslationLock,
-} from "./translationRuntimeLock";
+import { withTranslationComputePermit } from "./translationComputeCoordinator";
 import {
   clampOcrBubbleWorkers,
   detectPageRegions,
@@ -65,7 +60,8 @@ import {
 import { isCjkLanguageCode } from "../domain/languages";
 import { selectPreviousContextPages } from "../pipeline/contextPages";
 import { runAiTranslationBatch } from "../pipeline/aiBatch";
-import { pageCacheIdentity, translationCacheKey } from "../pipeline/cacheIdentity";
+import { cacheVersionForJob, settingsForJob } from "./jobCacheIdentity";
+import { cancelJobs, pauseJobs, resumeJobs, type ControlledJobStatus } from "./jobControl";
 
 const MAX_CROPS_PER_PAGE = 24;
 const STORE_FILE = "trapp-translation-jobs.json";
@@ -88,26 +84,6 @@ function requirePorts(): PretranslateQueuePorts {
 }
 
 /** Persistently disables auto-switch after repeated fallback failures. */
-/** Cache identity used by one pretranslate job page. */
-function cacheVersionForJob(
-  job: PretranslateJob,
-  settings: AppSettings,
-  model: string | null,
-): string {
-  const provider =
-    job.engine === "free"
-      ? null
-      : resolveTranslationProvider(settings, job.engine);
-  return translationCacheKey(
-    pageCacheIdentity({
-      engine: job.engine,
-      provider,
-      model,
-      detectorId: job.regionDetectorId,
-    }),
-  );
-}
-
 function disableAutoModelSwitch(job: PretranslateJob): void {
   autoSwitchFailures = 0;
   job.autoModelSwitch = false;
@@ -121,12 +97,7 @@ function disableAutoModelSwitch(job: PretranslateJob): void {
   publish();
 }
 
-export type PretranslateStatus =
-  | "queued"
-  | "running"
-  | "paused"
-  | "completed"
-  | "failed";
+export type PretranslateStatus = ControlledJobStatus;
 
 export interface PretranslateJob {
   id: string;
@@ -139,6 +110,9 @@ export interface PretranslateJob {
   sourceLanguage: string;
   targetLanguage: string;
   translationModelId: string;
+  /** Provider identity is frozen; the current API key may still be rotated. */
+  translationBaseUrl?: string;
+  translationModels?: string[];
   regionDetectorId: RegionDetectorId;
   autoModelSwitch: boolean;
   aiMaxContextPages: number;
@@ -173,8 +147,16 @@ let activeJobId: string | null = null;
 let paused = false;
 let pausedByBackground = false;
 let initialised = false;
+let initializationGate: Promise<void> | null = null;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 const cancelRequested = new Set<string>();
+class JobInterrupted extends Error {}
+
+function assertJobRunnable(job: PretranslateJob): void {
+  if (cancelRequested.has(job.id) || job.status === "cancelling" || paused) {
+    throw new JobInterrupted("Translation job interrupted.");
+  }
+}
 const listeners = new Set<(snapshot: PretranslateSnapshot) => void>();
 let cachedSnapshot: PretranslateSnapshot = {
   jobs: [],
@@ -186,7 +168,7 @@ let cachedSnapshot: PretranslateSnapshot = {
 function snapshot(): PretranslateSnapshot {
   return {
     jobs: jobs.map((job) => ({ ...job })),
-    runningCount: jobs.filter((job) => job.status === "running").length,
+    runningCount: jobs.filter((job) => job.status === "running" || job.status === "cancelling").length,
     pendingCount: jobs.filter(
       (job) => job.status === "queued" || job.status === "paused",
     ).length,
@@ -198,6 +180,34 @@ function publish(): void {
   cachedSnapshot = snapshot();
   listeners.forEach((listener) => listener(cachedSnapshot));
   scheduleSave();
+  const notificationJob = jobs.find((job) => job.id === activeJobId) ??
+    jobs.find((job) => job.status === "paused");
+  if (ports && notificationJob && notificationJob.status !== "completed" &&
+      notificationJob.status !== "failed") {
+    void ports.notifications.show({
+      jobId: notificationJob.id,
+      chapterTitle: notificationJob.chapterTitle,
+      mangaTitle: notificationJob.mangaTitle,
+      status: notificationJob.status === "cancelling" ? "cancelling" :
+        notificationJob.status === "paused" ? "paused" : "running",
+      pagesFailed: notificationJob.pagesFailed,
+      current: Math.min(notificationJob.pageUris.length,
+        notificationJob.currentPage ?? notificationJob.nextPageIndex),
+      total: notificationJob.pageUris.length,
+    }).catch(() => {});
+  } else if (ports) {
+    void ports.notifications.clear().catch(() => {});
+  }
+}
+
+function persistNow(): void {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = null;
+  try {
+    storeFile().write(JSON.stringify(jobs.filter((job) => job.status !== "completed"), null, 2));
+  } catch (error) {
+    console.warn("[translation][queue] persist failed", error);
+  }
 }
 
 export function subscribePretranslate(
@@ -221,18 +231,7 @@ function storeFile(): File {
 function scheduleSave(): void {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    saveTimer = null;
-    try {
-      storeFile().write(
-        JSON.stringify(
-          jobs.filter((job) => job.status !== "completed"),
-          null,
-          2,
-        ),
-      );
-    } catch (error) {
-      console.warn("[translation][queue] persist failed", error);
-    }
+    persistNow();
   }, 400);
 }
 
@@ -243,7 +242,7 @@ async function loadPersisted(): Promise<void> {
     if (!file.exists) return;
     const parsed = JSON.parse(await file.text()) as PretranslateJob[];
     if (!Array.isArray(parsed)) return;
-    jobs = parsed.map((job) => {
+    jobs = parsed.filter((job) => job.status !== "cancelling" && job.status !== "completed").map((job) => {
       const pageUris = Array.isArray(job.pageUris)
         ? job.pageUris.filter((uri): uri is string => typeof uri === "string")
         : [];
@@ -301,6 +300,8 @@ async function loadPersisted(): Promise<void> {
         pageUris,
         engine,
         translationModelId,
+        translationBaseUrl: job.translationBaseUrl ?? currentSettings?.translationBaseUrl,
+        translationModels: job.translationModels ?? currentSettings?.translationModels,
         regionDetectorId,
         autoModelSwitch,
         aiMaxContextPages,
@@ -317,6 +318,7 @@ async function loadPersisted(): Promise<void> {
         currentPage: null,
       };
     });
+    paused = jobs.some((job) => job.status === "paused");
     console.log("[translation][queue] restored jobs", { count: jobs.length });
   } catch (error) {
     console.warn("[translation][queue] restore failed", error);
@@ -328,43 +330,58 @@ export type PretranslateQueueDependencies = PretranslateQueuePorts;
 export async function initPretranslateQueue(
   dependencies: PretranslateQueueDependencies,
 ): Promise<void> {
-  if (initialised) return;
+  if (initialised) return initializationGate ?? Promise.resolve();
+  let resolveInitialization!: () => void;
+  initializationGate = new Promise<void>((resolve) => { resolveInitialization = resolve; });
   initialised = true;
   ports = dependencies;
-  dependencies.notificationCommands.registerHandler("pause", pauseTranslationQueue);
-  dependencies.notificationCommands.registerHandler("resume", resumeTranslationQueue);
-  dependencies.notificationCommands.registerHandler("cancel", () => {
-    cancelTranslationQueue();
-  });
-  await loadPersisted();
-  publish();
-  subscribeTranslationLock(() => {
-    if (!activeJobId) pump();
-  });
-  AppState.addEventListener("change", (state: AppStateStatus) => {
-    if (state === "active") {
-      if (pausedByBackground) {
-        pausedByBackground = false;
-        paused = false;
-        for (const job of jobs) {
-          if (job.status === "paused") job.status = "queued";
-        }
-        console.log("[translation][queue] resumed after foreground return");
-        publish();
-        pump();
+  try {
+    await loadPersisted();
+    dependencies.notificationCommands.registerHandler("pause", (jobId) => {
+      if (jobs.some((job) => job.id === jobId &&
+          (job.status === "running" || job.status === "paused"))) {
+        pauseTranslationQueue();
       }
-      return;
-    }
-    if (activeJobId) {
-      pausedByBackground = true;
-      paused = true;
-      console.log("[translation][queue] paused - app backgrounded");
-      void requirePorts().notifications.background();
-      publish();
-    }
-  });
-  pump();
-  console.log("[translation][queue] initialised");
+    });
+    dependencies.notificationCommands.registerHandler("resume", (jobId) => {
+      if (jobs.some((job) => job.id === jobId && job.status === "paused")) {
+        resumeTranslationQueue();
+      }
+    });
+    dependencies.notificationCommands.registerHandler("cancel", (jobId) => {
+      if (jobs.some((job) => job.id === jobId &&
+          (job.status === "running" || job.status === "paused"))) {
+        removePretranslateJob(jobId);
+      }
+    });
+    publish();
+    AppState.addEventListener("change", (state: AppStateStatus) => {
+      if (state === "active") {
+        if (pausedByBackground) {
+          pausedByBackground = false;
+          paused = false;
+          resumeJobs(jobs, activeJobId);
+          console.log("[translation][queue] resumed after foreground return");
+          publish();
+          pump();
+        }
+        return;
+      }
+      if (activeJobId && !paused) {
+        pausedByBackground = true;
+        paused = true;
+        pauseJobs(jobs);
+        console.log("[translation][queue] paused - app backgrounded");
+        publish();
+        persistNow();
+      }
+    });
+    pump();
+    console.log("[translation][queue] initialised");
+  } finally {
+    resolveInitialization();
+    initializationGate = null;
+  }
 }
 
 function settingsSnapshot(settings: AppSettings) {
@@ -394,12 +411,17 @@ export async function enqueuePretranslateJob(input: {
   engine?: TranslationEngine;
   settings?: AppSettings;
 }): Promise<{ ok: boolean; job?: PretranslateJob; reason?: string }> {
+  if (!initialised) {
+    return { ok: false, reason: "The translation queue is starting. Try again in a moment." };
+  }
+  if (initializationGate) await initializationGate;
   const existing = jobs.find(
     (job) =>
       job.chapterId === input.chapterId &&
       (job.status === "queued" ||
         job.status === "running" ||
-        job.status === "paused"),
+        job.status === "paused" ||
+        job.status === "cancelling"),
   );
   if (existing) {
     return { ok: false, reason: "This chapter is already in the translation queue." };
@@ -420,6 +442,8 @@ export async function enqueuePretranslateJob(input: {
     sourceLanguage: input.sourceLanguage ?? snap.sourceLanguage,
     targetLanguage: input.targetLanguage ?? snap.targetLanguage,
     translationModelId: snap.translationModelId,
+    translationBaseUrl: settings.translationBaseUrl,
+    translationModels: [...settings.translationModels],
     regionDetectorId: snap.regionDetectorId,
     autoModelSwitch: snap.autoModelSwitch,
     aiMaxContextPages: snap.aiMaxContextPages,
@@ -453,16 +477,46 @@ function pump(): void {
   if (!initialised || paused || activeJobId) return;
   const next = jobs.find((job) => job.status === "queued");
   if (!next) return;
-  const lockKey = `pretranslate:${next.id}`;
-  if (!tryAcquireTranslationLock(lockKey, `Pre-translate ${next.chapterTitle}`)) {
+  if (AppState.currentState === "background" || AppState.currentState === "inactive") {
+    paused = true;
+    pausedByBackground = true;
+    pauseJobs(jobs);
+    publish();
+    persistNow();
     return;
   }
   activeJobId = next.id;
-  void runJob(next, lockKey).finally(() => {
+  next.status = "running";
+  next.startedAt ??= Date.now();
+  next.error = null;
+  publish();
+  void runJob(next).catch((error) => {
+    console.error("[translation][queue] unexpected job failure", error);
+    next.status = "failed";
+    next.error = error instanceof Error ? error.message : String(error);
+    next.finishedAt = Date.now();
+  }).finally(() => {
     activeJobId = null;
-    releaseTranslationLock(lockKey);
+    if (!jobs.some((job) => job.status === "queued" || job.status === "paused" || job.status === "running" || job.status === "cancelling")) {
+      paused = false;
+      pausedByBackground = false;
+    }
     publish();
+    persistNow();
     if (!paused) pump();
+    if (!activeJobId && (next.status === "completed" || next.status === "failed") &&
+        !jobs.some((job) => job.status === "queued" || job.status === "paused" ||
+          job.status === "running" || job.status === "cancelling")) {
+      void requirePorts().notifications.finish({
+        jobId: next.id,
+        chapterTitle: next.chapterTitle,
+        mangaTitle: next.mangaTitle,
+        status: next.status,
+        pagesDone: next.pagesDone,
+        pagesFailed: next.pagesFailed,
+        total: next.pageUris.length,
+      }).catch(() => {});
+    }
   });
 }
 
@@ -487,45 +541,51 @@ async function translatePage(
     );
   }
 
-  const detection = await detectPageRegions(pageUri, {
-    detectorId: job.regionDetectorId,
+  const { detection, bubbles } = await withTranslationComputePermit("background", async () => {
+    assertJobRunnable(job);
+    const detection = await detectPageRegions(pageUri, {
+      detectorId: job.regionDetectorId,
+    });
+    assertJobRunnable(job);
+    const slots = buildTranslationSlots(detection).filter(
+      (slot) =>
+        slot.pasteBox.x2 > slot.pasteBox.x1 &&
+        slot.pasteBox.y2 > slot.pasteBox.y1,
+    );
+    const regions = preparePaddleRegions(
+      ocrRegionsForSlots(slots),
+      MAX_CROPS_PER_PAGE,
+    );
+    if (slots.length === 0 || regions.length === 0) {
+      throw new Error(`No text regions found on page ${pageIndex + 1}.`);
+    }
+    const ocr = await recognizePageRegions({
+      pageUrl: pageUri,
+      imageWidth: detection.imageWidth,
+      imageHeight: detection.imageHeight,
+      regions,
+      language: job.sourceLanguage,
+      maxCrops: MAX_CROPS_PER_PAGE,
+      concurrency: job.recognitionBatch,
+    });
+    assertJobRunnable(job);
+    const assigned = assignItemsToSlots(slots, ocr.items);
+    const filled = fillSlotTexts(
+      slots,
+      assigned,
+      isCjkLanguageCode(job.sourceLanguage),
+    );
+    const bubbles = filled
+      .filter((slot) => slot.sourceText.trim())
+      .map((slot) => ({ ...slot, translatedText: "" }));
+    if (bubbles.length === 0) {
+      throw new Error(`OCR returned no usable text on page ${pageIndex + 1}.`);
+    }
+    return { detection, bubbles };
   });
-  const slots = buildTranslationSlots(detection).filter(
-    (slot) =>
-      slot.pasteBox.x2 > slot.pasteBox.x1 &&
-      slot.pasteBox.y2 > slot.pasteBox.y1,
-  );
-  const regions = preparePaddleRegions(
-    ocrRegionsForSlots(slots),
-    MAX_CROPS_PER_PAGE,
-  );
-  if (slots.length === 0 || regions.length === 0) {
-    throw new Error(`No text regions found on page ${pageIndex + 1}.`);
-  }
 
-  const ocr = await recognizePageRegions({
-    pageUrl: pageUri,
-    imageWidth: detection.imageWidth,
-    imageHeight: detection.imageHeight,
-    regions,
-    language: job.sourceLanguage,
-    maxCrops: MAX_CROPS_PER_PAGE,
-    concurrency: job.recognitionBatch,
-  });
-  const assigned = assignItemsToSlots(slots, ocr.items);
-  const filled = fillSlotTexts(
-    slots,
-    assigned,
-    isCjkLanguageCode(job.sourceLanguage),
-  );
-  const bubbles = filled
-    .filter((slot) => slot.sourceText.trim())
-    .map((slot) => ({ ...slot, translatedText: "" }));
-  if (bubbles.length === 0) {
-    throw new Error(`OCR returned no usable text on page ${pageIndex + 1}.`);
-  }
-
-  const settings = await getSettings();
+  assertJobRunnable(job);
+  const settings = settingsForJob(job, await getSettings());
   let modelIdUsed: string | null = null;
   if (job.engine === "free") {
     const response = await translateFreeBatch({
@@ -543,6 +603,7 @@ async function translatePage(
         },
       ],
     });
+    assertJobRunnable(job);
     const byRegion = new Map<number, string>();
     for (const item of response.results) {
       if (item.label === "page_0") byRegion.set(item.regionId, item.text);
@@ -582,7 +643,7 @@ async function translatePage(
       targetCode: job.targetLanguage,
       history: historyPayload,
       batch: batchPayload,
-      autoSwitch: job.autoModelSwitch && settings.readerAutoModelSwitch,
+      autoSwitch: job.autoModelSwitch,
       previousFailures: autoSwitchFailures,
       onSwitch: (from, to) => {
         console.warn("[translation][queue][ai] rate limited; fallback model", {
@@ -591,6 +652,7 @@ async function translatePage(
         });
       },
     });
+    assertJobRunnable(job);
     autoSwitchFailures = outcome.failures;
     if (outcome.disableAutoSwitch) disableAutoModelSwitch(job);
     if (!outcome.response) {
@@ -610,6 +672,7 @@ async function translatePage(
 
   const translated = bubbles.filter((bubble) => bubble.translatedText.trim());
   if (translated.length > 0) {
+    assertJobRunnable(job);
     await saveTranslationPage({
       mangaId: job.mangaId,
       chapterId: job.chapterId,
@@ -618,7 +681,7 @@ async function translatePage(
       sourceLanguage: job.sourceLanguage,
       targetLanguage: job.targetLanguage,
       model: modelIdUsed,
-      promptVersion: cacheVersionForJob(job, settings, modelIdUsed),
+      promptVersion: cacheVersionForJob(job, settings),
       imageWidth: detection.imageWidth,
       imageHeight: detection.imageHeight,
       regions: translated.map((bubble) => ({
@@ -675,88 +738,48 @@ async function refreshJobPageSession(
   return requirePorts().downloads.openChapter(job.chapterId);
 }
 
-async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
-  void lockKey;
-  let pageSession: DownloadPageSession;
+async function runJob(job: PretranslateJob): Promise<void> {
+  let pageSession: DownloadPageSession | null = null;
+  let fatalError: string | null = null;
   try {
+    assertJobRunnable(job);
     pageSession = await refreshJobPageSession(job);
-  } catch (error) {
-    console.warn("[translation][queue] downloaded pages unavailable", {
-      id: job.id,
-      chapterId: job.chapterId,
-      error,
-    });
-    job.status = "failed";
-    job.error =
-      "The downloaded chapter pages are no longer available. Download the chapter again.";
-    job.currentPage = null;
-    job.finishedAt = Date.now();
-    publish();
-    return;
-  }
-  if (pageSession.pages.length === 0) {
-    await pageSession.cleanup();
-    job.status = "failed";
-    job.error =
-      "The downloaded chapter pages are no longer available. Download the chapter again.";
-    job.currentPage = null;
-    job.finishedAt = Date.now();
-    publish();
-    return;
-  }
-  const resumeIndex = Math.round(job.nextPageIndex ?? 0);
-  job.pageUris = pageSession.pages;
-  job.nextPageIndex = Math.min(Math.max(0, resumeIndex), pageSession.pages.length);
-  job.status = "running";
-  job.startedAt = Date.now();
-  job.error = null;
-  publish();
-  console.log("[translation][queue] job started", {
-    id: job.id,
-    pages: job.pageUris.length,
-  });
-  const history: HistoryPage[] = [];
-  const totalPages = job.pageUris.length;
-  const startIndex = Math.min(
-    totalPages,
-    Math.max(0, Math.round(job.nextPageIndex ?? 0)),
-  );
-
-  // Resume with the same AI context the job had before it was paused. Only
-  // the context window is read back; earlier pages are not re-counted.
-  if (isAiTranslationEngine(job.engine) && startIndex > 0) {
-    const contextPages = Math.min(job.aiMaxContextPages, startIndex);
-    const firstContext = startIndex - contextPages;
-    for (let index = firstContext; index < startIndex; index += 1) {
-      const cached = await findTranslationPage({
-        mangaId: job.mangaId,
-        pageUrl: job.pageUris[index],
-        pageKey: translationPageKey(job.chapterId, index),
-        sourceLanguage: job.sourceLanguage,
-        targetLanguage: job.targetLanguage,
-        chapterId: job.chapterId,
-        legacyPageIndex: index,
-        promptVersion: cacheVersionForJob(job, await getSettings(), null),
-      }).catch(() => null);
-      if (!cached) continue;
-      history.push({
-        pageIndex: index,
-        bubbles: cached.regions.map((region) => ({
-          id: region.regionId,
-          text: region.sourceText,
-        })),
-      });
+    assertJobRunnable(job);
+    if (pageSession.pages.length === 0) {
+      throw new Error("The downloaded chapter pages are no longer available. Download the chapter again.");
     }
-    console.log("[translation][queue] context restored", {
-      id: job.id,
-      from: firstContext,
-      pages: history.length,
-      startIndex,
-    });
-  }
-  try {
+    job.pageUris = pageSession.pages;
+    job.nextPageIndex = Math.min(pageSession.pages.length,
+      Math.max(0, Math.round(job.nextPageIndex ?? 0)));
+    const cacheVersion = cacheVersionForJob(job, await getSettings());
+    const history: HistoryPage[] = [];
+    const totalPages = job.pageUris.length;
+    const startIndex = job.nextPageIndex;
+
+    if (isAiTranslationEngine(job.engine) && startIndex > 0) {
+      const firstContext = Math.max(0, startIndex - job.aiMaxContextPages);
+      for (let index = firstContext; index < startIndex; index += 1) {
+        assertJobRunnable(job);
+        const cached = await findTranslationPage({
+          mangaId: job.mangaId,
+          pageUrl: job.pageUris[index],
+          pageKey: translationPageKey(job.chapterId, index),
+          sourceLanguage: job.sourceLanguage,
+          targetLanguage: job.targetLanguage,
+          chapterId: job.chapterId,
+          legacyPageIndex: index,
+          promptVersion: cacheVersion,
+        }).catch(() => null);
+        assertJobRunnable(job);
+        if (cached) history.push({
+          pageIndex: index,
+          bubbles: cached.regions.map((region) => ({ id: region.regionId, text: region.sourceText })),
+        });
+      }
+    }
+
     for (let index = startIndex; index < totalPages; index += 1) {
-      if (cancelRequested.has(job.id) || paused) break;
+      assertJobRunnable(job);
       const pageUri = job.pageUris[index];
       job.currentPage = index + 1;
       publish();
@@ -768,114 +791,110 @@ async function runJob(job: PretranslateJob, lockKey: string): Promise<void> {
         targetLanguage: job.targetLanguage,
         chapterId: job.chapterId,
         legacyPageIndex: index,
-        promptVersion: cacheVersionForJob(job, await getSettings(), null),
+        promptVersion: cacheVersion,
       }).catch(() => null);
+      assertJobRunnable(job);
       if (cached) {
-        console.log("[translation][queue] page cached", { page: index + 1 });
         history.push({
           pageIndex: index,
-          bubbles: cached.regions.map((region) => ({
-            id: region.regionId,
-            text: region.sourceText,
-          })),
+          bubbles: cached.regions.map((region) => ({ id: region.regionId, text: region.sourceText })),
         });
         job.pagesDone += 1;
-        job.nextPageIndex = index + 1;
-        publish();
-        continue;
-      }
-      try {
-        const result = await translatePage(job, pageUri, index, history);
-        if (result) history.push(result.history);
-        job.pagesDone += 1;
-        console.log("[translation][queue] page done", {
-          page: index + 1,
-          bubbles: result?.bubbles ?? 0,
-        });
-      } catch (error) {
-        job.pagesFailed += 1;
-        console.warn("[translation][queue] page skipped", {
-          page: index + 1,
-          error,
-        });
+      } else {
+        try {
+          const result = await translatePage(job, pageUri, index, history);
+          assertJobRunnable(job);
+          if (result) history.push(result.history);
+          job.pagesDone += 1;
+        } catch (error) {
+          if (error instanceof JobInterrupted) throw error;
+          job.pagesFailed += 1;
+          console.warn("[translation][queue] page skipped", { id: job.id, page: index + 1, error });
+        }
       }
       job.nextPageIndex = index + 1;
       publish();
-      void requirePorts().notifications
-        .progress({
-          chapterTitle: job.chapterTitle,
-          mangaTitle: job.mangaTitle,
-          status: job.status,
-          pagesFailed: job.pagesFailed,
-          current: index + 1,
-          total: totalPages,
-        })
-        .catch(() => {});
+    }
+  } catch (error) {
+    if (!(error instanceof JobInterrupted)) {
+      fatalError = error instanceof Error ? error.message : String(error);
+      console.warn("[translation][queue] job failed", { id: job.id, error });
     }
   } finally {
-    await pageSession.cleanup();
+    if (pageSession) {
+      try {
+        await pageSession.cleanup();
+      } catch (error) {
+        console.warn("[translation][queue] page session cleanup failed", { id: job.id, error });
+      }
+    }
     job.currentPage = null;
-    if (cancelRequested.delete(job.id)) {
+    if (cancelRequested.delete(job.id) || job.status === "cancelling") {
       jobs = jobs.filter((item) => item.id !== job.id);
       console.log("[translation][queue] job cancelled", { id: job.id });
+    } else if (fatalError) {
+      job.status = "failed";
+      job.error = fatalError;
+      job.finishedAt = Date.now();
     } else if (paused) {
       job.status = "paused";
-      console.log("[translation][queue] job paused", { id: job.id });
     } else {
       job.status = job.pagesDone > 0 ? "completed" : "failed";
+      job.error = job.status === "failed" ? "No pages could be translated." : null;
       job.finishedAt = Date.now();
-      console.log("[translation][queue] job finished", {
-        id: job.id,
-        done: job.pagesDone,
-        failed: job.pagesFailed,
-      });
     }
     publish();
+    persistNow();
   }
 }
 
 export function pauseTranslationQueue(): void {
   paused = true;
   pausedByBackground = false;
-  for (const job of jobs) {
-    if (job.status === "queued" || job.status === "running") {
-      job.status = "paused";
-    }
-  }
+  pauseJobs(jobs);
   console.log("[translation][queue] paused by user");
   publish();
+  persistNow();
 }
 
 export function resumeTranslationQueue(): void {
+  if (AppState.currentState === "background" || AppState.currentState === "inactive") {
+    paused = true;
+    pausedByBackground = true;
+    publish();
+    persistNow();
+    return;
+  }
   paused = false;
   pausedByBackground = false;
-  for (const job of jobs) {
-    if (job.status === "paused") job.status = "queued";
-  }
+  resumeJobs(jobs, activeJobId);
   console.log("[translation][queue] resumed by user");
   publish();
+  persistNow();
   pump();
 }
 
 export function cancelTranslationQueue(): number {
-  const count = jobs.filter(
-    (job) => job.status === "queued" || job.status === "running" || job.status === "paused",
-  ).length;
-  for (const job of jobs) {
-    if (job.status === "running") cancelRequested.add(job.id);
+  const outcome = cancelJobs(jobs, activeJobId, cancelRequested);
+  jobs = outcome.remaining;
+  if (!activeJobId) {
+    paused = false;
+    pausedByBackground = false;
   }
-  jobs = jobs.filter(
-    (job) => job.status !== "queued" && job.status !== "paused",
-  );
-  if (!activeJobId) paused = false;
-  console.log("[translation][queue] cancelled", { count });
+  console.log("[translation][queue] cancelled", { count: outcome.count });
   publish();
-  return count;
+  persistNow();
+  return outcome.count;
 }
 
 export function removePretranslateJob(id: string): void {
   const job = jobs.find((item) => item.id === id);
-  if (job?.status === "running") cancelRequested.add(id);
-  jobs = jobs.filter((item) => item.id !== id);
+  if (job && id === activeJobId) {
+    cancelRequested.add(id);
+    job.status = "cancelling";
+  } else {
+    jobs = jobs.filter((item) => item.id !== id);
+  }
   publish();
+  persistNow();
 }

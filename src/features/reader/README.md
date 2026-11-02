@@ -107,6 +107,12 @@ and split/slice layout are covered by focused tests.
 loading state. The route at `app/reader/[id].tsx` only parses route params,
 provides navigation callbacks and composes the feature screen.
 
+Reader translation restores a persisted page before requesting the shared
+vision permit. Cached overlays remain available while another chapter is
+pre-translated. Cache misses queue detection/OCR with reader priority; provider
+setup is checked only for those misses. Disposing the reader releases OCR
+engines through the same permit so an active pre-translate page is not disrupted.
+
 Paged mode uses the normal React Native `FlatList`. Strip mode uses a custom
 virtualized `ScrollView`: only the pages intersecting the viewport plus a
 bounded overscan window are mounted, while all pages retain stable world

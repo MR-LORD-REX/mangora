@@ -46,9 +46,9 @@ export default function TranslationQueueSection({
 
   useEffect(() => subscribePretranslate(setSnapshot), []);
 
-  const active = snapshot.jobs.filter(
-    (job) => job.status !== "completed" && job.status !== "failed",
-  );
+  const visible = snapshot.jobs.filter((job) => job.status !== "completed");
+  const active = visible.filter((job) => job.status !== "failed");
+  const actionable = active.filter((job) => job.status !== "cancelling");
   const failed = snapshot.jobs.filter((job) => job.status === "failed").length;
 
   const onCancel = () => {
@@ -69,7 +69,7 @@ export default function TranslationQueueSection({
       standalone={standalone}
     >
       <View style={styles.body}>
-        {active.length === 0 ? (
+        {visible.length === 0 ? (
           <Text style={styles.empty}>
             Nothing is waiting to translate. Use the language icon beside a
             downloaded chapter to queue it.
@@ -83,7 +83,7 @@ export default function TranslationQueueSection({
               {snapshot.runningCount} running · {snapshot.pendingCount} waiting
               {failed ? ` · ${failed} failed` : ""}
             </Text>
-            {active.map((job) => (
+            {visible.map((job) => (
               <JobRow key={job.id} job={job} />
             ))}
           </>
@@ -97,14 +97,14 @@ export default function TranslationQueueSection({
             if (snapshot.paused) resumeTranslationQueue();
             else pauseTranslationQueue();
           }}
-          disabled={active.length === 0}
+          disabled={actionable.length === 0}
         />
         <ActionPill
           label={`Cancel pending${active.length ? ` (${active.length})` : ""}`}
           icon={Trash2}
           destructive
           onPress={() => setConfirmCancel(true)}
-          disabled={active.length === 0}
+          disabled={actionable.length === 0}
         />
       </InlineActions>
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
@@ -153,15 +153,20 @@ function JobRow({ job }: { job: PretranslateJob }) {
         <Text style={styles.statusText}>
           {job.status === "running"
             ? `Page ${Math.min(total, job.currentPage ?? done + 1)} of ${total}`
-            : job.status === "paused"
-              ? "Paused"
-              : "Queued"}
+            : job.status === "cancelling"
+              ? "Stopping…"
+              : job.status === "failed"
+                ? "Failed"
+                : job.status === "paused"
+                  ? "Paused"
+                  : "Queued"}
         </Text>
         <Text style={styles.metaText}>
           {done}/{total} pages
           {job.pagesFailed ? ` · ${job.pagesFailed} failed` : ""}
         </Text>
       </View>
+      {job.error ? <Text style={styles.errorText}>{job.error}</Text> : null}
     </View>
   );
 }
@@ -199,6 +204,7 @@ const styles = StyleSheet.create({
   },
   statusText: { color: colors.accent, fontSize: 12, fontWeight: "700" },
   metaText: { color: colors.textFaint, fontSize: 11 },
+  errorText: { color: colors.danger, fontSize: 11, lineHeight: 16 },
   notice: {
     color: colors.textFaint,
     fontSize: 12,

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedBy": "scripts/generate-architecture-docs.mjs",
-  "appVersion": "0.0.7",
+  "appVersion": "0.0.8",
   "sourceRoots": [
     "src",
     "app"
@@ -14,18 +14,18 @@
     },
     "composition": {
       "files": 4,
-      "lines": 196,
+      "lines": 194,
       "dependencies": 15
     },
     "core": {
       "files": 34,
-      "lines": 4706,
+      "lines": 4723,
       "dependencies": 68
     },
     "features": {
-      "files": 279,
-      "lines": 46307,
-      "dependencies": 1006
+      "files": 284,
+      "lines": 46489,
+      "dependencies": 1015
     },
     "platform": {
       "files": 4,
@@ -34,7 +34,7 @@
     },
     "shared": {
       "files": 46,
-      "lines": 2613,
+      "lines": 2623,
       "dependencies": 79
     }
   },
@@ -66,17 +66,17 @@
     },
     "reader": {
       "files": 104,
-      "lines": 16774,
+      "lines": 16748,
       "publicEntry": "src/features/reader/index.ts"
     },
     "settings": {
       "files": 26,
-      "lines": 4133,
+      "lines": 4141,
       "publicEntry": "src/features/settings/index.ts"
     },
     "translation": {
-      "files": 23,
-      "lines": 4185,
+      "files": 28,
+      "lines": 4385,
       "publicEntry": "src/features/translation/index.ts"
     },
     "updates": {
@@ -477,7 +477,7 @@
       "zone": "composition",
       "feature": null,
       "kind": "module",
-      "lines": 68,
+      "lines": 66,
       "exports": [
         {
           "name": "refreshDownloadedMetadataOnForeground",
@@ -1251,7 +1251,7 @@
       "zone": "core",
       "feature": null,
       "kind": "module",
-      "lines": 475,
+      "lines": 478,
       "exports": [
         {
           "name": "CachedTranslationPage",
@@ -1656,7 +1656,7 @@
       "zone": "core",
       "feature": null,
       "kind": "module",
-      "lines": 255,
+      "lines": 269,
       "exports": [
         {
           "name": "initializeNotifications",
@@ -1673,12 +1673,6 @@
         {
           "name": "notifyDownloadsFinished",
           "alias": "notifyDownloadsFinished",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "notifyTranslationBackground",
-          "alias": "notifyTranslationBackground",
           "kind": "declaration",
           "typeOnly": false
         },
@@ -8863,7 +8857,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "module",
-      "lines": 952,
+      "lines": 914,
       "exports": [
         {
           "name": "ReaderTranslationPipeline",
@@ -8884,7 +8878,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "module",
-      "lines": 337,
+      "lines": 347,
       "exports": [
         {
           "name": "recognizeBubbleBatch",
@@ -8926,7 +8920,7 @@
       "zone": "features",
       "feature": "reader",
       "kind": "module",
-      "lines": 243,
+      "lines": 245,
       "exports": [
         {
           "name": "EMPTY_READER_PIPELINE_METRICS",
@@ -9510,7 +9504,7 @@
       "zone": "features",
       "feature": "settings",
       "kind": "component",
-      "lines": 209,
+      "lines": 217,
       "exports": [
         {
           "name": "default",
@@ -10121,7 +10115,7 @@
       "zone": "features",
       "feature": "translation",
       "kind": "barrel",
-      "lines": 152,
+      "lines": 147,
       "exports": [
         {
           "name": "AUTO_MODEL_SWITCH_FAILURE_LIMIT",
@@ -10328,8 +10322,8 @@
           "typeOnly": true
         },
         {
-          "name": "TranslationLockOwner",
-          "alias": "TranslationLockOwner",
+          "name": "TranslationComputePriority",
+          "alias": "TranslationComputePriority",
           "kind": "named",
           "typeOnly": true
         },
@@ -10436,12 +10430,6 @@
           "typeOnly": false
         },
         {
-          "name": "getTranslationLockOwner",
-          "alias": "getTranslationLockOwner",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
           "name": "getTranslationsUsageSnapshot",
           "alias": "getTranslationsUsageSnapshot",
           "kind": "named",
@@ -10544,12 +10532,6 @@
           "typeOnly": false
         },
         {
-          "name": "releaseTranslationLock",
-          "alias": "releaseTranslationLock",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
           "name": "removePretranslateJob",
           "alias": "removePretranslateJob",
           "kind": "named",
@@ -10594,12 +10576,6 @@
         {
           "name": "subscribePretranslate",
           "alias": "subscribePretranslate",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "subscribeTranslationLock",
-          "alias": "subscribeTranslationLock",
           "kind": "named",
           "typeOnly": false
         },
@@ -10652,12 +10628,6 @@
           "typeOnly": false
         },
         {
-          "name": "tryAcquireTranslationLock",
-          "alias": "tryAcquireTranslationLock",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
           "name": "validateBatchResults",
           "alias": "validateBatchResults",
           "kind": "named",
@@ -10668,6 +10638,94 @@
           "alias": "validateOpenAiCompatibleEndpoint",
           "kind": "named",
           "typeOnly": false
+        },
+        {
+          "name": "withTranslationComputePermit",
+          "alias": "withTranslationComputePermit",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "src/features/translation/jobs/jobCacheIdentity.test.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "test",
+      "lines": 36,
+      "exports": []
+    },
+    {
+      "id": "src/features/translation/jobs/jobCacheIdentity.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "module",
+      "lines": 41,
+      "exports": [
+        {
+          "name": "JobCacheConfig",
+          "alias": "JobCacheConfig",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "cacheVersionForJob",
+          "alias": "cacheVersionForJob",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "settingsForJob",
+          "alias": "settingsForJob",
+          "kind": "declaration",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "src/features/translation/jobs/jobControl.test.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "test",
+      "lines": 31,
+      "exports": []
+    },
+    {
+      "id": "src/features/translation/jobs/jobControl.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "module",
+      "lines": 40,
+      "exports": [
+        {
+          "name": "ControlledJob",
+          "alias": "ControlledJob",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "ControlledJobStatus",
+          "alias": "ControlledJobStatus",
+          "kind": "declaration",
+          "typeOnly": true
+        },
+        {
+          "name": "cancelJobs",
+          "alias": "cancelJobs",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "pauseJobs",
+          "alias": "pauseJobs",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "resumeJobs",
+          "alias": "resumeJobs",
+          "kind": "declaration",
+          "typeOnly": false
         }
       ]
     },
@@ -10676,7 +10734,7 @@
       "zone": "features",
       "feature": "translation",
       "kind": "module",
-      "lines": 882,
+      "lines": 901,
       "exports": [
         {
           "name": "PretranslateJob",
@@ -10753,39 +10811,35 @@
       ]
     },
     {
-      "id": "src/features/translation/jobs/translationRuntimeLock.ts",
+      "id": "src/features/translation/jobs/translationComputeCoordinator.test.ts",
+      "zone": "features",
+      "feature": "translation",
+      "kind": "test",
+      "lines": 33,
+      "exports": []
+    },
+    {
+      "id": "src/features/translation/jobs/translationComputeCoordinator.ts",
       "zone": "features",
       "feature": "translation",
       "kind": "module",
-      "lines": 58,
+      "lines": 63,
       "exports": [
         {
-          "name": "TranslationLockOwner",
-          "alias": "TranslationLockOwner",
+          "name": "TranslationComputeCoordinator",
+          "alias": "TranslationComputeCoordinator",
+          "kind": "declaration",
+          "typeOnly": false
+        },
+        {
+          "name": "TranslationComputePriority",
+          "alias": "TranslationComputePriority",
           "kind": "declaration",
           "typeOnly": true
         },
         {
-          "name": "getTranslationLockOwner",
-          "alias": "getTranslationLockOwner",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "releaseTranslationLock",
-          "alias": "releaseTranslationLock",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "subscribeTranslationLock",
-          "alias": "subscribeTranslationLock",
-          "kind": "declaration",
-          "typeOnly": false
-        },
-        {
-          "name": "tryAcquireTranslationLock",
-          "alias": "tryAcquireTranslationLock",
+          "name": "withTranslationComputePermit",
+          "alias": "withTranslationComputePermit",
           "kind": "declaration",
           "typeOnly": false
         }
@@ -13358,7 +13412,7 @@
       "zone": "shared",
       "feature": null,
       "kind": "module",
-      "lines": 27,
+      "lines": 37,
       "exports": [
         {
           "name": "TranslationNotificationCommand",
@@ -31515,12 +31569,6 @@
           "typeOnly": false
         },
         {
-          "name": "getTranslationLockOwner",
-          "alias": "getTranslationLockOwner",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
           "name": "isCjkLanguageCode",
           "alias": "isCjkLanguageCode",
           "kind": "named",
@@ -31533,14 +31581,8 @@
           "typeOnly": false
         },
         {
-          "name": "releaseTranslationLock",
-          "alias": "releaseTranslationLock",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "tryAcquireTranslationLock",
-          "alias": "tryAcquireTranslationLock",
+          "name": "withTranslationComputePermit",
+          "alias": "withTranslationComputePermit",
           "kind": "named",
           "typeOnly": false
         },
@@ -31961,6 +32003,12 @@
         {
           "name": "ocrRegionsForSlots",
           "alias": "ocrRegionsForSlots",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "withTranslationComputePermit",
+          "alias": "withTranslationComputePermit",
           "kind": "named",
           "typeOnly": false
         }
@@ -35979,50 +36027,32 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fjobs%2FtranslationRuntimeLock.ts:re-export:.%2Fjobs%2FtranslationRuntimeLock:1",
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fjobs%2FtranslationComputeCoordinator.ts:re-export:.%2Fjobs%2FtranslationComputeCoordinator:1",
       "from": "src/features/translation/index.ts",
-      "to": "src/features/translation/jobs/translationRuntimeLock.ts",
+      "to": "src/features/translation/jobs/translationComputeCoordinator.ts",
       "kind": "re-export",
       "typeOnly": false,
-      "specifier": "./jobs/translationRuntimeLock",
+      "specifier": "./jobs/translationComputeCoordinator",
       "bindings": [
         {
-          "name": "getTranslationLockOwner",
-          "alias": "getTranslationLockOwner",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "releaseTranslationLock",
-          "alias": "releaseTranslationLock",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "subscribeTranslationLock",
-          "alias": "subscribeTranslationLock",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "tryAcquireTranslationLock",
-          "alias": "tryAcquireTranslationLock",
+          "name": "withTranslationComputePermit",
+          "alias": "withTranslationComputePermit",
           "kind": "named",
           "typeOnly": false
         }
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fjobs%2FtranslationRuntimeLock.ts:re-export:.%2Fjobs%2FtranslationRuntimeLock:2",
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Findex.ts:src%2Ffeatures%2Ftranslation%2Fjobs%2FtranslationComputeCoordinator.ts:re-export:.%2Fjobs%2FtranslationComputeCoordinator:2",
       "from": "src/features/translation/index.ts",
-      "to": "src/features/translation/jobs/translationRuntimeLock.ts",
+      "to": "src/features/translation/jobs/translationComputeCoordinator.ts",
       "kind": "re-export",
       "typeOnly": true,
-      "specifier": "./jobs/translationRuntimeLock",
+      "specifier": "./jobs/translationComputeCoordinator",
       "bindings": [
         {
-          "name": "TranslationLockOwner",
-          "alias": "TranslationLockOwner",
+          "name": "TranslationComputePriority",
+          "alias": "TranslationComputePriority",
           "kind": "named",
           "typeOnly": true
         }
@@ -36147,6 +36177,164 @@
         {
           "name": "PretranslateDialogProps",
           "alias": "PretranslateDialogProps",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FjobCacheIdentity.test.ts:src%2Fcore%2Fsettings%2FsettingsSchema.ts:import:%40core%2Fsettings%2FsettingsSchema:1",
+      "from": "src/features/translation/jobs/jobCacheIdentity.test.ts",
+      "to": "src/core/settings/settingsSchema.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "@core/settings/settingsSchema",
+      "bindings": [
+        {
+          "name": "DEFAULT_SETTINGS",
+          "alias": "DEFAULT_SETTINGS",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FjobCacheIdentity.test.ts:src%2Ffeatures%2Ftranslation%2Fjobs%2FjobCacheIdentity.ts:import:.%2FjobCacheIdentity:1",
+      "from": "src/features/translation/jobs/jobCacheIdentity.test.ts",
+      "to": "src/features/translation/jobs/jobCacheIdentity.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./jobCacheIdentity",
+      "bindings": [
+        {
+          "name": "cacheVersionForJob",
+          "alias": "cacheVersionForJob",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "settingsForJob",
+          "alias": "settingsForJob",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FjobCacheIdentity.ts:src%2Fcore%2Fsettings%2Findex.ts:import:%40core%2Fsettings:1",
+      "from": "src/features/translation/jobs/jobCacheIdentity.ts",
+      "to": "src/core/settings/index.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "@core/settings",
+      "bindings": [
+        {
+          "name": "AppSettings",
+          "alias": "AppSettings",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FjobCacheIdentity.ts:src%2Fshared%2Fcontracts%2FregionDetector.ts:import:%40shared%2Fcontracts%2FregionDetector:1",
+      "from": "src/features/translation/jobs/jobCacheIdentity.ts",
+      "to": "src/shared/contracts/regionDetector.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "@shared/contracts/regionDetector",
+      "bindings": [
+        {
+          "name": "RegionDetectorId",
+          "alias": "RegionDetectorId",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FjobCacheIdentity.ts:src%2Fshared%2Fcontracts%2FtranslationEngine.ts:import:%40shared%2Fcontracts%2FtranslationEngine:1",
+      "from": "src/features/translation/jobs/jobCacheIdentity.ts",
+      "to": "src/shared/contracts/translationEngine.ts",
+      "kind": "import",
+      "typeOnly": true,
+      "specifier": "@shared/contracts/translationEngine",
+      "bindings": [
+        {
+          "name": "TranslationEngine",
+          "alias": "TranslationEngine",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FjobCacheIdentity.ts:src%2Ffeatures%2Ftranslation%2Fprovider.ts:import:..%2Fprovider:1",
+      "from": "src/features/translation/jobs/jobCacheIdentity.ts",
+      "to": "src/features/translation/provider.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../provider",
+      "bindings": [
+        {
+          "name": "resolveTranslationProvider",
+          "alias": "resolveTranslationProvider",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FjobCacheIdentity.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FcacheIdentity.ts:import:..%2Fpipeline%2FcacheIdentity:1",
+      "from": "src/features/translation/jobs/jobCacheIdentity.ts",
+      "to": "src/features/translation/pipeline/cacheIdentity.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "../pipeline/cacheIdentity",
+      "bindings": [
+        {
+          "name": "pageCacheIdentity",
+          "alias": "pageCacheIdentity",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "translationCacheKey",
+          "alias": "translationCacheKey",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FjobControl.test.ts:src%2Ffeatures%2Ftranslation%2Fjobs%2FjobControl.ts:import:.%2FjobControl:1",
+      "from": "src/features/translation/jobs/jobControl.test.ts",
+      "to": "src/features/translation/jobs/jobControl.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./jobControl",
+      "bindings": [
+        {
+          "name": "cancelJobs",
+          "alias": "cancelJobs",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "pauseJobs",
+          "alias": "pauseJobs",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "resumeJobs",
+          "alias": "resumeJobs",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "ControlledJob",
+          "alias": "ControlledJob",
           "kind": "named",
           "typeOnly": true
         }
@@ -36291,22 +36479,6 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Ffeatures%2Ftranslation%2Fprovider.ts:import:..%2Fprovider:1",
-      "from": "src/features/translation/jobs/pretranslateQueue.ts",
-      "to": "src/features/translation/provider.ts",
-      "kind": "import",
-      "typeOnly": false,
-      "specifier": "../provider",
-      "bindings": [
-        {
-          "name": "resolveTranslationProvider",
-          "alias": "resolveTranslationProvider",
-          "kind": "named",
-          "typeOnly": false
-        }
-      ]
-    },
-    {
       "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FtranslationRegions.ts:import:..%2Fpipeline%2FtranslationRegions:1",
       "from": "src/features/translation/jobs/pretranslateQueue.ts",
       "to": "src/features/translation/pipeline/translationRegions.ts",
@@ -36341,28 +36513,16 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Ffeatures%2Ftranslation%2Fjobs%2FtranslationRuntimeLock.ts:import:.%2FtranslationRuntimeLock:1",
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Ffeatures%2Ftranslation%2Fjobs%2FtranslationComputeCoordinator.ts:import:.%2FtranslationComputeCoordinator:1",
       "from": "src/features/translation/jobs/pretranslateQueue.ts",
-      "to": "src/features/translation/jobs/translationRuntimeLock.ts",
+      "to": "src/features/translation/jobs/translationComputeCoordinator.ts",
       "kind": "import",
       "typeOnly": false,
-      "specifier": "./translationRuntimeLock",
+      "specifier": "./translationComputeCoordinator",
       "bindings": [
         {
-          "name": "releaseTranslationLock",
-          "alias": "releaseTranslationLock",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "subscribeTranslationLock",
-          "alias": "subscribeTranslationLock",
-          "kind": "named",
-          "typeOnly": false
-        },
-        {
-          "name": "tryAcquireTranslationLock",
-          "alias": "tryAcquireTranslationLock",
+          "name": "withTranslationComputePermit",
+          "alias": "withTranslationComputePermit",
           "kind": "named",
           "typeOnly": false
         }
@@ -36515,22 +36675,72 @@
       ]
     },
     {
-      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Ffeatures%2Ftranslation%2Fpipeline%2FcacheIdentity.ts:import:..%2Fpipeline%2FcacheIdentity:1",
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Ffeatures%2Ftranslation%2Fjobs%2FjobCacheIdentity.ts:import:.%2FjobCacheIdentity:1",
       "from": "src/features/translation/jobs/pretranslateQueue.ts",
-      "to": "src/features/translation/pipeline/cacheIdentity.ts",
+      "to": "src/features/translation/jobs/jobCacheIdentity.ts",
       "kind": "import",
       "typeOnly": false,
-      "specifier": "../pipeline/cacheIdentity",
+      "specifier": "./jobCacheIdentity",
       "bindings": [
         {
-          "name": "pageCacheIdentity",
-          "alias": "pageCacheIdentity",
+          "name": "cacheVersionForJob",
+          "alias": "cacheVersionForJob",
           "kind": "named",
           "typeOnly": false
         },
         {
-          "name": "translationCacheKey",
-          "alias": "translationCacheKey",
+          "name": "settingsForJob",
+          "alias": "settingsForJob",
+          "kind": "named",
+          "typeOnly": false
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FpretranslateQueue.ts:src%2Ffeatures%2Ftranslation%2Fjobs%2FjobControl.ts:import:.%2FjobControl:1",
+      "from": "src/features/translation/jobs/pretranslateQueue.ts",
+      "to": "src/features/translation/jobs/jobControl.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./jobControl",
+      "bindings": [
+        {
+          "name": "cancelJobs",
+          "alias": "cancelJobs",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "pauseJobs",
+          "alias": "pauseJobs",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "resumeJobs",
+          "alias": "resumeJobs",
+          "kind": "named",
+          "typeOnly": false
+        },
+        {
+          "name": "ControlledJobStatus",
+          "alias": "ControlledJobStatus",
+          "kind": "named",
+          "typeOnly": true
+        }
+      ]
+    },
+    {
+      "id": "edge:src%2Ffeatures%2Ftranslation%2Fjobs%2FtranslationComputeCoordinator.test.ts:src%2Ffeatures%2Ftranslation%2Fjobs%2FtranslationComputeCoordinator.ts:import:.%2FtranslationComputeCoordinator:1",
+      "from": "src/features/translation/jobs/translationComputeCoordinator.test.ts",
+      "to": "src/features/translation/jobs/translationComputeCoordinator.ts",
+      "kind": "import",
+      "typeOnly": false,
+      "specifier": "./translationComputeCoordinator",
+      "bindings": [
+        {
+          "name": "TranslationComputeCoordinator",
+          "alias": "TranslationComputeCoordinator",
           "kind": "named",
           "typeOnly": false
         }
@@ -40599,8 +40809,8 @@
   "violations": [],
   "warnings": [],
   "counts": {
-    "files": 389,
-    "edges": 1208,
+    "files": 394,
+    "edges": 1217,
     "zones": 6,
     "features": 10
   }

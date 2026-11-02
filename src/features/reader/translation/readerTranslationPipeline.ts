@@ -10,11 +10,9 @@
 import {
   assignItemsToSlots,
   fillSlotTexts,
-  getTranslationLockOwner,
   isCjkLanguageCode,
   isSameEngineLanguage,
-  releaseTranslationLock,
-  tryAcquireTranslationLock,
+  withTranslationComputePermit,
   type PageTranslationState,
   type TranslationRegionState,
   type TranslationSlot,
@@ -124,8 +122,6 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
     { pending: number; active: number }
   > = {};
   private publishScheduled = false;
-  private readonly singleLockKey: string;
-  private readonly autoLockKey: string;
   private disposed = false;
 
   get effectiveOcrBubbleWorkers(): number {
@@ -146,8 +142,6 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
       ocrModelId,
       this.effectiveOcrBubbleWorkers,
     );
-    this.singleLockKey = "reader-single:" + options.identity.chapterId;
-    this.autoLockKey = "reader-auto:" + options.identity.chapterId;
     this.queues = {
       scan: new WorkQueue<ScanTask>(
         "page-scan",
@@ -430,10 +424,7 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
     this.state.singlePageBusy = false;
     this.state.singlePageIndex = null;
     this.singlePageIndexValue = null;
-    if (this.singleActive) {
-      this.singleActive = false;
-      releaseTranslationLock(this.singleLockKey);
-    }
+    if (this.singleActive) this.singleActive = false;
     if (clearOcr) {
       this.detection.clear();
       this.ocrStore.clear();
@@ -588,7 +579,6 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
       stage: this.state.translationPages[url]?.stage,
     });
     this.singleActive = false;
-    releaseTranslationLock(this.singleLockKey);
     this.state.singlePageBusy = false;
     this.state.singlePageIndex = null;
     this.publish();
@@ -629,11 +619,8 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
       this.options.onTranslationSetupRequired();
       return;
     }
-    if (!tryAcquireTranslationLock(this.autoLockKey, "Reader auto translation")) {
-      this.showTranslationError(this.lockMessage());
-      return;
-    }
     this.generation += 1;
+    this.clearPendingQueues();
     this.autoActive = true;
     this.singleActive = false;
     this.state.singlePageBusy = false;
@@ -666,12 +653,6 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
     if (validationError) {
       this.showTranslationError(validationError);
       this.options.onTranslationSetupRequired();
-      return;
-    }
-    if (
-      !tryAcquireTranslationLock(this.singleLockKey, `Reader page ${pageIndex + 1}`)
-    ) {
-      this.showTranslationError(this.lockMessage());
       return;
     }
     this.generation += 1;
@@ -721,10 +702,6 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
         );
         return;
       }
-      if (!tryAcquireTranslationLock(this.singleLockKey, `Reader page ${pageIndex + 1}`)) {
-        this.showTranslationError(this.lockMessage());
-        return;
-      }
       this.generation += 1;
       this.singleActive = true;
       this.singlePageIndexValue = pageIndex;
@@ -759,7 +736,6 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
     this.autoActive = false;
     this.singleActive = false;
     this.clearPendingQueues();
-    this.releaseRunLocks();
     this.state.autoTranslation = false;
     this.state.singlePageBusy = false;
     this.state.singlePageIndex = null;
@@ -780,7 +756,6 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
     this.autoActive = false;
     this.singleActive = false;
     this.clearPendingQueues();
-    this.releaseRunLocks();
     this.state.singlePageBusy = false;
     this.state.singlePageIndex = null;
     this.singlePageIndexValue = null;
@@ -811,8 +786,7 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
     this.queues.ocr.stop();
     this.queues.free.stop();
     this.queues.ai.stop();
-    this.releaseRunLocks();
-    void releaseLocalOcrEngines();
+    void withTranslationComputePermit("maintenance", releaseLocalOcrEngines);
     console.log("[reader][tr] pipeline unmounted", {
       source: this.source,
     });
@@ -839,11 +813,6 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
     });
   }
 
-  private releaseRunLocks(): void {
-    releaseTranslationLock(this.autoLockKey);
-    releaseTranslationLock(this.singleLockKey);
-  }
-
   private clearPendingQueues(): void {
     this.queues.scan.clearPending();
     this.queues.ocr.clearPending();
@@ -863,32 +832,25 @@ export class ReaderTranslationPipeline implements ReaderTranslationRuntime {
     ) {
       return `Target language (${languageLabel(this.config.targetLanguage)}) matches the page language (${languageLabel(this.config.sourceLanguage)}) - nothing to translate.`;
     }
-    if (this.config.engine === "openai") {
-      if (!this.config.settings) {
-        return "Translation settings are still loading. Try again in a moment.";
-      }
-      const providerSettings = {
-        ...this.config.settings,
-        translationModelId:
-          this.config.translationModelId ||
-          this.config.settings.translationModelId,
-      };
-      const provider = resolveTranslationProvider(
-        providerSettings,
-        this.config.engine,
-      );
-      const readinessError = translationProviderReadinessError(provider);
-      if (readinessError) return readinessError;
+    if (this.config.engine === "openai" && !this.config.settings) {
+      return "Translation settings are still loading. Try again in a moment.";
     }
     return null;
   }
 
-  private lockMessage(): string {
-    const lock = getTranslationLockOwner();
-    if (lock && lock.key.startsWith("pretranslate:")) {
-      return "A translation job is running. Pause or cancel it in Settings > Translation queue.";
+  validateUncachedRun(): string | null {
+    if (this.config.engine !== "openai") return null;
+    if (!this.config.settings) {
+      return "Translation settings are still loading. Try again in a moment.";
     }
-    return lock ? `Translation is already running (${lock.label}).` : "";
+    const providerSettings = {
+      ...this.config.settings,
+      translationModelId:
+        this.config.translationModelId || this.config.settings.translationModelId,
+    };
+    return translationProviderReadinessError(
+      resolveTranslationProvider(providerSettings, this.config.engine),
+    );
   }
 
   private readonly onQueueChange = (next: {

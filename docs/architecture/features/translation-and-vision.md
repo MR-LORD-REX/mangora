@@ -75,7 +75,7 @@ the bubble and recognized text extent before rendering.
 | `engines/openai/` | OpenAI-compatible chat-completions adapter and usage mapping. |
 | `engines/shared/` | Strict prompt, batch validation and model fallback. |
 | `pipeline/` | Build slots from detection boxes and OCR text. |
-| `jobs/` | Pre-translate queue and one-at-a-time runtime lock. |
+| `jobs/` | Serial pre-translate queue and reader-priority vision coordinator. |
 | `components/` | Pre-translate dialog only. |
 
 The public contract exposes language helpers, overlay geometry types, engine
@@ -120,14 +120,14 @@ region must be returned exactly once.
 
 ## Pre-translate queue
 
-`initPretranslateQueue(dependencies)` is called by composition only after
-notifications initialize. It registers pause/resume/cancel handlers and restores
-persisted jobs. Its dependencies are ports, not feature imports:
+`initPretranslateQueue(dependencies)` starts alongside notification setup. It
+restores jobs before accepting pause/resume/cancel commands. Its dependencies
+are ports, not feature imports:
 
 - `DownloadSessionPort` for chapter page files;
 - `TranslationNotificationPort` and notification command port.
 
-A job snapshots the active translation model, region detector, auto-switch
+A job snapshots the provider endpoint, requested translation model, region detector, auto-switch
 state, context pages and recognition batch at enqueue time. Before its first
 page it re-materializes the
 chapter through the download session so a cold start or LRU eviction cannot leave
@@ -137,8 +137,19 @@ The pre-translate dialog exposes both the translation engine and a detection
 model selector. A detector that is not downloaded blocks queueing with a direct
 link to Settings > Models.
 
-The runtime lock prevents a reader translation and a background pre-translate from
-using the expensive OCR/translation pipeline at the same time.
+The reader checks the page cache before asking for expensive compute. Cache hits
+restore overlays while another chapter is being pre-translated. Cache misses
+share one vision permit with the background job; reader detection/OCR takes
+priority after the current vision operation settles. Network translation can
+proceed while the other caller owns the vision permit. A synchronous SQLite
+transaction writes each page row and its regions atomically.
+
+The queue keeps one chapter active. Pause and cancellation take effect at safe
+await boundaries, including before a cache write. Notification actions carry a
+job ID so an old notification cannot control a later chapter. Running and
+paused notifications expose only applicable actions; terminal jobs replace the
+live notification with an action-free summary. The JS queue pauses off foreground
+and resumes on return.
 
 ## Reader integration
 

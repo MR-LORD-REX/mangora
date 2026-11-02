@@ -57,8 +57,9 @@ Its work is intentionally independent and best-effort:
 - refresh the extension registry;
 - sync all libraries;
 - refresh downloaded metadata;
-- initialize notifications, then start the pre-translate queue with
-  `downloadSessions` and translation notification ports.
+- initialize notifications and the pre-translate queue independently, with
+  `downloadSessions` and translation notification ports. The queue restores
+  jobs before notification actions are applied.
 
 The extension/library/metadata calls are not allowed to block rendering. A
 failure is logged and the app remains usable. A database failure is different:
@@ -73,8 +74,8 @@ not a process restart.
 
 - The database must exist before any repository or library sync runs.
 - The download scheduler relies on the catalog and settings stores.
-- The translation queue needs notification handlers and the download-session
-  port already in place.
+- The translation queue needs the download-session port after database startup;
+  notification setup must not delay persisted job restoration.
 - Startup cleanup must not delete a live downloaded-page extraction. It only
   removes sessions abandoned by a previous process.
 - Hiding the splash is tied to leaving the `loading` state, including the error

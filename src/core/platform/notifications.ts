@@ -22,15 +22,19 @@ import type {
 import { Platform } from "react-native";
 
 const EVENT_CHANNEL_ID = "mangora-events";
-const TRANSLATION_CATEGORY = "translation-queue";
+const TRANSLATION_RUNNING_CATEGORY = "translation-queue-running";
+const TRANSLATION_PAUSED_CATEGORY = "translation-queue-paused";
 let translationNotificationId: string | null = null;
 let responseListenerInstalled = false;
-let pendingTranslationProgress: {
-  job: TranslationNotificationJob;
-  current: number;
-  total: number;
-} | null = null;
-let translationProgressPump: Promise<void> | null = null;
+let notificationReconciled = false;
+let desiredTranslationNotification: TranslationNotificationJob | TranslationTerminalJob | null = null;
+let desiredTranslationVersion = 0;
+let translationNotificationPump: Promise<void> | null = null;
+const pendingTranslationCommands: {
+  command: TranslationNotificationCommand;
+  jobId: string;
+}[] = [];
+const handledTranslationResponses = new Set<string>();
 
 const translationCommandHandlers = new Map<
   TranslationNotificationCommand,
@@ -70,15 +74,19 @@ export async function initializeNotifications(): Promise<boolean> {
         showBadge: false,
       });
     }
-    await Notifications.setNotificationCategoryAsync(TRANSLATION_CATEGORY, [
+    await Notifications.setNotificationCategoryAsync(TRANSLATION_RUNNING_CATEGORY, [
       {
         identifier: "translation-pause",
         buttonTitle: "Pause",
       },
       {
-        identifier: "translation-resume",
-        buttonTitle: "Resume",
+        identifier: "translation-cancel",
+        buttonTitle: "Cancel",
+        options: { isDestructive: true },
       },
+    ]);
+    await Notifications.setNotificationCategoryAsync(TRANSLATION_PAUSED_CATEGORY, [
+      { identifier: "translation-resume", buttonTitle: "Resume" },
       {
         identifier: "translation-cancel",
         buttonTitle: "Cancel",
@@ -87,24 +95,10 @@ export async function initializeNotifications(): Promise<boolean> {
     ]);
     if (!responseListenerInstalled) {
       responseListenerInstalled = true;
-      Notifications.addNotificationResponseReceivedListener((response) => {
-        const action = response.actionIdentifier;
-        if (
-          action !== "translation-pause" &&
-          action !== "translation-resume" &&
-          action !== "translation-cancel"
-        ) {
-          return;
-        }
-        const command =
-          action === "translation-pause"
-            ? "pause"
-            : action === "translation-resume"
-              ? "resume"
-              : "cancel";
-        translationCommandHandlers.get(command)?.();
-      });
+      Notifications.addNotificationResponseReceivedListener(routeTranslationResponse);
     }
+    const lastResponse = Notifications.getLastNotificationResponse();
+    if (lastResponse) routeTranslationResponse(lastResponse);
   } catch {
     // Channel / category setup is best effort.
   }
@@ -118,6 +112,7 @@ export async function initializeNotifications(): Promise<boolean> {
   } catch {
     permissionGranted = false;
   }
+  void pumpTranslationNotification();
   return permissionGranted;
 }
 
@@ -146,100 +141,119 @@ export async function notifyDownloadsFinished(chapterCount: number): Promise<voi
   }
 }
 
-interface TranslationNotificationJob {
-  chapterTitle: string;
-  mangaTitle: string;
-  status: string;
-  pagesFailed: number;
+type TranslationNotificationJob = Parameters<TranslationNotificationPort["show"]>[0];
+type TranslationTerminalJob = Parameters<TranslationNotificationPort["finish"]>[0];
+
+function routeTranslationResponse(response: Notifications.NotificationResponse): void {
+  const action = response.actionIdentifier;
+  const command: TranslationNotificationCommand | null =
+    action === "translation-pause" ? "pause" :
+    action === "translation-resume" ? "resume" :
+    action === "translation-cancel" ? "cancel" : null;
+  const jobId = response.notification.request.content.data?.jobId;
+  if (!command || typeof jobId !== "string") return;
+  const responseKey = `${response.notification.request.identifier}:${action}`;
+  if (handledTranslationResponses.has(responseKey)) return;
+  handledTranslationResponses.add(responseKey);
+  Notifications.clearLastNotificationResponse();
+  const handler = translationCommandHandlers.get(command);
+  if (handler) handler(jobId);
+  else pendingTranslationCommands.push({ command, jobId });
 }
 
-function pumpTranslationProgress(): Promise<void> {
-  if (translationProgressPump) return translationProgressPump;
-  translationProgressPump = (async () => {
-    while (pendingTranslationProgress) {
-      const next = pendingTranslationProgress;
-      pendingTranslationProgress = null;
-      if (!permissionGranted) continue;
+async function dismissTranslationNotification(): Promise<void> {
+  try {
+    if (!notificationReconciled) {
+      const presented = await Notifications.getPresentedNotificationsAsync();
+      await Promise.all(presented
+        .filter((notification) =>
+          notification.request.content.data?.kind === "translation-queue" ||
+          notification.request.content.data?.kind === "translation-background",
+        )
+        .map((notification) =>
+          Notifications.dismissNotificationAsync(notification.request.identifier),
+        ));
+      translationNotificationId = null;
+      notificationReconciled = true;
+    } else if (translationNotificationId) {
+      await Notifications.dismissNotificationAsync(translationNotificationId);
+      translationNotificationId = null;
+    }
+  } catch (error) {
+    console.warn("[translation][notification] dismiss failed", error);
+  }
+}
+
+function pumpTranslationNotification(): Promise<void> {
+  if (translationNotificationPump) return translationNotificationPump;
+  let appliedVersion = -1;
+  translationNotificationPump = (async () => {
+    while (appliedVersion !== desiredTranslationVersion) {
+      appliedVersion = desiredTranslationVersion;
+      const job = desiredTranslationNotification;
+      await dismissTranslationNotification();
+      if (!permissionGranted || !job) continue;
       try {
-        if (translationNotificationId) {
-          await Notifications.dismissNotificationAsync(
-            translationNotificationId,
-          );
-          translationNotificationId = null;
-        }
-        translationNotificationId = await Notifications.scheduleNotificationAsync(
-          {
-            content: {
-              title: `Pre-translating ${next.job.chapterTitle}`,
-              body: `${next.current}/${next.total} pages \u00b7 ${next.job.mangaTitle}${
-                next.job.pagesFailed > 0
-                  ? ` \u00b7 ${next.job.pagesFailed} failed`
-                  : ""
-              }`,
-              data: { kind: "translation-queue" },
-              categoryIdentifier: TRANSLATION_CATEGORY,
-              autoDismiss: next.job.status === "completed",
-              sound: false,
-            },
-            trigger: null,
+        const terminal = "pagesDone" in job;
+        const progress = terminal ? job.pagesDone : job.current;
+        translationNotificationId = await Notifications.scheduleNotificationAsync({
+          content: {
+            title: job.status === "running"
+              ? `Pre-translating ${job.chapterTitle}`
+              : job.status === "paused"
+                ? `Translation paused: ${job.chapterTitle}`
+                : job.status === "cancelling"
+                  ? `Stopping translation: ${job.chapterTitle}`
+                  : job.status === "completed"
+                    ? `Pre-translation complete: ${job.chapterTitle}`
+                    : `Pre-translation failed: ${job.chapterTitle}`,
+            body: `${progress}/${job.total} pages \u00b7 ${job.mangaTitle}${
+              job.pagesFailed > 0 ? ` \u00b7 ${job.pagesFailed} failed` : ""
+            }${job.status === "paused" ? " \u00b7 Open Mangora to resume" : ""}`,
+            data: { kind: "translation-queue", jobId: job.jobId },
+            categoryIdentifier: job.status === "running"
+              ? TRANSLATION_RUNNING_CATEGORY
+              : job.status === "paused"
+                ? TRANSLATION_PAUSED_CATEGORY
+                : undefined,
+            autoDismiss: terminal,
+            sound: false,
           },
-        );
-      } catch {
-        // Progress notifications never affect the job.
+          trigger: null,
+        });
+      } catch (error) {
+        console.warn("[translation][notification] update failed", error);
       }
     }
   })().finally(() => {
-    translationProgressPump = null;
-    if (pendingTranslationProgress) void pumpTranslationProgress();
+    translationNotificationPump = null;
+    if (desiredTranslationVersion !== appliedVersion) {
+      void pumpTranslationNotification();
+    }
   });
-  return translationProgressPump;
+  return translationNotificationPump;
 }
 
-/**
- * Live pre-translate progress notification (one at a time). Bursts collapse
- * to the newest value, so resuming a long job cannot stack notifications.
- */
-function notifyTranslationProgress(
-  job: TranslationNotificationJob,
-  current: number,
-  total: number,
+function setTranslationNotification(
+  job: TranslationNotificationJob | TranslationTerminalJob | null,
 ): Promise<void> {
-  if (!permissionGranted) return Promise.resolve();
-  pendingTranslationProgress = {
-    job: {
-      chapterTitle: job.chapterTitle,
-      mangaTitle: job.mangaTitle,
-      status: job.status,
-      pagesFailed: job.pagesFailed,
-    },
-    current,
-    total,
-  };
-  return pumpTranslationProgress();
-}
-
-/** Reminder when the JS queue pauses because the app left the foreground. */
-export async function notifyTranslationBackground(): Promise<void> {
-  if (!permissionGranted) return;
-  try {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "Translation paused",
-        body: "Return to Mangora to continue pre-translating the chapter.",
-        data: { kind: "translation-background" },
-        sound: false,
-      },
-      trigger: null,
-    });
-  } catch {
-    // Best effort.
-  }
+  if (JSON.stringify(desiredTranslationNotification) === JSON.stringify(job) &&
+      notificationReconciled) return translationNotificationPump ?? Promise.resolve();
+  desiredTranslationNotification = job;
+  desiredTranslationVersion += 1;
+  return pumpTranslationNotification();
 }
 
 /** Routes notification button actions to the translation queue after it initializes. */
 export const translationNotificationCommands: TranslationNotificationCommandPort = {
   registerHandler(command, handler) {
     translationCommandHandlers.set(command, handler);
+    for (let index = pendingTranslationCommands.length - 1; index >= 0; index -= 1) {
+      const pending = pendingTranslationCommands[index];
+      if (pending.command !== command) continue;
+      pendingTranslationCommands.splice(index, 1);
+      handler(pending.jobId);
+    }
     return () => {
       if (translationCommandHandlers.get(command) === handler) {
         translationCommandHandlers.delete(command);
@@ -249,7 +263,7 @@ export const translationNotificationCommands: TranslationNotificationCommandPort
 };
 
 export const translationNotifications: TranslationNotificationPort = {
-  progress: (input) =>
-    notifyTranslationProgress(input, input.current, input.total),
-  background: () => notifyTranslationBackground(),
+  show: (input) => setTranslationNotification(input),
+  finish: (input) => setTranslationNotification(input),
+  clear: () => setTranslationNotification(null),
 };

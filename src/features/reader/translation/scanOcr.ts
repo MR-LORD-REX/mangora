@@ -22,6 +22,7 @@ import {
 import {
   buildTranslationSlots,
   ocrRegionsForSlots,
+  withTranslationComputePermit,
 } from "@features/translation";
 
 import { imageHeadersForPage } from "@shared/net/imageHeaders";
@@ -91,6 +92,11 @@ export async function scanPage(
   const restored = await runtime.restoreCachedPage(url, pageIndex, generation);
   if (restored) {
     runtime.finishSinglePage(url);
+    return;
+  }
+  const setupError = runtime.validateUncachedRun();
+  if (setupError) {
+    runtime.markPageError(url, setupError);
     return;
   }
   // The OCR RAM cache already has this page (for example after a stopped
@@ -200,12 +206,14 @@ export async function scanPage(
     regions: [],
   });
   try {
-    const detection = await detectPageRegions(url, {
-      detectorId: runtime.config.regionDetectorId,
-      headers: imageHeadersForPage(source, url),
-      extensionSourceId: extensionSourceIdFor(source),
-    });
-    if (!runtime.isCurrentRun(generation)) return;
+    const detection = await withTranslationComputePermit("reader", () =>
+      runtime.isCurrentRun(generation) ? detectPageRegions(url, {
+        detectorId: runtime.config.regionDetectorId,
+        headers: imageHeadersForPage(source, url),
+        extensionSourceId: extensionSourceIdFor(source),
+      }) : Promise.resolve(null),
+    );
+    if (!detection || !runtime.isCurrentRun(generation)) return;
     runtime.detection.set(url, detection);
     const slots = buildTranslationSlots(detection).filter(
       (slot) =>
@@ -294,18 +302,20 @@ export async function recognizeBubbleBatch(
     { regionIndex: task.regionIndex, region: task.region },
   ];
   try {
-    const result = await recognizePageRegions({
-      pageUrl: url,
-      headers: imageHeadersForPage(source, url),
-      extensionSourceId: extensionSourceIdFor(source),
-      imageWidth: detection.imageWidth,
-      imageHeight: detection.imageHeight,
-      regions: entries.map((entry) => entry.region),
-      language: runtime.config.sourceLanguage,
-      maxCrops: entries.length,
-      concurrency: runtime.effectiveOcrBubbleWorkers,
-    });
-    if (!runtime.isCurrentRun(generation)) return;
+    const result = await withTranslationComputePermit("reader", () =>
+      runtime.isCurrentRun(generation) ? recognizePageRegions({
+        pageUrl: url,
+        headers: imageHeadersForPage(source, url),
+        extensionSourceId: extensionSourceIdFor(source),
+        imageWidth: detection.imageWidth,
+        imageHeight: detection.imageHeight,
+        regions: entries.map((entry) => entry.region),
+        language: runtime.config.sourceLanguage,
+        maxCrops: entries.length,
+        concurrency: runtime.effectiveOcrBubbleWorkers,
+      }) : Promise.resolve(null),
+    );
+    if (!result || !runtime.isCurrentRun(generation)) return;
     page.items.push(...result.items);
     page.regionsDone += entries.length;
     for (const entry of entries) {
