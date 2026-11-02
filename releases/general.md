@@ -6,9 +6,7 @@ Small changes and work in flight that has not shipped in a versioned release yet
 
 ## In progress
 
-- **v0.0.8 release preparation.** Release notes are drafted. Reader and
-  notification behavior still needs device verification before the APK is
-  published.
+- Nothing in progress right now.
 
 ## Planned
 

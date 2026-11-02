@@ -1,6 +1,13 @@
 {
-  "latest": "0.0.7",
+  "latest": "0.0.8",
   "versions": [
+    {
+      "version": "0.0.8",
+      "date": "2026-11-02",
+      "title": "More translation choices and better pre-translation",
+      "file": "v0.0.8.md",
+      "type": "stable"
+    },
     {
       "version": "0.0.7",
       "date": "2026-10-28",
