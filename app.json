@@ -1,0 +1,74 @@
+{
+  "expo": {
+    "name": "Mangora",
+    "slug": "mangora",
+    "version": "0.0.8",
+    "orientation": "portrait",
+    "scheme": "mangora",
+    "icon": "./assets/icons/appLogo.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.mangora.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "mangoraweb.vercel.app",
+              "pathPrefix": "/manga"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "web": {
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#000000",
+          "image": "./assets/icons/appLogo.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#000000",
+            "image": "./assets/icons/appLogo.png"
+          }
+        }
+      ],
+      "expo-asset",
+      "onnxruntime-react-native",
+      "./plugins/withOnnxruntimePackage",
+      "./plugins/withDownloadService",
+      "./plugins/withExtensionHost",
+      "./plugins/withAppLinks",
+      "./plugins/withUpdater",
+      "./plugins/withLtrLayout",
+      "./plugins/withSubsamplingScaleImageView",
+      "./plugins/withAvifDecoder",
+      "./plugins/withCleartextTraffic",
+      "expo-sqlite",
+      "expo-notifications",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
