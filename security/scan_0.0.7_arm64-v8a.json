@@ -1,0 +1,23 @@
+{
+  "app": "Mangora",
+  "version": "0.0.7",
+  "architecture": "arm64-v8a",
+  "file_name": "mangora-arm64-v8a-0.0.7.apk",
+  "file_size_bytes": 112141988,
+  "sha256": "e0f104fe8260d7bc76f8db1e51e0dda6af996c46327cc6235ad9fd59f85632fe",
+  "scan_date": "2026-10-28T16:55:50Z",
+  "analysis_status": "completed",
+  "analysis_id": "NDY4ZmNiMzcyNmRmNGJlODA2Mjk2ODhmNTFiZjk5NzY6MTc5MzIwNjU1MA==",
+  "analysis_link": "https://www.virustotal.com/gui/file/e0f104fe8260d7bc76f8db1e51e0dda6af996c46327cc6235ad9fd59f85632fe/detection",
+  "analysis_stats": {
+    "malicious": 0,
+    "suspicious": 0,
+    "undetected": 63,
+    "harmless": 0,
+    "timeout": 4,
+    "confirmed-timeout": 0,
+    "failure": 0,
+    "type-unsupported": 8
+  },
+  "source_release": "https://github.com/MR-LORD-REX/mangora/releases/tag/v0.0.7"
+}

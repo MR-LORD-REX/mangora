@@ -1,0 +1,23 @@
+{
+  "app": "Mangora",
+  "version": "0.0.7",
+  "architecture": "armeabi-v7a",
+  "file_name": "mangora-armeabi-v7a-0.0.7.apk",
+  "file_size_bytes": 92562128,
+  "sha256": "8a5d7d7f0818fb480ba6834f652579efef7d49efbdfc4a6bbda80815317d6e06",
+  "scan_date": "2026-10-28T16:58:43Z",
+  "analysis_status": "completed",
+  "analysis_id": "NmUyMjY2YjE0ZjZkZWJlMWQ3ODgxYTFjNWUzOTVkM2Y6MTc5MzIwNjcyMw==",
+  "analysis_link": "https://www.virustotal.com/gui/file/8a5d7d7f0818fb480ba6834f652579efef7d49efbdfc4a6bbda80815317d6e06/detection",
+  "analysis_stats": {
+    "malicious": 0,
+    "suspicious": 0,
+    "undetected": 67,
+    "harmless": 0,
+    "timeout": 0,
+    "confirmed-timeout": 0,
+    "failure": 0,
+    "type-unsupported": 8
+  },
+  "source_release": "https://github.com/MR-LORD-REX/mangora/releases/tag/v0.0.7"
+}
