@@ -319,7 +319,7 @@ export default function PretranslateDialog({
                         ) : null}
                       </View>
                       <Text style={styles.radioLabel}>
-                        {value === "free" ? "Free Google" : "OpenAI-compatible"}
+                        {value === "free" ? "Free Google" : "AI Translation"}
                       </Text>
                     </Pressable>
                   ))}

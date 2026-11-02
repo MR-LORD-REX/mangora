@@ -1,7 +1,7 @@
 # Dependency graph
 
 The architecture graph is generated from the TypeScript/JavaScript source tree.
-It is the data source for the planned `/android/dev/graph` explorer on the Mangora
+It is the data source for the `/android/dev/graph` explorer on the Mangora
 website; it is not a hand-drawn diagram.
 
 ## Generated files
@@ -91,43 +91,29 @@ The graph is deliberately library-neutral. A website can use React Flow, Cytosca
 Sigma or another renderer without asking the app generator to emit a renderer-
 specific format.
 
-## Website explorer design
+## Website explorer
 
-Recommended first implementation:
+The website renders this snapshot as an interactive file dependency board with
+`@xyflow/react`. Each node is a source file; each directed edge is one import,
+re-export or dynamic-import declaration. The arrow points from the importing file
+to the imported file. Edge hover shows every binding name, and edge selection shows
+the declaration kind, type-only marker and specifier. Selecting a file focuses the
+board on its direct imports and importers and opens its exports and public API
+entries. Search, zone, feature and edge filters are shareable URL parameters.
 
-- **Renderer:** `@xyflow/react` (React Flow) for draggable nodes, custom node
-  cards, edge highlighting and a minimap.
-- **Layout:** `elkjs` for layered, deterministic layouts. Graph is grouped by
-  zone/feature first; file-level nodes are a drill-down after selecting a slice.
-- **Node cards:** show the file path plus its export count; selecting a node shows
-  its full export list, importers, imports and API entries.
-- **Edge labels:** show the declaration's bindings; selecting the edge shows the
-  full `{ name, alias, kind, typeOnly }` list, module specifier and declaration
-  kind.
-- **Interaction:** filter by zone/feature, search by path, exported symbol or
-  imported symbol, click a feature aggregate to reveal its files, and filter
-  type-only, dynamic and side-effect declarations independently.
-- **Exclusions:** offer no library-import filter because library imports are not
-  present in the snapshot. If third-party dependencies become useful, add them
-  as a separate, explicitly versioned dataset rather than mixing them into the
-  app-owned graph.
-- **Accessibility/performance:** virtualize or cap the initial graph; render
-  aggregate mode by default. A file graph with hundreds of nodes should not be
-  loaded all at once on a mobile browser.
-- **Fallback:** Cytoscape.js + fcose if the graph becomes larger than React Flow
-  can comfortably handle; Sigma.js + Graphology is another option for very large
-  file-level graphs. Keep the JSON contract unchanged when swapping renderers.
+The initial board shows up to 24 prominent files, prioritizing a connected
+neighborhood. A selected file shows up to 40 files including itself and its
+direct neighbors. This keeps the large snapshot usable on
+mobile; narrower searches and file selection reveal other files. ELK.js lays out
+the visible subgraph. The generated JSON stays renderer-neutral and contains the
+full snapshot. The site checks `schemaVersion` before rendering.
 
-Do not ship the graph as a bundle of hand-written nodes. The website should fetch
-or import the generated JSON at build time and fail visibly if its schema version
-is newer than the renderer supports.
-
-React Flow mapping is direct: `node.id` becomes the React Flow node `id`,
-`node.kind`/`zone`/`feature` select the custom node renderer, and every edge maps
-one-to-one with `id`, `source: from` and `target: to`. Do not generate a synthetic
-edge key from endpoints because the same pair can be connected by both an import
-and a re-export. Group the full binding list in the edge's `data` field rather
-than creating one React Flow edge per symbol.
+The website consumes the synchronized checked-in snapshot under
+`mangoraweb/content/generated/docs/android/architecture/generated/`. Run
+`npm run content:sync` in the website repository after changing these files.
+Never hand-write board nodes or edge keys: use `node.id` and `edge.id` from this
+schema, including when multiple declarations connect the same pair of files.
+External packages, CSS imports and files outside the repository remain excluded.
 
 ## Release automation
 

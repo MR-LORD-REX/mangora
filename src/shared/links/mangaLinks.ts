@@ -3,7 +3,7 @@
  * ---------------------------------------------------------------------------
  * Share + deep-link helpers for the public Mangora site (plan S14.1).
  *
- * A shared link points at `https://mangora-web.web.app/manga/<id>`,
+ * A shared link points at `https://mangoraweb.vercel.app/manga/<id>`,
  * which is exactly the URL shape expo-router produces for the app's own
  * `/manga/[slug]` route. A shared link therefore resolves straight back into
  * the identical screen with no dispatcher code, and the website landing page
@@ -19,7 +19,7 @@ import { setStringAsync } from "expo-clipboard";
 import { Share } from "react-native";
 
 /** Public site origin. Keep in sync with SITE.url in mangora-website. */
-export const SITE_ORIGIN = "https://mangora-web.web.app";
+export const SITE_ORIGIN = "https://mangoraweb.vercel.app";
 
 export interface MangaShareTarget {
   /** Extension provider key (`ext:<sourceId>`). Sent as the `provider` query param. */
